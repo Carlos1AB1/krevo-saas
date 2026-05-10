@@ -35,7 +35,7 @@ export const Route = createFileRoute("/")({
 function LandingPage() {
   return (
     <div className="bg-background text-foreground">
-      <SiteHeader />
+      <SiteHeader transparentHero />
       <main>
         <Hero />
         <LogoCloud />

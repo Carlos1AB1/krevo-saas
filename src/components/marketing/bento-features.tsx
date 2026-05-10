@@ -94,7 +94,7 @@ const toneClass: Record<NonNullable<BentoItem["tone"]>, string> = {
 export function BentoFeatures() {
   return (
     <section id="features" className="relative">
-      <div className="mx-auto max-w-6xl px-6 py-24">
+      <div className="mx-auto max-w-6xl px-6 pt-10 pb-24">
         <SectionHeading
           eyebrow="Plataforma"
           title={

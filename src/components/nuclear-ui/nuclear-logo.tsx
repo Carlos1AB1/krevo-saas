@@ -14,9 +14,9 @@ interface NuclearLogoProps {
 export function NuclearLogo({ className, withWordmark = false }: NuclearLogoProps) {
   return (
     <span className={cn("inline-flex items-center gap-3.5", className)}>
-      <img src="/logo.png" alt="Krevo Logo" className="size-18 shrink-0 object-contain" />
+      <img src="/logo.png" alt="Krevo Logo" className="size-20 shrink-0 object-contain" />
       {withWordmark ? (
-        <span className="font-display text-xl font-bold tracking-tight text-foreground">Krevo</span>
+        <span className="font-display text-xl font-bold tracking-tight text-current">Krevo</span>
       ) : null}
     </span>
   );

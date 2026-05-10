@@ -13,6 +13,8 @@ import {
   Warehouse,
   TrendingUp,
   Package,
+  Loader2,
+  Trash2,
 } from "lucide-react";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -32,6 +34,16 @@ import {
   DialogHeader,
   DialogTitle,
 } from "@/components/ui/dialog";
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+} from "@/components/ui/alert-dialog";
 import { products, type Product } from "@/lib/wms-mock";
 import { cn } from "@/lib/utils";
 import { toast } from "sonner";
@@ -65,6 +77,32 @@ export function ProductsTable() {
   const [selected, setSelected] = useState<Product | null>(null);
   const [importOpen, setImportOpen] = useState(false);
   const [createOpen, setCreateOpen] = useState(false);
+  const [isSaving, setIsSaving] = useState(false);
+  const [errors, setErrors] = useState<Record<string, string>>({});
+
+  const handleSaveProduct = () => {
+    const sku = (document.getElementById("prod-sku") as HTMLInputElement)?.value;
+    const ean = (document.getElementById("prod-ean") as HTMLInputElement)?.value;
+    const name = (document.getElementById("prod-name") as HTMLInputElement)?.value;
+
+    const newErrors: Record<string, string> = {};
+    if (!sku || sku.length < 3) newErrors.sku = "El SKU es obligatorio y debe tener al menos 3 caracteres.";
+    if (!ean || ean.length < 8) newErrors.ean = "El EAN es inválido. Ingresa un código numérico válido.";
+    if (!name) newErrors.name = "El nombre y descripción del producto no pueden estar vacíos.";
+
+    if (Object.keys(newErrors).length > 0) {
+      setErrors(newErrors);
+      return;
+    }
+    
+    setErrors({});
+    setIsSaving(true);
+    setTimeout(() => {
+      setIsSaving(false);
+      setCreateOpen(false);
+      toast.success("Producto creado", { description: "El producto ha sido guardado exitosamente." });
+    }, 1200);
+  };
 
   const filtered = useMemo(() => {
     const ql = q.toLowerCase();
@@ -350,15 +388,18 @@ export function ProductsTable() {
               <div className="grid grid-cols-2 gap-4">
                 <div className="space-y-1.5">
                   <Label htmlFor="prod-sku">SKU</Label>
-                  <Input id="prod-sku" placeholder="Ej. CQ-CAF-04" required />
+                  <Input id="prod-sku" placeholder="Ej. CQ-CAF-04" required className={errors.sku ? "border-destructive focus-visible:ring-destructive" : ""} />
+                  {errors.sku && <p className="text-[11px] font-medium text-destructive">{errors.sku}</p>}
                 </div>
                 <div className="space-y-1.5">
                   <Label htmlFor="prod-ean">Código de Barras (EAN-13)</Label>
-                  <Input id="prod-ean" placeholder="Ej. 7701234567890" required />
+                  <Input id="prod-ean" placeholder="Ej. 7701234567890" required className={errors.ean ? "border-destructive focus-visible:ring-destructive" : ""} />
+                  {errors.ean && <p className="text-[11px] font-medium text-destructive">{errors.ean}</p>}
                 </div>
                 <div className="col-span-2 space-y-1.5">
                   <Label htmlFor="prod-name">Nombre / Descripción</Label>
-                  <Input id="prod-name" placeholder="Ej. Café Molido 500g" required />
+                  <Input id="prod-name" placeholder="Ej. Café Molido 500g" required className={errors.name ? "border-destructive focus-visible:ring-destructive" : ""} />
+                  {errors.name && <p className="text-[11px] font-medium text-destructive">{errors.name}</p>}
                 </div>
                 <div className="space-y-1.5">
                   <Label htmlFor="prod-category">Categoría</Label>
@@ -476,10 +517,13 @@ export function ProductsTable() {
             </div>
 
             <div className="pt-4 flex justify-end gap-2">
-              <Button variant="ghost" onClick={() => setCreateOpen(false)}>
+              <Button variant="ghost" onClick={() => setCreateOpen(false)} disabled={isSaving}>
                 Cancelar
               </Button>
-              <Button variant="nuclear">Confirmar guardado en catálogo</Button>
+              <Button variant="nuclear" onClick={handleSaveProduct} disabled={isSaving}>
+                {isSaving ? <Loader2 className="mr-2 size-4 animate-spin" /> : null}
+                {isSaving ? "Guardando..." : "Guardar Producto"}
+              </Button>
             </div>
           </div>
         </SheetContent>
@@ -641,6 +685,18 @@ function FilterPills({
 
 function ProductDetail({ product }: { product: Product }) {
   const cov = Math.min(100, (product.stock / Math.max(product.rop, 1)) * 100);
+  const [deleteOpen, setDeleteOpen] = useState(false);
+  const [isDeleting, setIsDeleting] = useState(false);
+
+  const handleDelete = () => {
+    setIsDeleting(true);
+    setTimeout(() => {
+      setIsDeleting(false);
+      setDeleteOpen(false);
+      toast.success("Producto eliminado", { description: "El SKU ha sido removido del sistema." });
+    }, 1000);
+  };
+
   return (
     <>
       <SheetHeader>
@@ -711,22 +767,50 @@ function ProductDetail({ product }: { product: Product }) {
           </p>
           <div className="grid grid-cols-2 gap-2">
             <Button variant="outline" size="sm">
-              <Calendar className="size-4" />
+              <Calendar className="size-4 mr-2" />
               Ver lotes
             </Button>
             <Button variant="outline" size="sm">
-              <TrendingUp className="size-4" />
+              <TrendingUp className="size-4 mr-2" />
               Histórico
             </Button>
-            <Button variant="outline" size="sm">
+            <Button variant="outline" size="sm" className="col-span-2">
               Ajustar stock
             </Button>
-            <Button variant="nuclear" size="sm">
-              Generar OC
+            <Button variant="destructive" size="sm" className="col-span-2 mt-4" onClick={() => setDeleteOpen(true)}>
+              <Trash2 className="size-4 mr-2" />
+              Eliminar Producto (Irreversible)
             </Button>
           </div>
         </div>
       </div>
+
+      <AlertDialog open={deleteOpen} onOpenChange={setDeleteOpen}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>¿Estás completamente seguro?</AlertDialogTitle>
+            <AlertDialogDescription>
+              Esta acción es irreversible. Se eliminará permanentemente el producto{" "}
+              <span className="font-semibold text-foreground">{product.sku}</span> del catálogo
+              maestro y no podrá ser utilizado en futuras órdenes o recepciones.
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel disabled={isDeleting}>Cancelar</AlertDialogCancel>
+            <AlertDialogAction
+              className="bg-destructive hover:bg-destructive/90 text-destructive-foreground"
+              disabled={isDeleting}
+              onClick={(e) => {
+                e.preventDefault();
+                handleDelete();
+              }}
+            >
+              {isDeleting ? <Loader2 className="mr-2 size-4 animate-spin" /> : null}
+              {isDeleting ? "Eliminando..." : "Sí, eliminar producto"}
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
     </>
   );
 }

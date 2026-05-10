@@ -1,5 +1,5 @@
 import { useEffect, useState } from "react";
-import { Link } from "@tanstack/react-router";
+import { Link, useLocation } from "@tanstack/react-router";
 import { ArrowRight, Menu, X } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { NuclearLogo } from "@/components/nuclear-ui/nuclear-logo";
@@ -12,72 +12,101 @@ const navItems = [
   { label: "Contacto", to: "/contact" },
 ] as const;
 
-export function SiteHeader() {
+interface SiteHeaderProps {
+  transparentHero?: boolean;
+}
+
+export function SiteHeader({ transparentHero = false }: SiteHeaderProps = {}) {
   const [scrolled, setScrolled] = useState(false);
   const [open, setOpen] = useState(false);
+  const location = useLocation();
+  const isHeaderDark = !scrolled && transparentHero;
 
   useEffect(() => {
-    const onScroll = () => setScrolled(window.scrollY > 8);
+    const onScroll = () => {
+      const threshold = transparentHero ? window.innerHeight * 2.3 : 8;
+      setScrolled(window.scrollY > threshold);
+    };
     onScroll();
     window.addEventListener("scroll", onScroll, { passive: true });
-    return () => window.removeEventListener("scroll", onScroll);
-  }, []);
+    window.addEventListener("resize", onScroll, { passive: true });
+    return () => {
+      window.removeEventListener("scroll", onScroll);
+      window.removeEventListener("resize", onScroll);
+    };
+  }, [transparentHero]);
 
   return (
     <header
       className={cn(
         "sticky top-0 z-50 w-full transition-all duration-300",
         scrolled
-          ? "border-b border-border/60 bg-background/70 backdrop-blur-xl"
-          : "border-b border-transparent",
+          ? "border-b border-border bg-white"
+          : cn("border-b border-transparent", transparentHero && "dark text-foreground")
       )}
     >
-      <div className="mx-auto flex h-16 max-w-6xl items-center justify-between px-6">
-        <Link to="/" aria-label="Krevo — inicio">
-          <NuclearLogo withWordmark />
-        </Link>
+      <div className="mx-auto flex h-16 max-w-7xl items-center px-8">
+        {/* Left: Logo */}
+        <div className="flex flex-1 justify-start items-center">
+          <Link to="/" aria-label="Krevo — inicio" className="flex items-center">
+            <NuclearLogo withWordmark className={isHeaderDark ? "text-white" : "text-foreground"} />
+          </Link>
+        </div>
 
-        <nav className="hidden items-center gap-8 text-sm text-muted-foreground md:flex">
+        {/* Center: Nav Links (100% Geometric Center) */}
+        <nav className={cn(
+          "hidden items-center gap-8 text-sm md:flex h-full",
+          isHeaderDark ? "text-white/80" : "text-muted-foreground"
+        )}>
           {navItems.map((item) => (
             <Link
               key={item.to}
               to={item.to}
-              className="transition-colors hover:text-foreground"
-              activeProps={{ className: "text-foreground" }}
+              className={cn(
+                "transition-colors flex items-center h-full",
+                isHeaderDark ? "hover:text-white" : "hover:text-foreground"
+              )}
+              activeProps={{ className: isHeaderDark ? "text-white" : "text-foreground" }}
             >
               {item.label}
             </Link>
           ))}
         </nav>
 
-        <div className="hidden items-center gap-2 md:flex">
-          <Button asChild variant="ghost" size="sm">
-            <Link to="/login">Iniciar sesión</Link>
-          </Button>
-          <Button asChild variant="plasma" size="sm">
-            <Link to="/contact">
-              Solicitar demo
-              <ArrowRight />
-            </Link>
-          </Button>
-        </div>
+        {/* Right: Buttons & Mobile Toggle */}
+        <div className="flex flex-1 justify-end items-center gap-2 h-full">
+          <div className="hidden items-center gap-2 md:flex h-full">
+            <Button asChild variant="ghost" size="sm" className={isHeaderDark ? "text-white hover:bg-white/10" : ""}>
+              <Link to="/login" className="flex items-center">Iniciar sesión</Link>
+            </Button>
+            <Button asChild variant="plasma" size="sm" className="flex items-center">
+              <Link to="/contact">
+                Solicitar demo
+                <ArrowRight />
+              </Link>
+            </Button>
+          </div>
 
-        <button
-          type="button"
-          className="rounded-md p-2 text-foreground md:hidden"
-          aria-label={open ? "Cerrar menú" : "Abrir menú"}
-          aria-expanded={open}
-          aria-controls="mobile-nav"
-          onClick={() => setOpen((v) => !v)}
-        >
-          {open ? <X className="size-5" /> : <Menu className="size-5" />}
-        </button>
+          <button
+            type="button"
+            className={cn(
+              "rounded-md p-2 md:hidden flex items-center",
+              isHeaderDark ? "text-white" : "text-foreground"
+            )}
+            aria-label={open ? "Cerrar menú" : "Abrir menú"}
+            aria-expanded={open}
+            aria-controls="mobile-nav"
+            onClick={() => setOpen((v) => !v)}
+          >
+            {open ? <X className="size-5" /> : <Menu className="size-5" />}
+          </button>
+        </div>
       </div>
 
       {open ? (
         <div
           id="mobile-nav"
-          className="border-t border-border/60 bg-background/95 backdrop-blur-xl md:hidden"
+          className="border-t border-border bg-white md:hidden"
         >
           <nav className="mx-auto flex max-w-6xl flex-col gap-1 px-6 py-4 text-sm">
             {navItems.map((item) => (

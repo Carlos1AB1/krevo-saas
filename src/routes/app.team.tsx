@@ -67,8 +67,12 @@ function TeamPage() {
         <div className="mx-auto max-w-5xl space-y-6">
           <div className="flex gap-2">
             <div className="relative flex-1">
-              <Search className="absolute left-3 top-1/2 size-4 -translate-y-1/2 text-muted-foreground" />
+              <label htmlFor="search-team" className="sr-only">
+                Buscar por nombre o email
+              </label>
+              <Search className="absolute left-3 top-1/2 size-4 -translate-y-1/2 text-muted-foreground pointer-events-none" />
               <Input
+                id="search-team"
                 placeholder="Buscar por nombre o email..."
                 className="pl-9 h-10 bg-card shadow-sm"
               />
