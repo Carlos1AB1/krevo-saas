@@ -63,6 +63,7 @@ export function ProductsTable() {
   });
   const [selected, setSelected] = useState<Product | null>(null);
   const [importOpen, setImportOpen] = useState(false);
+  const [createOpen, setCreateOpen] = useState(false);
 
   const filtered = useMemo(() => {
     const ql = q.toLowerCase();
@@ -125,7 +126,7 @@ export function ProductsTable() {
             <Upload className="size-4" />
             Importar CSV
           </Button>
-          <Button variant="nuclear" size="sm">
+          <Button variant="nuclear" size="sm" onClick={() => setCreateOpen(true)}>
             <Plus className="size-4" />
             Nuevo producto
           </Button>
@@ -299,6 +300,117 @@ export function ProductsTable() {
       <Sheet open={!!selected} onOpenChange={(v) => !v && setSelected(null)}>
         <SheetContent className="w-full sm:max-w-xl">
           {selected && <ProductDetail product={selected} />}
+        </SheetContent>
+      </Sheet>
+
+      {/* Sheet nuevo producto */}
+      <Sheet open={createOpen} onOpenChange={setCreateOpen}>
+        <SheetContent className="w-full sm:max-w-xl overflow-y-auto">
+          <SheetHeader>
+            <SheetTitle>Nuevo Producto al Catálogo Maestro</SheetTitle>
+            <SheetDescription>
+              Parametrización de artículos, costos, UoM y variables logísticas.
+            </SheetDescription>
+          </SheetHeader>
+
+          <div className="mt-6 space-y-6">
+            <div className="space-y-4">
+              <h4 className="text-sm font-semibold border-b pb-2">Información Básica (RF-COR-03)</h4>
+              <div className="grid grid-cols-2 gap-4">
+                <div className="space-y-1.5">
+                  <label className="text-xs font-medium">SKU</label>
+                  <Input placeholder="Ej. CQ-CAF-04" />
+                </div>
+                <div className="space-y-1.5">
+                  <label className="text-xs font-medium">Código de Barras (EAN-13)</label>
+                  <Input placeholder="Ej. 7701234567890" />
+                </div>
+                <div className="col-span-2 space-y-1.5">
+                  <label className="text-xs font-medium">Nombre / Descripción</label>
+                  <Input placeholder="Ej. Café Molido 500g" />
+                </div>
+                <div className="space-y-1.5">
+                  <label className="text-xs font-medium">Categoría</label>
+                  <select className="flex h-10 w-full items-center justify-between rounded-md border border-input bg-background px-3 py-2 text-sm ring-offset-background placeholder:text-muted-foreground focus:outline-none focus:ring-2 focus:ring-ring focus:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-50">
+                    <option>Materia Prima</option>
+                    <option>Insumos (Empaques)</option>
+                    <option>Producto Terminado</option>
+                  </select>
+                </div>
+              </div>
+            </div>
+
+            <div className="space-y-4">
+              <h4 className="text-sm font-semibold border-b pb-2">Unidades de Medida y Conversiones (RF-COR-02)</h4>
+              <div className="grid grid-cols-2 gap-4">
+                <div className="space-y-1.5">
+                  <label className="text-xs font-medium">Unidad Base (UoM)</label>
+                  <select className="flex h-10 w-full items-center justify-between rounded-md border border-input bg-background px-3 py-2 text-sm ring-offset-background placeholder:text-muted-foreground focus:outline-none focus:ring-2 focus:ring-ring focus:ring-offset-2">
+                    <option>Unidad</option>
+                    <option>Bolsa</option>
+                    <option>Caja</option>
+                    <option>Kg</option>
+                  </select>
+                </div>
+                <div className="space-y-1.5">
+                  <label className="text-xs font-medium">Factor de Conversión (Empaque)</label>
+                  <div className="flex items-center gap-2">
+                    <span className="text-xs whitespace-nowrap">1 Caja =</span>
+                    <Input type="number" placeholder="24" className="w-20" />
+                    <span className="text-xs text-muted-foreground">UoM</span>
+                  </div>
+                </div>
+                <div className="space-y-1.5">
+                  <label className="text-xs font-medium">Estiba (Pallet)</label>
+                  <div className="flex items-center gap-2">
+                    <span className="text-xs whitespace-nowrap">1 Estiba =</span>
+                    <Input type="number" placeholder="40" className="w-20" />
+                    <span className="text-xs text-muted-foreground">Cajas</span>
+                  </div>
+                </div>
+              </div>
+            </div>
+
+            <div className="space-y-4">
+              <h4 className="text-sm font-semibold border-b pb-2">Tiempos y Costos para EOQ/ROP (RF-COR-04)</h4>
+              <div className="grid grid-cols-2 gap-4">
+                <div className="space-y-1.5">
+                  <label className="text-xs font-medium text-nuclear">Lead Time (Tiempo de Entrega)</label>
+                  <div className="flex gap-2">
+                    <Input type="number" placeholder="5" />
+                    <span className="flex items-center text-xs text-muted-foreground">Días</span>
+                  </div>
+                </div>
+                <div className="space-y-1.5">
+                  <label className="text-xs font-medium">Costo de Pedir (S)</label>
+                  <div className="flex gap-2">
+                    <Input type="number" placeholder="15000" />
+                    <span className="flex items-center text-xs text-muted-foreground">COP</span>
+                  </div>
+                </div>
+                <div className="space-y-1.5">
+                  <label className="text-xs font-medium">Costo Mantenimiento % (H)</label>
+                  <div className="flex gap-2">
+                    <Input type="number" placeholder="15" />
+                    <span className="flex items-center text-xs text-muted-foreground">% / año</span>
+                  </div>
+                </div>
+                <div className="space-y-1.5">
+                  <label className="text-xs font-medium">Política (Insumo vs Terminado)</label>
+                  <select className="flex h-10 w-full rounded-md border border-input bg-background px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-ring focus:ring-offset-2">
+                    <option>Revisión Continua (Q)</option>
+                    <option>Revisión Periódica (P)</option>
+                    <option>FEFO (Producto Terminado)</option>
+                  </select>
+                </div>
+              </div>
+            </div>
+
+            <div className="pt-4 flex justify-end gap-2">
+              <Button variant="ghost" onClick={() => setCreateOpen(false)}>Cancelar</Button>
+              <Button variant="nuclear">Guardar en Catálogo</Button>
+            </div>
+          </div>
         </SheetContent>
       </Sheet>
 

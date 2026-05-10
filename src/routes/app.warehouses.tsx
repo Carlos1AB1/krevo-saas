@@ -1,7 +1,10 @@
 import { createFileRoute } from "@tanstack/react-router";
-import { Warehouse, Plus, LayoutGrid, Search, MapPin, Activity } from "lucide-react";
+import { useState } from "react";
+import { Warehouse, Plus, LayoutGrid, Search, MapPin, Activity, Settings2, Grid3X3, ArrowRight } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
+import { Sheet, SheetContent, SheetHeader, SheetTitle, SheetDescription } from "@/components/ui/sheet";
+import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 
 export const Route = createFileRoute("/app/warehouses")({
   head: () => ({
@@ -16,7 +19,7 @@ const mockWarehouses = [
     name: "CEDI Principal Armenia",
     location: "Cra 12 No 9 - 59 Armenia, Quindío",
     capacity: 75,
-    zones: ["A", "B", "C", "P"],
+    zones: ["A (Recepción)", "B (Almacenamiento)", "C (Picking)", "P (Despacho)"],
     status: "active",
     temp: "Ambiente",
   },
@@ -41,6 +44,9 @@ const mockWarehouses = [
 ];
 
 function WarehousesPage() {
+  const [selectedWh, setSelectedWh] = useState<typeof mockWarehouses[0] | null>(null);
+  const [createOpen, setCreateOpen] = useState(false);
+
   return (
     <div className="flex flex-col h-full">
       <header className="sticky top-0 z-10 flex h-16 items-center gap-4 border-b border-border bg-background px-4 sm:px-6">
@@ -51,7 +57,7 @@ function WarehousesPage() {
           </p>
         </div>
         <div className="flex items-center gap-2">
-          <Button size="sm">
+          <Button size="sm" onClick={() => setCreateOpen(true)}>
             <Plus className="mr-2 size-4" />
             <span>Nueva Bodega</span>
           </Button>
@@ -71,7 +77,8 @@ function WarehousesPage() {
             {mockWarehouses.map((wh) => (
               <div
                 key={wh.id}
-                className="relative flex flex-col rounded-xl border border-border bg-card p-5 shadow-sm transition-all hover:border-nuclear/50 hover:shadow-md"
+                onClick={() => setSelectedWh(wh)}
+                className="cursor-pointer relative flex flex-col rounded-xl border border-border bg-card p-5 shadow-sm transition-all hover:border-nuclear/50 hover:shadow-md"
               >
                 <div className="flex items-start justify-between">
                   <div className="flex items-center gap-3">
@@ -128,6 +135,79 @@ function WarehousesPage() {
           </div>
         </div>
       </div>
+
+      <Sheet open={!!selectedWh} onOpenChange={(v) => !v && setSelectedWh(null)}>
+        <SheetContent className="w-full sm:max-w-md">
+          {selectedWh && (
+            <>
+              <SheetHeader>
+                <p className="font-mono text-xs text-muted-foreground">{selectedWh.id}</p>
+                <SheetTitle className="font-display text-xl">{selectedWh.name}</SheetTitle>
+                <SheetDescription className="flex items-center gap-1.5 mt-1">
+                  <MapPin className="size-3.5" /> {selectedWh.location}
+                </SheetDescription>
+              </SheetHeader>
+
+              <div className="mt-6 space-y-6">
+                <div>
+                  <h4 className="text-sm font-semibold mb-3 flex items-center gap-2">
+                    <Grid3X3 className="size-4" /> Parametrización Espacial
+                  </h4>
+                  <div className="rounded-lg border border-border overflow-hidden">
+                    <div className="bg-muted px-3 py-2 text-xs font-medium border-b border-border">Zonas configuradas</div>
+                    <div className="divide-y divide-border bg-card">
+                      {selectedWh.zones.map(zone => (
+                         <div key={zone} className="p-3">
+                           <div className="flex items-center justify-between mb-2">
+                             <span className="font-medium text-sm">Zona {zone}</span>
+                             <span className="text-xs text-muted-foreground">Alta rotación</span>
+                           </div>
+                           <div className="flex items-center gap-2 text-xs text-muted-foreground">
+                             <span className="bg-muted px-1.5 py-0.5 rounded">6 Pasillos</span>
+                             <ArrowRight className="size-3" />
+                             <span className="bg-muted px-1.5 py-0.5 rounded">12 Estantes/racks</span>
+                             <ArrowRight className="size-3" />
+                             <span className="bg-muted px-1.5 py-0.5 rounded">4 Niveles</span>
+                           </div>
+                         </div>
+                      ))}
+                    </div>
+                  </div>
+                  <Button variant="outline" size="sm" className="w-full mt-3">
+                    <Settings2 className="mr-2 size-4" />
+                    Editar Layout CEDI
+                  </Button>
+                </div>
+              </div>
+            </>
+          )}
+        </SheetContent>
+      </Sheet>
+
+      <Dialog open={createOpen} onOpenChange={setCreateOpen}>
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle>Nueva Bodega / CEDI</DialogTitle>
+            <DialogDescription>
+              Crea un nuevo centro de distribución para tu tenant.
+            </DialogDescription>
+          </DialogHeader>
+          <div className="space-y-4 py-4 border-y border-border">
+            <div className="space-y-1.5">
+               <label className="text-xs font-medium">Nombre del CEDI</label>
+               <Input placeholder="Ej. Bodega Norte" />
+            </div>
+            <div className="space-y-1.5">
+               <label className="text-xs font-medium">Dirección</label>
+               <Input placeholder="Ej. Calle 123 #45-67" />
+            </div>
+          </div>
+          <DialogFooter>
+             <Button variant="ghost" onClick={() => setCreateOpen(false)}>Cancelar</Button>
+             <Button onClick={() => setCreateOpen(false)}>Crear Infraestructura</Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
     </div>
   );
 }

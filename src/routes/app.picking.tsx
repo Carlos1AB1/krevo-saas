@@ -1,7 +1,9 @@
 import { createFileRoute } from "@tanstack/react-router";
-import { ClipboardCheck, Scan, Box, Search, Filter, Play, CheckCircle, Flame } from "lucide-react";
+import { ClipboardCheck, Scan, Box, Search, Filter, Play, CheckCircle, Flame, Route as RouteIcon, Target, Users } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
+import { useState } from "react";
+import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle, DialogFooter } from "@/components/ui/dialog";
 
 export const Route = createFileRoute("/app/picking")({
   head: () => ({
@@ -45,13 +47,15 @@ const mockBatches = [
 ];
 
 function PickingPage() {
+  const [startWave, setStartWave] = useState<typeof mockBatches[0] | null>(null);
+
   return (
     <div className="flex flex-col h-full">
       <header className="sticky top-0 z-10 flex h-16 items-center gap-4 border-b border-border bg-background px-4 sm:px-6">
         <div className="mr-auto">
-          <h1 className="text-xl font-semibold tracking-tight">Picking</h1>
+          <h1 className="text-xl font-semibold tracking-tight">Picking (Outbound)</h1>
           <p className="text-xs text-muted-foreground hidden sm:block">
-            Gestión de olas y recolección de pedidos.
+            Generación de olas (Wave), rutas optimizadas y asignación de operarios.
           </p>
         </div>
         <div className="flex items-center gap-2">
@@ -61,7 +65,7 @@ function PickingPage() {
           </Button>
           <Button size="sm" variant="secondary">
             <ScannerIcon className="mr-2 size-4 hidden sm:block" />
-            <span>App Scanner</span>
+            <span>Mode App Scanner</span>
           </Button>
         </div>
       </header>
@@ -81,7 +85,7 @@ function PickingPage() {
               className="shrink-0 h-12 w-12 p-0 sm:h-10 sm:w-auto sm:px-4 shadow-sm"
             >
               <Scan className="size-5 sm:size-4 sm:mr-2" />
-              <span className="hidden sm:inline">Escanear Caja</span>
+              <span className="hidden sm:inline">Validar Caja Pick</span>
             </Button>
           </div>
 
@@ -89,7 +93,7 @@ function PickingPage() {
             {mockBatches.map((batch) => (
               <div
                 key={batch.id}
-                className="relative overflow-hidden rounded-xl border border-border bg-card p-4 shadow-sm"
+                className="relative overflow-hidden rounded-xl border border-border bg-card p-4 shadow-sm transition-shadow hover:shadow-md"
               >
                 <div className="flex items-start justify-between">
                   <div>
@@ -101,10 +105,10 @@ function PickingPage() {
                         {batch.type}
                       </span>
                     </div>
-                    <p className="mt-1 text-sm text-muted-foreground">Zonas: {batch.zones}</p>
+                    <p className="mt-1 text-sm text-muted-foreground">Zonas Objetivo: {batch.zones}</p>
                   </div>
                   {batch.priority === "high" && (
-                    <Flame className="size-5 text-destructive animate-pulse" />
+                    <Flame className="size-5 text-destructive animate-pulse" title="Prioridad Alta (Despacho pronto)" />
                   )}
                 </div>
 
@@ -123,7 +127,7 @@ function PickingPage() {
                   </div>
                   <div className="flex flex-col">
                     <span className="text-[10px] uppercase text-muted-foreground font-semibold">
-                      Uds
+                      Uds Total
                     </span>
                     <span className="text-lg font-bold">{batch.items}</span>
                   </div>
@@ -131,15 +135,18 @@ function PickingPage() {
 
                 <div className="mt-5">
                   {batch.status === "ready" && (
-                    <Button className="w-full h-12 text-base font-medium shadow-sm transition-transform active:scale-[0.98]">
-                      <Play className="mr-2 size-5 fill-current" />
-                      Iniciar Picking
+                    <Button 
+                        className="w-full h-12 text-base font-medium shadow-sm transition-transform active:scale-[0.98]"
+                        onClick={() => setStartWave(batch)}
+                    >
+                      <RouteIcon className="mr-2 size-5" />
+                      Planificar Ruta
                     </Button>
                   )}
                   {batch.status === "in_progress" && (
                     <div className="space-y-2">
                       <div className="flex items-center justify-between text-xs font-semibold">
-                        <span className="text-nuclear">En progreso</span>
+                        <span className="text-nuclear">En progreso (Juan P.)</span>
                         <span>{batch.progress}%</span>
                       </div>
                       <div className="h-2 w-full overflow-hidden rounded-full bg-muted">
@@ -152,7 +159,7 @@ function PickingPage() {
                         variant="secondary"
                         className="w-full h-12 mt-2 text-base font-medium"
                       >
-                        Continuar Tarea
+                        Continuar Pick (App PWA)
                       </Button>
                     </div>
                   )}
@@ -172,6 +179,54 @@ function PickingPage() {
           </div>
         </div>
       </div>
+
+      <Dialog open={!!startWave} onOpenChange={(v) => !v && setStartWave(null)}>
+        <DialogContent className="max-w-md">
+           {startWave && (
+               <>
+                  <DialogHeader>
+                      <DialogTitle>Asignación de Ruta: {startWave.id}</DialogTitle>
+                      <DialogDescription>
+                          Algoritmo de enrutamiento en pasillos para minimizar tiempo de caminata.
+                      </DialogDescription>
+                  </DialogHeader>
+                  <div className="space-y-4 py-4 border-y border-border my-2">
+                     <div className="rounded-lg bg-muted/50 p-3 flex items-center justify-between">
+                         <div className="flex items-center gap-2 text-sm font-medium">
+                             <RouteIcon className="size-4 text-nuclear" /> Ruta Optimizada (TSP)
+                         </div>
+                         <span className="text-xs bg-card border border-border px-2 py-1 rounded font-mono">Pasillos A2 {'>'} B4 {'>'} B5</span>
+                     </div>
+                     <div className="space-y-2">
+                         <label className="text-xs font-semibold text-muted-foreground flex items-center gap-1.5"><Users className="size-3" /> Asignar Operario</label>
+                         <select className="flex h-10 w-full rounded-md border border-input bg-background px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-ring focus:ring-offset-2">
+                             <option>Juan Pérez (En Turno)</option>
+                             <option>Carlos Mejía (En Turno)</option>
+                             <option>Auto-asignar (Balanceo Carga)</option>
+                         </select>
+                     </div>
+                     <div className="space-y-2">
+                         <label className="text-xs font-semibold text-muted-foreground flex items-center gap-1.5"><Target className="size-3" /> Tipo de Confirmación</label>
+                         <div className="flex gap-2">
+                             <div className="flex-1 border-2 border-nuclear bg-nuclear/5 p-2 rounded-lg text-center cursor-pointer">
+                                 <span className="block text-sm font-medium text-nuclear mt-1">Escaner PDA</span>
+                                 <span className="text-[10px] text-muted-foreground">Código EAN</span>
+                             </div>
+                             <div className="flex-1 border border-border bg-card p-2 rounded-lg text-center opacity-70 cursor-pointer">
+                                 <span className="block text-sm font-medium mt-1">Pick by Voice</span>
+                                 <span className="text-[10px] text-muted-foreground">Premium</span>
+                             </div>
+                         </div>
+                     </div>
+                  </div>
+                  <DialogFooter>
+                      <Button variant="ghost" onClick={() => setStartWave(null)}>Cancelar</Button>
+                      <Button variant="nuclear" onClick={() => setStartWave(null)}>Emitir Ola al Operario</Button>
+                  </DialogFooter>
+               </>
+           )}
+        </DialogContent>
+      </Dialog>
     </div>
   );
 }

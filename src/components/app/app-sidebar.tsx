@@ -14,6 +14,7 @@ import {
   ChevronLeft,
   Shield,
   History,
+  CreditCard,
 } from "lucide-react";
 import { useState } from "react";
 import { cn } from "@/lib/utils";
@@ -50,6 +51,7 @@ const groups: { label: string; items: NavItem[] }[] = [
       { to: "/app/team", label: "Usuarios", icon: Users2 },
       { to: "/app/roles", label: "Roles y Permisos", icon: Shield },
       { to: "/app/audit", label: "Auditoría", icon: History },
+      { to: "/app/billing", label: "Facturación", icon: CreditCard },
       { to: "/app/settings", label: "Ajustes", icon: Settings },
     ],
   },

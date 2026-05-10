@@ -28,9 +28,12 @@ import { Route as AppSuppliersRouteImport } from './routes/app.suppliers'
 import { Route as AppStockRouteImport } from './routes/app.stock'
 import { Route as AppShipmentsRouteImport } from './routes/app.shipments'
 import { Route as AppSettingsRouteImport } from './routes/app.settings'
+import { Route as AppRolesRouteImport } from './routes/app.roles'
 import { Route as AppReceiptsRouteImport } from './routes/app.receipts'
 import { Route as AppProductsRouteImport } from './routes/app.products'
 import { Route as AppPickingRouteImport } from './routes/app.picking'
+import { Route as AppBillingRouteImport } from './routes/app.billing'
+import { Route as AppAuditRouteImport } from './routes/app.audit'
 import { Route as AppAnalyticsRouteImport } from './routes/app.analytics'
 
 const ResetPasswordRoute = ResetPasswordRouteImport.update({
@@ -128,6 +131,11 @@ const AppSettingsRoute = AppSettingsRouteImport.update({
   path: '/settings',
   getParentRoute: () => AppRoute,
 } as any)
+const AppRolesRoute = AppRolesRouteImport.update({
+  id: '/roles',
+  path: '/roles',
+  getParentRoute: () => AppRoute,
+} as any)
 const AppReceiptsRoute = AppReceiptsRouteImport.update({
   id: '/receipts',
   path: '/receipts',
@@ -141,6 +149,16 @@ const AppProductsRoute = AppProductsRouteImport.update({
 const AppPickingRoute = AppPickingRouteImport.update({
   id: '/picking',
   path: '/picking',
+  getParentRoute: () => AppRoute,
+} as any)
+const AppBillingRoute = AppBillingRouteImport.update({
+  id: '/billing',
+  path: '/billing',
+  getParentRoute: () => AppRoute,
+} as any)
+const AppAuditRoute = AppAuditRouteImport.update({
+  id: '/audit',
+  path: '/audit',
   getParentRoute: () => AppRoute,
 } as any)
 const AppAnalyticsRoute = AppAnalyticsRouteImport.update({
@@ -161,9 +179,12 @@ export interface FileRoutesByFullPath {
   '/register': typeof RegisterRoute
   '/reset-password': typeof ResetPasswordRoute
   '/app/analytics': typeof AppAnalyticsRoute
+  '/app/audit': typeof AppAuditRoute
+  '/app/billing': typeof AppBillingRoute
   '/app/picking': typeof AppPickingRoute
   '/app/products': typeof AppProductsRoute
   '/app/receipts': typeof AppReceiptsRoute
+  '/app/roles': typeof AppRolesRoute
   '/app/settings': typeof AppSettingsRoute
   '/app/shipments': typeof AppShipmentsRoute
   '/app/stock': typeof AppStockRoute
@@ -185,9 +206,12 @@ export interface FileRoutesByTo {
   '/register': typeof RegisterRoute
   '/reset-password': typeof ResetPasswordRoute
   '/app/analytics': typeof AppAnalyticsRoute
+  '/app/audit': typeof AppAuditRoute
+  '/app/billing': typeof AppBillingRoute
   '/app/picking': typeof AppPickingRoute
   '/app/products': typeof AppProductsRoute
   '/app/receipts': typeof AppReceiptsRoute
+  '/app/roles': typeof AppRolesRoute
   '/app/settings': typeof AppSettingsRoute
   '/app/shipments': typeof AppShipmentsRoute
   '/app/stock': typeof AppStockRoute
@@ -211,9 +235,12 @@ export interface FileRoutesById {
   '/register': typeof RegisterRoute
   '/reset-password': typeof ResetPasswordRoute
   '/app/analytics': typeof AppAnalyticsRoute
+  '/app/audit': typeof AppAuditRoute
+  '/app/billing': typeof AppBillingRoute
   '/app/picking': typeof AppPickingRoute
   '/app/products': typeof AppProductsRoute
   '/app/receipts': typeof AppReceiptsRoute
+  '/app/roles': typeof AppRolesRoute
   '/app/settings': typeof AppSettingsRoute
   '/app/shipments': typeof AppShipmentsRoute
   '/app/stock': typeof AppStockRoute
@@ -238,9 +265,12 @@ export interface FileRouteTypes {
     | '/register'
     | '/reset-password'
     | '/app/analytics'
+    | '/app/audit'
+    | '/app/billing'
     | '/app/picking'
     | '/app/products'
     | '/app/receipts'
+    | '/app/roles'
     | '/app/settings'
     | '/app/shipments'
     | '/app/stock'
@@ -262,9 +292,12 @@ export interface FileRouteTypes {
     | '/register'
     | '/reset-password'
     | '/app/analytics'
+    | '/app/audit'
+    | '/app/billing'
     | '/app/picking'
     | '/app/products'
     | '/app/receipts'
+    | '/app/roles'
     | '/app/settings'
     | '/app/shipments'
     | '/app/stock'
@@ -287,9 +320,12 @@ export interface FileRouteTypes {
     | '/register'
     | '/reset-password'
     | '/app/analytics'
+    | '/app/audit'
+    | '/app/billing'
     | '/app/picking'
     | '/app/products'
     | '/app/receipts'
+    | '/app/roles'
     | '/app/settings'
     | '/app/shipments'
     | '/app/stock'
@@ -451,6 +487,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof AppSettingsRouteImport
       parentRoute: typeof AppRoute
     }
+    '/app/roles': {
+      id: '/app/roles'
+      path: '/roles'
+      fullPath: '/app/roles'
+      preLoaderRoute: typeof AppRolesRouteImport
+      parentRoute: typeof AppRoute
+    }
     '/app/receipts': {
       id: '/app/receipts'
       path: '/receipts'
@@ -472,6 +515,20 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof AppPickingRouteImport
       parentRoute: typeof AppRoute
     }
+    '/app/billing': {
+      id: '/app/billing'
+      path: '/billing'
+      fullPath: '/app/billing'
+      preLoaderRoute: typeof AppBillingRouteImport
+      parentRoute: typeof AppRoute
+    }
+    '/app/audit': {
+      id: '/app/audit'
+      path: '/audit'
+      fullPath: '/app/audit'
+      preLoaderRoute: typeof AppAuditRouteImport
+      parentRoute: typeof AppRoute
+    }
     '/app/analytics': {
       id: '/app/analytics'
       path: '/analytics'
@@ -484,9 +541,12 @@ declare module '@tanstack/react-router' {
 
 interface AppRouteChildren {
   AppAnalyticsRoute: typeof AppAnalyticsRoute
+  AppAuditRoute: typeof AppAuditRoute
+  AppBillingRoute: typeof AppBillingRoute
   AppPickingRoute: typeof AppPickingRoute
   AppProductsRoute: typeof AppProductsRoute
   AppReceiptsRoute: typeof AppReceiptsRoute
+  AppRolesRoute: typeof AppRolesRoute
   AppSettingsRoute: typeof AppSettingsRoute
   AppShipmentsRoute: typeof AppShipmentsRoute
   AppStockRoute: typeof AppStockRoute
@@ -498,9 +558,12 @@ interface AppRouteChildren {
 
 const AppRouteChildren: AppRouteChildren = {
   AppAnalyticsRoute: AppAnalyticsRoute,
+  AppAuditRoute: AppAuditRoute,
+  AppBillingRoute: AppBillingRoute,
   AppPickingRoute: AppPickingRoute,
   AppProductsRoute: AppProductsRoute,
   AppReceiptsRoute: AppReceiptsRoute,
+  AppRolesRoute: AppRolesRoute,
   AppSettingsRoute: AppSettingsRoute,
   AppShipmentsRoute: AppShipmentsRoute,
   AppStockRoute: AppStockRoute,
