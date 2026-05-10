@@ -1,5 +1,6 @@
 import { useEffect, useState } from "react";
-import { Link } from "@tanstack/react-router";
+import { Link, useNavigate } from "@tanstack/react-router";
+import { toast } from "sonner";
 import {
   Search,
   Bell,
@@ -49,8 +50,16 @@ interface AppTopbarProps {
 }
 
 export function AppTopbar({ breadcrumb = [] }: AppTopbarProps) {
+  const navigate = useNavigate();
   const [cmdOpen, setCmdOpen] = useState(false);
   const [tenant, setTenant] = useState(tenants[0]);
+
+  const handleLogout = () => {
+    toast.success("Sesión cerrada", {
+      description: "Has cerrado tu sesión de forma segura.",
+    });
+    navigate({ to: "/login" });
+  };
 
   useEffect(() => {
     const onKey = (e: KeyboardEvent) => {
@@ -208,7 +217,7 @@ export function AppTopbar({ breadcrumb = [] }: AppTopbarProps) {
               Ayuda
             </DropdownMenuItem>
             <DropdownMenuSeparator />
-            <DropdownMenuItem className="text-destructive">
+            <DropdownMenuItem className="text-destructive cursor-pointer" onClick={handleLogout}>
               <LogOut className="mr-2 size-4" />
               Cerrar sesión
             </DropdownMenuItem>

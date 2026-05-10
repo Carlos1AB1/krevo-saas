@@ -20,13 +20,13 @@
   --font-mono: "JetBrains Mono", ui-monospace, "SF Mono", Menlo, monospace;
 
   /* === Radios === */
-  --radius-sm: 6px;
-  --radius-md: 10px;
-  --radius-lg: 14px;
-  --radius-xl: 20px;
-  --radius-2xl: 28px;
-  --radius-3xl: 36px;
-  --radius-4xl: 48px;
+  --radius-sm: 4px;
+  --radius-md: 6px;
+  --radius-lg: 0px;
+  --radius-xl: 0px;
+  --radius-2xl: 0px;
+  --radius-3xl: 0px;
+  --radius-4xl: 0px;
 
   /* === Color tokens (Tailwind utility mapping) === */
   --color-background: var(--background);
@@ -91,7 +91,9 @@
    LIGHT MODE — Marketing & páginas públicas
    ============================================================ */
 :root {
-  --radius: 0.875rem;
+  --radius: 0px;
+  --gradient-color: var(--nuclear);
+  --sparkles-color: var(--nuclear);
 
   /* Graphite scale (neutros fríos) */
   --background: oklch(0.99 0.005 240);
@@ -161,6 +163,8 @@
    Operarios trabajan bajo luz fluorescente: dark reduce fatiga
    ============================================================ */
 .dark {
+  --gradient-color: var(--nuclear);
+  --sparkles-color: var(--reactor);
   --background: oklch(0.13 0.02 255);
   --foreground: oklch(0.97 0.005 240);
 
