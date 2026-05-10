@@ -75,10 +75,11 @@ function WarehousesPage() {
 
           <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
             {mockWarehouses.map((wh) => (
-              <div
+              <button
+                type="button"
                 key={wh.id}
                 onClick={() => setSelectedWh(wh)}
-                className="cursor-pointer relative flex flex-col rounded-xl border border-border bg-card p-5 shadow-sm transition-all hover:border-nuclear/50 hover:shadow-md"
+                className="text-left cursor-pointer relative flex flex-col rounded-xl border border-border bg-card p-5 shadow-sm transition-all hover:border-nuclear/50 hover:shadow-md focus:outline-none focus:ring-2 focus:ring-nuclear"
               >
                 <div className="flex items-start justify-between">
                   <div className="flex items-center gap-3">
@@ -130,7 +131,7 @@ function WarehousesPage() {
                     </span>
                   </div>
                 </div>
-              </div>
+              </button>
             ))}
           </div>
         </div>
@@ -194,17 +195,17 @@ function WarehousesPage() {
           </DialogHeader>
           <div className="space-y-4 py-4 border-y border-border">
             <div className="space-y-1.5">
-               <label className="text-xs font-medium">Nombre del CEDI</label>
-               <Input placeholder="Ej. Bodega Norte" />
+               <label htmlFor="cedi-name" className="text-xs font-medium">Nombre del CEDI</label>
+               <Input id="cedi-name" placeholder="Ej. Bodega Norte" required />
             </div>
             <div className="space-y-1.5">
-               <label className="text-xs font-medium">Dirección</label>
-               <Input placeholder="Ej. Calle 123 #45-67" />
+               <label htmlFor="cedi-address" className="text-xs font-medium">Dirección</label>
+               <Input id="cedi-address" placeholder="Ej. Calle 123 #45-67" required />
             </div>
           </div>
           <DialogFooter>
              <Button variant="ghost" onClick={() => setCreateOpen(false)}>Cancelar</Button>
-             <Button onClick={() => setCreateOpen(false)}>Crear Infraestructura</Button>
+             <Button onClick={() => setCreateOpen(false)}>Confirmar creación de CEDI</Button>
           </DialogFooter>
         </DialogContent>
       </Dialog>

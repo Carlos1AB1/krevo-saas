@@ -197,31 +197,31 @@ function PickingPage() {
                          </div>
                          <span className="text-xs bg-card border border-border px-2 py-1 rounded font-mono">Pasillos A2 {'>'} B4 {'>'} B5</span>
                      </div>
-                     <div className="space-y-2">
-                         <label className="text-xs font-semibold text-muted-foreground flex items-center gap-1.5"><Users className="size-3" /> Asignar Operario</label>
-                         <select className="flex h-10 w-full rounded-md border border-input bg-background px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-ring focus:ring-offset-2">
+                     <div className="space-y-2 text-left">
+                         <label htmlFor="operator-select" className="text-xs font-semibold text-muted-foreground flex items-center gap-1.5"><Users className="size-3" /> Asignar Operario</label>
+                         <select id="operator-select" className="flex h-10 w-full rounded-md border border-input bg-background px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-ring focus:ring-offset-2">
                              <option>Juan Pérez (En Turno)</option>
                              <option>Carlos Mejía (En Turno)</option>
                              <option>Auto-asignar (Balanceo Carga)</option>
                          </select>
                      </div>
-                     <div className="space-y-2">
-                         <label className="text-xs font-semibold text-muted-foreground flex items-center gap-1.5"><Target className="size-3" /> Tipo de Confirmación</label>
-                         <div className="flex gap-2">
-                             <div className="flex-1 border-2 border-nuclear bg-nuclear/5 p-2 rounded-lg text-center cursor-pointer">
+                     <div className="space-y-2 text-left">
+                         <span id="confirm-type-label" className="text-xs font-semibold text-muted-foreground flex items-center gap-1.5"><Target className="size-3" /> Tipo de Confirmación</span>
+                         <div className="flex gap-2" role="group" aria-labelledby="confirm-type-label">
+                             <button type="button" className="flex-1 border-2 border-nuclear bg-nuclear/5 p-2 rounded-lg text-center cursor-pointer focus:outline-none focus:ring-2 focus:ring-nuclear">
                                  <span className="block text-sm font-medium text-nuclear mt-1">Escaner PDA</span>
                                  <span className="text-[10px] text-muted-foreground">Código EAN</span>
-                             </div>
-                             <div className="flex-1 border border-border bg-card p-2 rounded-lg text-center opacity-70 cursor-pointer">
+                             </button>
+                             <button type="button" className="flex-1 border border-border bg-card p-2 rounded-lg text-center opacity-70 cursor-pointer hover:opacity-100 transition-opacity focus:outline-none focus:ring-2 focus:ring-ring">
                                  <span className="block text-sm font-medium mt-1">Pick by Voice</span>
                                  <span className="text-[10px] text-muted-foreground">Premium</span>
-                             </div>
+                             </button>
                          </div>
                      </div>
                   </div>
                   <DialogFooter>
                       <Button variant="ghost" onClick={() => setStartWave(null)}>Cancelar</Button>
-                      <Button variant="nuclear" onClick={() => setStartWave(null)}>Emitir Ola al Operario</Button>
+                      <Button variant="nuclear" onClick={() => setStartWave(null)}>Confirmar emisión de ola</Button>
                   </DialogFooter>
                </>
            )}

@@ -170,8 +170,9 @@ function ReceiptsPage() {
                             <span className="text-sm font-medium">Validación de Temperatura</span>
                             <span className="text-xs px-2 py-0.5 rounded bg-surface-2">Req: 2°C a 6°C</span>
                         </div>
-                        <div className="p-3 grid grid-cols-2 gap-2">
-                             <Input placeholder="T° de Lectura" type="number" className="h-8 text-sm" />
+                        <div className="p-3 grid grid-cols-[1fr_auto] gap-2 items-center">
+                             <label htmlFor="qa-temp" className="sr-only">T° de Lectura</label>
+                             <Input id="qa-temp" placeholder="T° de Lectura" type="number" className="h-8 text-sm" required />
                              <Button size="sm" variant="outline">Validar Rango</Button>
                         </div>
                     </div>

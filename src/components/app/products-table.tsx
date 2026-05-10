@@ -318,20 +318,20 @@ export function ProductsTable() {
               <h4 className="text-sm font-semibold border-b pb-2">Información Básica (RF-COR-03)</h4>
               <div className="grid grid-cols-2 gap-4">
                 <div className="space-y-1.5">
-                  <label className="text-xs font-medium">SKU</label>
-                  <Input placeholder="Ej. CQ-CAF-04" />
+                  <label htmlFor="prod-sku" className="text-xs font-medium">SKU</label>
+                  <Input id="prod-sku" placeholder="Ej. CQ-CAF-04" required />
                 </div>
                 <div className="space-y-1.5">
-                  <label className="text-xs font-medium">Código de Barras (EAN-13)</label>
-                  <Input placeholder="Ej. 7701234567890" />
+                  <label htmlFor="prod-ean" className="text-xs font-medium">Código de Barras (EAN-13)</label>
+                  <Input id="prod-ean" placeholder="Ej. 7701234567890" required />
                 </div>
                 <div className="col-span-2 space-y-1.5">
-                  <label className="text-xs font-medium">Nombre / Descripción</label>
-                  <Input placeholder="Ej. Café Molido 500g" />
+                  <label htmlFor="prod-name" className="text-xs font-medium">Nombre / Descripción</label>
+                  <Input id="prod-name" placeholder="Ej. Café Molido 500g" required />
                 </div>
                 <div className="space-y-1.5">
-                  <label className="text-xs font-medium">Categoría</label>
-                  <select className="flex h-10 w-full items-center justify-between rounded-md border border-input bg-background px-3 py-2 text-sm ring-offset-background placeholder:text-muted-foreground focus:outline-none focus:ring-2 focus:ring-ring focus:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-50">
+                  <label htmlFor="prod-category" className="text-xs font-medium">Categoría</label>
+                  <select id="prod-category" className="flex h-10 w-full items-center justify-between rounded-md border border-input bg-background px-3 py-2 text-sm ring-offset-background placeholder:text-muted-foreground focus:outline-none focus:ring-2 focus:ring-ring focus:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-50">
                     <option>Materia Prima</option>
                     <option>Insumos (Empaques)</option>
                     <option>Producto Terminado</option>
@@ -344,8 +344,8 @@ export function ProductsTable() {
               <h4 className="text-sm font-semibold border-b pb-2">Unidades de Medida y Conversiones (RF-COR-02)</h4>
               <div className="grid grid-cols-2 gap-4">
                 <div className="space-y-1.5">
-                  <label className="text-xs font-medium">Unidad Base (UoM)</label>
-                  <select className="flex h-10 w-full items-center justify-between rounded-md border border-input bg-background px-3 py-2 text-sm ring-offset-background placeholder:text-muted-foreground focus:outline-none focus:ring-2 focus:ring-ring focus:ring-offset-2">
+                  <label htmlFor="prod-uom" className="text-xs font-medium">Unidad Base (UoM)</label>
+                  <select id="prod-uom" className="flex h-10 w-full items-center justify-between rounded-md border border-input bg-background px-3 py-2 text-sm ring-offset-background placeholder:text-muted-foreground focus:outline-none focus:ring-2 focus:ring-ring focus:ring-offset-2">
                     <option>Unidad</option>
                     <option>Bolsa</option>
                     <option>Caja</option>
@@ -353,18 +353,18 @@ export function ProductsTable() {
                   </select>
                 </div>
                 <div className="space-y-1.5">
-                  <label className="text-xs font-medium">Factor de Conversión (Empaque)</label>
+                  <label htmlFor="prod-conv-box" className="text-xs font-medium">Factor de Conversión (Empaque)</label>
                   <div className="flex items-center gap-2">
                     <span className="text-xs whitespace-nowrap">1 Caja =</span>
-                    <Input type="number" placeholder="24" className="w-20" />
+                    <Input id="prod-conv-box" type="number" placeholder="24" className="w-20" required min="1" />
                     <span className="text-xs text-muted-foreground">UoM</span>
                   </div>
                 </div>
                 <div className="space-y-1.5">
-                  <label className="text-xs font-medium">Estiba (Pallet)</label>
+                  <label htmlFor="prod-conv-pallet" className="text-xs font-medium">Estiba (Pallet)</label>
                   <div className="flex items-center gap-2">
                     <span className="text-xs whitespace-nowrap">1 Estiba =</span>
-                    <Input type="number" placeholder="40" className="w-20" />
+                    <Input id="prod-conv-pallet" type="number" placeholder="40" className="w-20" required min="1" />
                     <span className="text-xs text-muted-foreground">Cajas</span>
                   </div>
                 </div>
@@ -375,29 +375,29 @@ export function ProductsTable() {
               <h4 className="text-sm font-semibold border-b pb-2">Tiempos y Costos para EOQ/ROP (RF-COR-04)</h4>
               <div className="grid grid-cols-2 gap-4">
                 <div className="space-y-1.5">
-                  <label className="text-xs font-medium text-nuclear">Lead Time (Tiempo de Entrega)</label>
+                  <label htmlFor="prod-lead" className="text-xs font-medium text-nuclear">Lead Time (Tiempo de Entrega)</label>
                   <div className="flex gap-2">
-                    <Input type="number" placeholder="5" />
+                    <Input id="prod-lead" type="number" placeholder="5" required min="0" />
                     <span className="flex items-center text-xs text-muted-foreground">Días</span>
                   </div>
                 </div>
                 <div className="space-y-1.5">
-                  <label className="text-xs font-medium">Costo de Pedir (S)</label>
+                  <label htmlFor="prod-cost" className="text-xs font-medium">Costo de Pedir (S)</label>
                   <div className="flex gap-2">
-                    <Input type="number" placeholder="15000" />
+                    <Input id="prod-cost" type="number" placeholder="15000" required min="0" />
                     <span className="flex items-center text-xs text-muted-foreground">COP</span>
                   </div>
                 </div>
                 <div className="space-y-1.5">
-                  <label className="text-xs font-medium">Costo Mantenimiento % (H)</label>
+                  <label htmlFor="prod-maintenance" className="text-xs font-medium">Costo Mantenimiento % (H)</label>
                   <div className="flex gap-2">
-                    <Input type="number" placeholder="15" />
+                    <Input id="prod-maintenance" type="number" placeholder="15" required min="0" max="100" />
                     <span className="flex items-center text-xs text-muted-foreground">% / año</span>
                   </div>
                 </div>
                 <div className="space-y-1.5">
-                  <label className="text-xs font-medium">Política (Insumo vs Terminado)</label>
-                  <select className="flex h-10 w-full rounded-md border border-input bg-background px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-ring focus:ring-offset-2">
+                  <label htmlFor="prod-policy" className="text-xs font-medium">Política (Insumo vs Terminado)</label>
+                  <select id="prod-policy" className="flex h-10 w-full rounded-md border border-input bg-background px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-ring focus:ring-offset-2">
                     <option>Revisión Continua (Q)</option>
                     <option>Revisión Periódica (P)</option>
                     <option>FEFO (Producto Terminado)</option>
@@ -408,7 +408,7 @@ export function ProductsTable() {
 
             <div className="pt-4 flex justify-end gap-2">
               <Button variant="ghost" onClick={() => setCreateOpen(false)}>Cancelar</Button>
-              <Button variant="nuclear">Guardar en Catálogo</Button>
+              <Button variant="nuclear">Confirmar guardado en catálogo</Button>
             </div>
           </div>
         </SheetContent>
@@ -428,9 +428,12 @@ export function ProductsTable() {
             <Upload className="mx-auto size-8 text-muted-foreground" />
             <p className="mt-2 text-sm font-medium">Arrastra tu CSV aquí</p>
             <p className="mt-1 text-xs text-muted-foreground">o haz clic para seleccionar</p>
-            <Button variant="outline" size="sm" className="mt-3">
-              Seleccionar archivo
-            </Button>
+            <label htmlFor="csv-upload" className="cursor-pointer">
+              <Button variant="outline" size="sm" className="mt-3 pointer-events-none">
+                Seleccionar archivo
+              </Button>
+            </label>
+            <Input type="file" id="csv-upload" className="hidden" accept=".csv" />
           </div>
           <DialogFooter>
             <Button variant="ghost" onClick={() => setImportOpen(false)}>

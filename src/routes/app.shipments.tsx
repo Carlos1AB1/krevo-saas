@@ -206,11 +206,11 @@ function ShipmentsPage() {
                         </div>
 
                         <div className="space-y-3">
-                            <h4 className="text-sm font-semibold flex items-center gap-2">
+                            <label htmlFor="scan-verify" className="text-sm font-semibold flex items-center gap-2">
                                 <ScanBarcode className="size-4" /> Escaneo de Verificación
-                            </h4>
+                            </label>
                             <div className="flex items-center gap-2">
-                                <Input placeholder="Escanear producto para validar..." className="font-mono text-xs h-10" />
+                                <Input id="scan-verify" placeholder="Escanear producto para validar..." className="font-mono text-xs h-10" />
                                 <Button size="icon" variant="outline" className="shrink-0"><ScanBarcode className="size-4" /></Button>
                             </div>
                             <div className="space-y-2 mt-3 text-sm">
@@ -231,12 +231,12 @@ function ShipmentsPage() {
                             </h4>
                             <div className="grid grid-cols-2 gap-3">
                                 <div>
-                                    <label className="text-xs font-semibold text-muted-foreground">Cajas Corrugadas</label>
-                                    <Input defaultValue="4" type="number" className="mt-1" />
+                                    <label htmlFor="box-count" className="text-xs font-semibold text-muted-foreground">Cajas Corrugadas</label>
+                                    <Input id="box-count" defaultValue="4" type="number" min="1" className="mt-1" required />
                                 </div>
                                 <div>
-                                    <label className="text-xs font-semibold text-muted-foreground">Peso Total (kg)</label>
-                                    <Input defaultValue="85" type="number" className="mt-1" />
+                                    <label htmlFor="total-weight" className="text-xs font-semibold text-muted-foreground">Peso Total (kg)</label>
+                                    <Input id="total-weight" defaultValue="85" type="number" min="0" step="0.1" className="mt-1" required />
                                 </div>
                             </div>
                         </div>
