@@ -34,8 +34,8 @@ export const Route = createFileRoute("/app/picking")({
 const mockBatches = [
   {
     id: "PCK-882",
-    type: "Wave Picking",
-    zones: "A, B",
+    type: "Ruta: Martes",
+    zones: "Pereira",
     orders: 12,
     lines: 45,
     items: 120,
@@ -44,23 +44,43 @@ const mockBatches = [
   },
   {
     id: "PCK-881",
-    type: "Order Picking",
-    zones: "C",
-    orders: 1,
-    lines: 5,
-    items: 5,
+    type: "Ruta: Miércoles",
+    zones: "Calarcá, La Tebaida y Armenia",
+    orders: 18,
+    lines: 65,
+    items: 180,
     status: "in_progress",
     progress: 60,
     priority: "normal",
   },
   {
     id: "PCK-880",
-    type: "Wave Picking",
-    zones: "A, B, C",
+    type: "Ruta: Jueves",
+    zones: "Montenegro, Quimbaya y Parque del Café",
     orders: 20,
     lines: 80,
     items: 300,
     status: "completed",
+    priority: "normal",
+  },
+  {
+    id: "PCK-879",
+    type: "Ruta: Viernes",
+    zones: "Filandia",
+    orders: 5,
+    lines: 12,
+    items: 35,
+    status: "ready",
+    priority: "normal",
+  },
+  {
+    id: "PCK-878",
+    type: "Ruta: Sábado",
+    zones: "Salento",
+    orders: 8,
+    lines: 22,
+    items: 68,
+    status: "ready",
     priority: "normal",
   },
 ];
@@ -74,7 +94,7 @@ function PickingPage() {
         <div className="mr-auto">
           <h1 className="text-xl font-semibold tracking-tight">Picking (Outbound)</h1>
           <p className="text-xs text-muted-foreground hidden sm:block">
-            Generación de olas (Wave), rutas optimizadas y asignación de operarios.
+            Generación de olas agrupadas por día según programación regional de rutas (Pedidos importados de Celuweb).
           </p>
         </div>
         <div className="flex items-center gap-2">
@@ -125,14 +145,13 @@ function PickingPage() {
                       </span>
                     </div>
                     <p className="mt-1 text-sm text-muted-foreground">
-                      Zonas Objetivo: {batch.zones}
+                      Municipios (Celuweb): <span className="font-semibold text-foreground">{batch.zones}</span>
                     </p>
                   </div>
                   {batch.priority === "high" && (
-                    <Flame
-                      className="size-5 text-destructive animate-pulse"
-                      title="Prioridad Alta (Despacho pronto)"
-                    />
+                    <span title="Prioridad Alta (Despacho pronto)">
+                      <Flame className="size-5 text-destructive animate-pulse" />
+                    </span>
                   )}
                 </div>
 

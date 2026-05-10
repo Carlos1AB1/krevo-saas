@@ -32,6 +32,7 @@ import { Route as AppRolesRouteImport } from './routes/app.roles'
 import { Route as AppReceiptsRouteImport } from './routes/app.receipts'
 import { Route as AppProductsRouteImport } from './routes/app.products'
 import { Route as AppPickingRouteImport } from './routes/app.picking'
+import { Route as AppManufacturingRouteImport } from './routes/app.manufacturing'
 import { Route as AppBillingRouteImport } from './routes/app.billing'
 import { Route as AppAuditRouteImport } from './routes/app.audit'
 import { Route as AppAnalyticsRouteImport } from './routes/app.analytics'
@@ -151,6 +152,11 @@ const AppPickingRoute = AppPickingRouteImport.update({
   path: '/picking',
   getParentRoute: () => AppRoute,
 } as any)
+const AppManufacturingRoute = AppManufacturingRouteImport.update({
+  id: '/manufacturing',
+  path: '/manufacturing',
+  getParentRoute: () => AppRoute,
+} as any)
 const AppBillingRoute = AppBillingRouteImport.update({
   id: '/billing',
   path: '/billing',
@@ -181,6 +187,7 @@ export interface FileRoutesByFullPath {
   '/app/analytics': typeof AppAnalyticsRoute
   '/app/audit': typeof AppAuditRoute
   '/app/billing': typeof AppBillingRoute
+  '/app/manufacturing': typeof AppManufacturingRoute
   '/app/picking': typeof AppPickingRoute
   '/app/products': typeof AppProductsRoute
   '/app/receipts': typeof AppReceiptsRoute
@@ -208,6 +215,7 @@ export interface FileRoutesByTo {
   '/app/analytics': typeof AppAnalyticsRoute
   '/app/audit': typeof AppAuditRoute
   '/app/billing': typeof AppBillingRoute
+  '/app/manufacturing': typeof AppManufacturingRoute
   '/app/picking': typeof AppPickingRoute
   '/app/products': typeof AppProductsRoute
   '/app/receipts': typeof AppReceiptsRoute
@@ -237,6 +245,7 @@ export interface FileRoutesById {
   '/app/analytics': typeof AppAnalyticsRoute
   '/app/audit': typeof AppAuditRoute
   '/app/billing': typeof AppBillingRoute
+  '/app/manufacturing': typeof AppManufacturingRoute
   '/app/picking': typeof AppPickingRoute
   '/app/products': typeof AppProductsRoute
   '/app/receipts': typeof AppReceiptsRoute
@@ -267,6 +276,7 @@ export interface FileRouteTypes {
     | '/app/analytics'
     | '/app/audit'
     | '/app/billing'
+    | '/app/manufacturing'
     | '/app/picking'
     | '/app/products'
     | '/app/receipts'
@@ -294,6 +304,7 @@ export interface FileRouteTypes {
     | '/app/analytics'
     | '/app/audit'
     | '/app/billing'
+    | '/app/manufacturing'
     | '/app/picking'
     | '/app/products'
     | '/app/receipts'
@@ -322,6 +333,7 @@ export interface FileRouteTypes {
     | '/app/analytics'
     | '/app/audit'
     | '/app/billing'
+    | '/app/manufacturing'
     | '/app/picking'
     | '/app/products'
     | '/app/receipts'
@@ -515,6 +527,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof AppPickingRouteImport
       parentRoute: typeof AppRoute
     }
+    '/app/manufacturing': {
+      id: '/app/manufacturing'
+      path: '/manufacturing'
+      fullPath: '/app/manufacturing'
+      preLoaderRoute: typeof AppManufacturingRouteImport
+      parentRoute: typeof AppRoute
+    }
     '/app/billing': {
       id: '/app/billing'
       path: '/billing'
@@ -543,6 +562,7 @@ interface AppRouteChildren {
   AppAnalyticsRoute: typeof AppAnalyticsRoute
   AppAuditRoute: typeof AppAuditRoute
   AppBillingRoute: typeof AppBillingRoute
+  AppManufacturingRoute: typeof AppManufacturingRoute
   AppPickingRoute: typeof AppPickingRoute
   AppProductsRoute: typeof AppProductsRoute
   AppReceiptsRoute: typeof AppReceiptsRoute
@@ -560,6 +580,7 @@ const AppRouteChildren: AppRouteChildren = {
   AppAnalyticsRoute: AppAnalyticsRoute,
   AppAuditRoute: AppAuditRoute,
   AppBillingRoute: AppBillingRoute,
+  AppManufacturingRoute: AppManufacturingRoute,
   AppPickingRoute: AppPickingRoute,
   AppProductsRoute: AppProductsRoute,
   AppReceiptsRoute: AppReceiptsRoute,

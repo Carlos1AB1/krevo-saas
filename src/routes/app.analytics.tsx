@@ -3,12 +3,11 @@ import {
   BarChart3,
   TrendingUp,
   AlertTriangle,
-  ArrowUpRight,
-  ArrowDownRight,
   Download,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { KpiCard } from "@/components/nuclear-ui/kpi-card";
+import { cn } from "@/lib/utils";
 
 export const Route = createFileRoute("/app/analytics")({
   head: () => ({
@@ -84,12 +83,202 @@ const mockPareto = [
   },
 ];
 
+function ParetoChart() {
+  const chartHeight = 210;
+  const paddingLeft = 45;
+  const paddingRight = 65;
+  const paddingTop = 25;
+
+  const totalItems = mockPareto.length;
+  const maxVal = mockPareto[0].value;
+
+  return (
+    <div className="rounded-xl border border-border bg-card shadow-sm p-5 space-y-4">
+      <div>
+        <h2 className="font-semibold text-base text-foreground flex items-center gap-2">
+          <BarChart3 className="size-4 text-nuclear" /> Curva de Pareto (Análisis ABC 80/20)
+        </h2>
+        <p className="text-xs text-muted-foreground mt-1">
+          Visualización de la acumulación del valor del inventario. El 80% del valor total reside en los primeros 4 artículos (Zona A).
+        </p>
+      </div>
+
+      <div className="relative w-full overflow-hidden">
+        <svg viewBox="0 0 800 280" className="w-full h-auto select-none overflow-visible">
+          <defs>
+            <linearGradient id="bar-gradient" x1="0" y1="0" x2="0" y2="1">
+              <stop offset="0%" stopColor="var(--color-nuclear, #f97316)" stopOpacity="0.85" />
+              <stop offset="100%" stopColor="var(--color-nuclear, #f97316)" stopOpacity="0.05" />
+            </linearGradient>
+            <linearGradient id="line-gradient" x1="0" y1="0" x2="1" y2="0">
+              <stop offset="0%" stopColor="#ef4444" />
+              <stop offset="100%" stopColor="var(--color-nuclear, #f97316)" />
+            </linearGradient>
+            <filter id="shadow-glow" x="-20%" y="-20%" width="140%" height="140%">
+              <feGaussianBlur stdDeviation="3" result="blur" />
+              <feComposite in="SourceGraphic" in2="blur" operator="over" />
+            </filter>
+          </defs>
+
+          {/* Grid lines */}
+          {[0, 20, 40, 60, 80, 100].map((percent, idx) => {
+            const y = paddingTop + ((100 - percent) / 100) * (chartHeight - paddingTop);
+            return (
+              <g key={idx}>
+                <line
+                  x1={paddingLeft}
+                  y1={y}
+                  x2={800 - paddingRight}
+                  y2={y}
+                  stroke="currentColor"
+                  strokeOpacity="0.07"
+                  strokeWidth="1"
+                  strokeDasharray={percent === 80 ? "0" : "4 4"}
+                />
+                <text
+                  x={paddingLeft - 10}
+                  y={y + 4}
+                  className="fill-muted-foreground text-[10px] font-mono text-right"
+                  textAnchor="end"
+                >
+                  {percent}%
+                </text>
+              </g>
+            );
+          })}
+
+          {/* Pareto 80% Threshold Line */}
+          {(() => {
+            const y80 = paddingTop + ((100 - 80) / 100) * (chartHeight - paddingTop);
+            return (
+              <g>
+                <line
+                  x1={paddingLeft}
+                  y1={y80}
+                  x2={800 - paddingRight}
+                  y2={y80}
+                  stroke="#ef4444"
+                  strokeWidth="1.5"
+                  strokeDasharray="6 3"
+                />
+                <text
+                  x={800 - paddingRight + 8}
+                  y={y80 + 3.5}
+                  className="fill-destructive text-[10px] font-bold"
+                  textAnchor="start"
+                >
+                  Umbral 80% (Ley de Pareto)
+                </text>
+              </g>
+            );
+          })()}
+
+          {/* Render columns and point connectors */}
+          {(() => {
+            const chartWidth = 800 - paddingLeft - paddingRight;
+            const barWidth = (chartWidth / totalItems) * 0.45;
+            const gap = (chartWidth / totalItems) * 0.55;
+
+            const points = mockPareto.map((item, idx) => {
+              const x = paddingLeft + idx * (barWidth + gap) + (barWidth / 2) + (gap / 2);
+              const barHeight = (item.value / maxVal) * (chartHeight - paddingTop);
+              const barY = chartHeight - barHeight;
+              const lineY = paddingTop + ((100 - item.cumulative) / 100) * (chartHeight - paddingTop);
+              return { x, barY, barHeight, lineY, barX: x - barWidth / 2, ...item };
+            });
+
+            const pathData = points
+              .map((p, idx) => `${idx === 0 ? "M" : "L"} ${p.x} ${p.lineY}`)
+              .join(" ");
+
+            return (
+              <>
+                {/* Bars */}
+                {points.map((p, idx) => (
+                  <g key={idx} className="group/bar cursor-pointer">
+                    <rect
+                      x={p.barX}
+                      y={p.barY}
+                      width={barWidth}
+                      height={p.barHeight}
+                      fill="url(#bar-gradient)"
+                      rx="3"
+                      className="transition-all duration-300 group-hover/bar:fill-nuclear"
+                    />
+                    <text
+                      x={p.x}
+                      y={p.barY - 6}
+                      className="fill-foreground text-[9px] font-bold font-mono opacity-0 group-hover/bar:opacity-100 transition-opacity duration-300"
+                      textAnchor="middle"
+                    >
+                      ${(p.value / 1000000).toFixed(1)}M
+                    </text>
+                    <text
+                      x={p.x}
+                      y={chartHeight + 15}
+                      className="fill-foreground text-[10px] font-semibold"
+                      textAnchor="middle"
+                    >
+                      {p.sku.replace("CQ-", "")}
+                    </text>
+                    <text
+                      x={p.x}
+                      y={chartHeight + 28}
+                      className={cn(
+                        "text-[9px] font-bold font-mono",
+                        p.abc === "A" ? "fill-nuclear" : p.abc === "B" ? "fill-warning" : "fill-muted-foreground"
+                      )}
+                      textAnchor="middle"
+                    >
+                      Zona {p.abc}
+                    </text>
+                  </g>
+                ))}
+
+                {/* Cumulative Percentage Line */}
+                <path
+                  d={pathData}
+                  fill="none"
+                  stroke="url(#line-gradient)"
+                  strokeWidth="3"
+                  filter="url(#shadow-glow)"
+                  className="stroke-nuclear"
+                />
+
+                {/* Interactive Points on Line */}
+                {points.map((p, idx) => (
+                  <g key={`point-${idx}`} className="group/pt cursor-pointer">
+                    <circle
+                      cx={p.x}
+                      cy={p.lineY}
+                      r="5"
+                      className="fill-background stroke-nuclear stroke-[3] group-hover/pt:r-7 transition-all duration-300"
+                    />
+                    <text
+                      x={p.x}
+                      y={p.lineY - 11}
+                      className="fill-foreground text-[10px] font-extrabold font-mono opacity-100 group-hover/pt:text-nuclear"
+                      textAnchor="middle"
+                    >
+                      {p.cumulative}%
+                    </text>
+                  </g>
+                ))}
+              </>
+            );
+          })()}
+        </svg>
+      </div>
+    </div>
+  );
+}
+
 function AnalyticsPage() {
   return (
     <div className="flex flex-col h-full">
       <header className="sticky top-0 z-10 flex h-16 items-center gap-4 border-b border-border bg-background px-4 sm:px-6">
         <div className="mr-auto">
-          <h1 className="text-xl font-semibold tracking-tight">Analítica ABC/Pareto</h1>
+          <h1 className="text-xl font-semibold tracking-tight text-foreground">Analítica ABC/Pareto</h1>
           <p className="text-xs text-muted-foreground hidden sm:block">
             Inteligencia logística y reportes de rotación.
           </p>
@@ -133,9 +322,12 @@ function AnalyticsPage() {
             />
           </div>
 
+          {/* Pareto Chart Section */}
+          <ParetoChart />
+
           <div className="rounded-xl border border-border bg-card shadow-sm">
             <div className="border-b border-border p-4 sm:p-5">
-              <h3 className="font-semibold leading-none tracking-tight">Análisis ABC</h3>
+              <h2 className="text-base font-semibold leading-none tracking-tight text-foreground">Análisis ABC</h2>
               <p className="mt-1 text-sm text-muted-foreground">
                 Distribución de valor de inventario clasificado por rotación (Pareto).
               </p>

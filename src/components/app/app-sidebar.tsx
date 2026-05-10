@@ -15,6 +15,7 @@ import {
   Shield,
   History,
   CreditCard,
+  Factory,
 } from "lucide-react";
 import { useState } from "react";
 import { cn } from "@/lib/utils";
@@ -28,6 +29,7 @@ const groups: { label: string; items: NavItem[] }[] = [
     items: [
       { to: "/app", label: "Dashboard", icon: LayoutDashboard },
       { to: "/app/receipts", label: "Recepciones", icon: ArrowDownToLine, badge: "3" },
+      { to: "/app/manufacturing", label: "Producción (MRP)", icon: Factory, badge: "NUEVO" },
       { to: "/app/picking", label: "Picking", icon: ClipboardCheck },
       { to: "/app/shipments", label: "Despachos", icon: ArrowUpFromLine },
     ],
