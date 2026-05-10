@@ -1,0 +1,400 @@
+@import url("https://fonts.googleapis.com/css2?family=Geist:wght@300..900&family=Inter:wght@300..800&family=JetBrains+Mono:wght@400..700&display=swap");
+@import "tailwindcss" source(none);
+@import "tw-animate-css";
+@source "../src";
+
+/* ============================================================
+   Nuclear WMS — Design System
+   "El cerebro de tu Centro de Distribución."
+   Industrial · Futurista · Sobrio · Energético
+   ============================================================ */
+
+/* Fuentes — cargadas desde Google Fonts (Geist + Inter + JetBrains Mono) */
+
+@custom-variant dark (&:is(.dark *));
+
+@theme inline {
+  /* === Tipografía === */
+  --font-display: "Geist", "Inter", ui-sans-serif, system-ui, sans-serif;
+  --font-sans: "Inter", ui-sans-serif, system-ui, sans-serif;
+  --font-mono: "JetBrains Mono", ui-monospace, "SF Mono", Menlo, monospace;
+
+  /* === Radios === */
+  --radius-sm: 6px;
+  --radius-md: 10px;
+  --radius-lg: 14px;
+  --radius-xl: 20px;
+  --radius-2xl: 28px;
+  --radius-3xl: 36px;
+  --radius-4xl: 48px;
+
+  /* === Color tokens (Tailwind utility mapping) === */
+  --color-background: var(--background);
+  --color-foreground: var(--foreground);
+  --color-card: var(--card);
+  --color-card-foreground: var(--card-foreground);
+  --color-popover: var(--popover);
+  --color-popover-foreground: var(--popover-foreground);
+  --color-primary: var(--primary);
+  --color-primary-foreground: var(--primary-foreground);
+  --color-secondary: var(--secondary);
+  --color-secondary-foreground: var(--secondary-foreground);
+  --color-muted: var(--muted);
+  --color-muted-foreground: var(--muted-foreground);
+  --color-accent: var(--accent);
+  --color-accent-foreground: var(--accent-foreground);
+  --color-destructive: var(--destructive);
+  --color-destructive-foreground: var(--destructive-foreground);
+  --color-border: var(--border);
+  --color-input: var(--input);
+  --color-ring: var(--ring);
+  --color-ring-offset-background: var(--background);
+
+  /* Nuclear semantic */
+  --color-nuclear: var(--nuclear);
+  --color-nuclear-foreground: var(--nuclear-foreground);
+  --color-reactor: var(--reactor);
+  --color-reactor-foreground: var(--reactor-foreground);
+  --color-plasma: var(--plasma);
+  --color-plasma-foreground: var(--plasma-foreground);
+  --color-success: var(--success);
+  --color-success-foreground: var(--success-foreground);
+  --color-warning: var(--warning);
+  --color-warning-foreground: var(--warning-foreground);
+  --color-info: var(--info);
+  --color-info-foreground: var(--info-foreground);
+
+  /* Surfaces (paneles oscuros estratificados estilo Linear/Vercel) */
+  --color-surface-1: var(--surface-1);
+  --color-surface-2: var(--surface-2);
+  --color-surface-3: var(--surface-3);
+
+  /* Charts */
+  --color-chart-1: var(--chart-1);
+  --color-chart-2: var(--chart-2);
+  --color-chart-3: var(--chart-3);
+  --color-chart-4: var(--chart-4);
+  --color-chart-5: var(--chart-5);
+
+  /* Sidebar */
+  --color-sidebar: var(--sidebar);
+  --color-sidebar-foreground: var(--sidebar-foreground);
+  --color-sidebar-primary: var(--sidebar-primary);
+  --color-sidebar-primary-foreground: var(--sidebar-primary-foreground);
+  --color-sidebar-accent: var(--sidebar-accent);
+  --color-sidebar-accent-foreground: var(--sidebar-accent-foreground);
+  --color-sidebar-border: var(--sidebar-border);
+  --color-sidebar-ring: var(--sidebar-ring);
+}
+
+/* ============================================================
+   LIGHT MODE — Marketing & páginas públicas
+   ============================================================ */
+:root {
+  --radius: 0.875rem;
+
+  /* Graphite scale (neutros fríos) */
+  --background: oklch(0.99 0.005 240);
+  --foreground: oklch(0.15 0.02 250);
+
+  --card: oklch(1 0 0);
+  --card-foreground: oklch(0.15 0.02 250);
+  --popover: oklch(1 0 0);
+  --popover-foreground: oklch(0.15 0.02 250);
+
+  /* Nuclear Blue #0B5FFF — primario */
+  --primary: oklch(0.55 0.22 258);
+  --primary-foreground: oklch(0.99 0 0);
+  --nuclear: oklch(0.55 0.22 258);
+  --nuclear-foreground: oklch(0.99 0 0);
+
+  /* Reactor Cyan #00D1C7 — datos vivos */
+  --reactor: oklch(0.78 0.13 188);
+  --reactor-foreground: oklch(0.15 0.02 250);
+
+  /* Plasma Lime #C6F432 — CTA premium */
+  --plasma: oklch(0.92 0.18 122);
+  --plasma-foreground: oklch(0.18 0.04 140);
+
+  --secondary: oklch(0.96 0.01 240);
+  --secondary-foreground: oklch(0.20 0.03 250);
+  --muted: oklch(0.96 0.008 240);
+  --muted-foreground: oklch(0.50 0.02 250);
+  --accent: oklch(0.95 0.02 200);
+  --accent-foreground: oklch(0.20 0.04 250);
+
+  --destructive: oklch(0.62 0.23 25);
+  --destructive-foreground: oklch(0.99 0 0);
+  --success: oklch(0.68 0.16 160);
+  --success-foreground: oklch(0.99 0 0);
+  --warning: oklch(0.78 0.16 75);
+  --warning-foreground: oklch(0.18 0.04 60);
+  --info: oklch(0.62 0.18 240);
+  --info-foreground: oklch(0.99 0 0);
+
+  --border: oklch(0.92 0.01 240);
+  --input: oklch(0.92 0.01 240);
+  --ring: oklch(0.55 0.22 258);
+
+  --surface-1: oklch(0.99 0.005 240);
+  --surface-2: oklch(0.97 0.008 240);
+  --surface-3: oklch(0.94 0.01 240);
+
+  --chart-1: oklch(0.55 0.22 258);
+  --chart-2: oklch(0.78 0.13 188);
+  --chart-3: oklch(0.92 0.18 122);
+  --chart-4: oklch(0.78 0.16 75);
+  --chart-5: oklch(0.62 0.23 25);
+
+  --sidebar: oklch(0.98 0.005 240);
+  --sidebar-foreground: oklch(0.15 0.02 250);
+  --sidebar-primary: oklch(0.55 0.22 258);
+  --sidebar-primary-foreground: oklch(0.99 0 0);
+  --sidebar-accent: oklch(0.95 0.01 240);
+  --sidebar-accent-foreground: oklch(0.20 0.03 250);
+  --sidebar-border: oklch(0.92 0.01 240);
+  --sidebar-ring: oklch(0.55 0.22 258);
+}
+
+/* ============================================================
+   DARK MODE — Panel interno (default-on en (app) y (operario))
+   Operarios trabajan bajo luz fluorescente: dark reduce fatiga
+   ============================================================ */
+.dark {
+  --background: oklch(0.13 0.02 255);
+  --foreground: oklch(0.97 0.005 240);
+
+  --card: oklch(0.17 0.025 255);
+  --card-foreground: oklch(0.97 0.005 240);
+  --popover: oklch(0.17 0.025 255);
+  --popover-foreground: oklch(0.97 0.005 240);
+
+  --primary: oklch(0.68 0.20 258);
+  --primary-foreground: oklch(0.10 0.02 255);
+  --nuclear: oklch(0.68 0.20 258);
+  --nuclear-foreground: oklch(0.10 0.02 255);
+
+  --reactor: oklch(0.82 0.14 188);
+  --reactor-foreground: oklch(0.10 0.02 255);
+
+  --plasma: oklch(0.92 0.20 122);
+  --plasma-foreground: oklch(0.15 0.04 140);
+
+  --secondary: oklch(0.22 0.025 255);
+  --secondary-foreground: oklch(0.97 0.005 240);
+  --muted: oklch(0.22 0.025 255);
+  --muted-foreground: oklch(0.68 0.02 240);
+  --accent: oklch(0.25 0.04 245);
+  --accent-foreground: oklch(0.97 0.005 240);
+
+  --destructive: oklch(0.68 0.22 25);
+  --destructive-foreground: oklch(0.99 0 0);
+  --success: oklch(0.74 0.16 160);
+  --success-foreground: oklch(0.10 0.02 160);
+  --warning: oklch(0.82 0.16 75);
+  --warning-foreground: oklch(0.15 0.04 60);
+  --info: oklch(0.70 0.18 240);
+  --info-foreground: oklch(0.10 0.02 240);
+
+  --border: oklch(1 0 0 / 8%);
+  --input: oklch(1 0 0 / 12%);
+  --ring: oklch(0.68 0.20 258);
+
+  --surface-1: oklch(0.13 0.02 255);
+  --surface-2: oklch(0.17 0.025 255);
+  --surface-3: oklch(0.21 0.03 255);
+
+  --chart-1: oklch(0.68 0.20 258);
+  --chart-2: oklch(0.82 0.14 188);
+  --chart-3: oklch(0.92 0.20 122);
+  --chart-4: oklch(0.82 0.16 75);
+  --chart-5: oklch(0.68 0.22 25);
+
+  --sidebar: oklch(0.15 0.022 255);
+  --sidebar-foreground: oklch(0.97 0.005 240);
+  --sidebar-primary: oklch(0.68 0.20 258);
+  --sidebar-primary-foreground: oklch(0.10 0.02 255);
+  --sidebar-accent: oklch(0.22 0.03 255);
+  --sidebar-accent-foreground: oklch(0.97 0.005 240);
+  --sidebar-border: oklch(1 0 0 / 8%);
+  --sidebar-ring: oklch(0.68 0.20 258);
+}
+
+/* ============================================================
+   Gradientes & sombras nucleares (utilidades reutilizables)
+   ============================================================ */
+@theme inline {
+  --gradient-nuclear: radial-gradient(
+    ellipse at top,
+    color-mix(in oklab, var(--nuclear) 35%, transparent) 0%,
+    transparent 60%
+  );
+  --gradient-reactor: conic-gradient(
+    from 180deg at 50% 50%,
+    color-mix(in oklab, var(--nuclear) 80%, transparent) 0deg,
+    color-mix(in oklab, var(--reactor) 80%, transparent) 120deg,
+    color-mix(in oklab, var(--plasma) 80%, transparent) 240deg,
+    color-mix(in oklab, var(--nuclear) 80%, transparent) 360deg
+  );
+  --gradient-text-nuclear: linear-gradient(
+    135deg,
+    var(--nuclear) 0%,
+    var(--reactor) 50%,
+    var(--plasma) 100%
+  );
+
+  --shadow-soft:
+    0 1px 2px oklch(0 0 0 / 0.04),
+    0 2px 8px oklch(0 0 0 / 0.04);
+  --shadow-elevated:
+    0 1px 2px oklch(0 0 0 / 0.06),
+    0 4px 16px oklch(0 0 0 / 0.08),
+    0 16px 40px -8px oklch(0 0 0 / 0.10);
+  --shadow-nuclear:
+    0 0 0 1px color-mix(in oklab, var(--nuclear) 20%, transparent),
+    0 8px 32px -8px color-mix(in oklab, var(--nuclear) 35%, transparent);
+  --shadow-plasma:
+    0 0 0 1px color-mix(in oklab, var(--plasma) 30%, transparent),
+    0 8px 32px -8px color-mix(in oklab, var(--plasma) 50%, transparent);
+}
+
+/* ============================================================
+   Keyframes & animaciones
+   ============================================================ */
+@theme inline {
+  --animate-fade-in: fade-in 0.4s cubic-bezier(0.16, 1, 0.3, 1);
+  --animate-fade-up: fade-up 0.5s cubic-bezier(0.16, 1, 0.3, 1);
+  --animate-scale-in: scale-in 0.3s cubic-bezier(0.16, 1, 0.3, 1);
+  --animate-shimmer: shimmer 2.2s linear infinite;
+  --animate-pulse-live: pulse-live 1.8s ease-in-out infinite;
+  --animate-orbit: orbit 16s linear infinite;
+  --animate-aurora: aurora 12s ease-in-out infinite alternate;
+}
+
+@keyframes fade-in {
+  from { opacity: 0; }
+  to { opacity: 1; }
+}
+@keyframes fade-up {
+  from { opacity: 0; transform: translateY(12px); }
+  to { opacity: 1; transform: translateY(0); }
+}
+@keyframes scale-in {
+  from { opacity: 0; transform: scale(0.96); }
+  to { opacity: 1; transform: scale(1); }
+}
+@keyframes shimmer {
+  0% { background-position: -200% 0; }
+  100% { background-position: 200% 0; }
+}
+@keyframes pulse-live {
+  0%, 100% { opacity: 1; box-shadow: 0 0 0 0 color-mix(in oklab, var(--success) 60%, transparent); }
+  50% { opacity: 0.85; box-shadow: 0 0 0 6px color-mix(in oklab, var(--success) 0%, transparent); }
+}
+@keyframes orbit {
+  from { transform: rotate(0deg); }
+  to { transform: rotate(360deg); }
+}
+@keyframes aurora {
+  0% { transform: translate3d(-10%, -5%, 0) rotate(0deg); }
+  100% { transform: translate3d(10%, 5%, 0) rotate(8deg); }
+}
+
+/* ============================================================
+   Utilidades nucleares
+   ============================================================ */
+@utility text-gradient-nuclear {
+  background-image: var(--gradient-text-nuclear);
+  background-clip: text;
+  -webkit-background-clip: text;
+  color: transparent;
+  -webkit-text-fill-color: transparent;
+}
+
+@utility bg-grid-nuclear {
+  background-image:
+    linear-gradient(to right, color-mix(in oklab, var(--foreground) 6%, transparent) 1px, transparent 1px),
+    linear-gradient(to bottom, color-mix(in oklab, var(--foreground) 6%, transparent) 1px, transparent 1px);
+  background-size: 48px 48px;
+}
+
+@utility shimmer {
+  background: linear-gradient(
+    90deg,
+    transparent 0%,
+    color-mix(in oklab, var(--foreground) 6%, transparent) 50%,
+    transparent 100%
+  );
+  background-size: 200% 100%;
+  animation: var(--animate-shimmer);
+}
+
+/* ============================================================
+   Base
+   ============================================================ */
+@layer base {
+  * {
+    border-color: var(--color-border);
+    box-sizing: border-box;
+  }
+
+  html {
+    -webkit-text-size-adjust: 100%;
+    text-rendering: optimizeLegibility;
+    -webkit-font-smoothing: antialiased;
+    -moz-osx-font-smoothing: grayscale;
+  }
+
+  body {
+    background-color: var(--color-background);
+    color: var(--color-foreground);
+    font-family: var(--font-sans);
+    font-feature-settings: "cv11", "ss01", "ss03";
+  }
+
+  h1, h2, h3, h4, h5, h6 {
+    font-family: var(--font-display);
+    letter-spacing: -0.02em;
+    font-weight: 600;
+  }
+
+  code, kbd, samp, pre, .font-mono {
+    font-family: var(--font-mono);
+  }
+
+  /* Focus rings accesibles (WCAG 2.1 AA) */
+  :focus-visible {
+    outline: 2px solid var(--color-ring);
+    outline-offset: 2px;
+    border-radius: 4px;
+  }
+
+  /* Selección de texto con tinte nuclear */
+  ::selection {
+    background-color: color-mix(in oklab, var(--nuclear) 30%, transparent);
+    color: var(--foreground);
+  }
+
+  /* Scrollbar discreto, estilo Linear */
+  ::-webkit-scrollbar { width: 10px; height: 10px; }
+  ::-webkit-scrollbar-track { background: transparent; }
+  ::-webkit-scrollbar-thumb {
+    background: color-mix(in oklab, var(--foreground) 15%, transparent);
+    border-radius: 8px;
+    border: 2px solid transparent;
+    background-clip: padding-box;
+  }
+  ::-webkit-scrollbar-thumb:hover {
+    background: color-mix(in oklab, var(--foreground) 25%, transparent);
+    background-clip: padding-box;
+    border: 2px solid transparent;
+  }
+
+  @media (prefers-reduced-motion: reduce) {
+    *, *::before, *::after {
+      animation-duration: 0.01ms !important;
+      animation-iteration-count: 1 !important;
+      transition-duration: 0.01ms !important;
+    }
+  }
+}
