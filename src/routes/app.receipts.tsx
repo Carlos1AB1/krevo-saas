@@ -26,7 +26,7 @@ import {
 
 export const Route = createFileRoute("/app/receipts")({
   head: () => ({
-    meta: [{ title: "Recepciones · Nuclear WMS" }],
+    meta: [{ title: "Recepciones · Krevo" }],
   }),
   component: ReceiptsPage,
 });

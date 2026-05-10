@@ -89,7 +89,7 @@ export function AuthShell({ children, eyebrow, side = "nuclear" }: AuthShellProp
           </motion.div>
 
           <p className="relative z-10 text-xs text-muted-foreground">
-            © {new Date().getFullYear()} Nuclear WMS · Hecho con orgullo en LATAM
+            © {new Date().getFullYear()} Krevo · Hecho con orgullo en LATAM
           </p>
         </aside>
 

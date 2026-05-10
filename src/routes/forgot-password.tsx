@@ -18,10 +18,10 @@ type Values = z.infer<typeof schema>;
 export const Route = createFileRoute("/forgot-password")({
   head: () => ({
     meta: [
-      { title: "Recuperar contraseña — Nuclear WMS" },
+      { title: "Recuperar contraseña — Krevo" },
       {
         name: "description",
-        content: "Te enviamos un enlace seguro para reiniciar tu contraseña en Nuclear WMS.",
+        content: "Te enviamos un enlace seguro para reiniciar tu contraseña en Krevo.",
       },
     ],
   }),

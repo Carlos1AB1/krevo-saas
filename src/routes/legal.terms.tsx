@@ -5,8 +5,8 @@ import { SiteFooter } from "@/components/marketing/site-footer";
 export const Route = createFileRoute("/legal/terms")({
   head: () => ({
     meta: [
-      { title: "Términos y Condiciones — Nuclear WMS" },
-      { name: "description", content: "Términos de servicio de Nuclear WMS." },
+      { title: "Términos y Condiciones — Krevo" },
+      { name: "description", content: "Términos de servicio de Krevo." },
     ],
   }),
   component: TermsPage,
@@ -25,7 +25,7 @@ function TermsPage() {
         </p>
         <div className="prose prose-lg dark:prose-invert mt-10 text-base leading-relaxed text-muted-foreground">
           <p>
-            El uso de Nuclear WMS está sujeto a los términos descritos en este documento. Esta
+            El uso de Krevo está sujeto a los términos descritos en este documento. Esta
             sección será reemplazada por el contrato legal definitivo antes del lanzamiento público.
           </p>
         </div>

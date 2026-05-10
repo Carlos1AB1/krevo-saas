@@ -32,7 +32,7 @@ import {
 
 export const Route = createFileRoute("/app/warehouses")({
   head: () => ({
-    meta: [{ title: "Bodegas · Nuclear WMS" }],
+    meta: [{ title: "Bodegas · Krevo" }],
   }),
   component: WarehousesPage,
 });

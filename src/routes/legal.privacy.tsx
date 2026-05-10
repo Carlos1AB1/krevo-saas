@@ -5,10 +5,10 @@ import { SiteFooter } from "@/components/marketing/site-footer";
 export const Route = createFileRoute("/legal/privacy")({
   head: () => ({
     meta: [
-      { title: "Política de Privacidad — Nuclear WMS" },
+      { title: "Política de Privacidad — Krevo" },
       {
         name: "description",
-        content: "Política de privacidad y tratamiento de datos de Nuclear WMS.",
+        content: "Política de privacidad y tratamiento de datos de Krevo.",
       },
     ],
   }),
@@ -28,7 +28,7 @@ function PrivacyPage() {
         </p>
         <div className="prose prose-lg dark:prose-invert mt-10 text-base leading-relaxed text-muted-foreground">
           <p>
-            Nuclear WMS cumple con la Ley 1581 de 2012 de Colombia y prácticas internacionales de
+            Krevo cumple con la Ley 1581 de 2012 de Colombia y prácticas internacionales de
             protección de datos. Esta sección será reemplazada por el documento legal definitivo
             antes del lanzamiento público.
           </p>

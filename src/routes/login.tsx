@@ -24,7 +24,7 @@ type LoginValues = z.infer<typeof loginSchema>;
 export const Route = createFileRoute("/login")({
   head: () => ({
     meta: [
-      { title: "Iniciar sesión — Nuclear WMS" },
+      { title: "Iniciar sesión — Krevo" },
       {
         name: "description",
         content:

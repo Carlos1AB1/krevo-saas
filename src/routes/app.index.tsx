@@ -4,7 +4,7 @@ import { DashboardContent } from "@/components/app/dashboard-content";
 
 export const Route = createFileRoute("/app/")({
   head: () => ({
-    meta: [{ title: "Dashboard · Nuclear WMS" }],
+    meta: [{ title: "Dashboard · Krevo" }],
   }),
   component: DashboardPage,
 });

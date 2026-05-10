@@ -9,7 +9,7 @@ export function FinalCTA() {
         <div className="relative overflow-hidden rounded-3xl border border-border bg-foreground p-10 text-center shadow-[var(--shadow-elevated)] sm:p-16">
           <div
             aria-hidden
-            className="pointer-events-none absolute inset-0 opacity-80"
+            className="pointer-events-none absolute inset-0 opacity-20"
             style={{ backgroundImage: "var(--gradient-reactor)", filter: "blur(80px)" }}
           />
           <div

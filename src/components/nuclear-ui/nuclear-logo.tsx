@@ -6,7 +6,7 @@ interface NuclearLogoProps {
 }
 
 /**
- * Logo Oficial de Nuclear WMS:
+ * Logo Oficial de Krevo:
  * Cubo isométrico central rodeado de órbitas electrónicas en 3D.
  * Implementado con capas SVG de alta precisión para lograr intersección 3D perfecta
  * y transparencia total sobre cualquier color de fondo sin necesidad de máscaras sólidas.

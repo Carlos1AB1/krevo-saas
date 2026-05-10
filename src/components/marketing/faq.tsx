@@ -9,7 +9,7 @@ import { SectionHeading } from "@/components/nuclear-ui/section-heading";
 const faqs = [
   {
     q: "¿Mis datos están aislados de otros clientes?",
-    a: "Sí. Nuclear WMS es multi-tenant con aislamiento estricto por tenant_id en base de datos, RLS y a nivel de aplicación. Nadie ve nada de nadie.",
+    a: "Sí. Krevo es multi-tenant con aislamiento estricto por tenant_id en base de datos, RLS y a nivel de aplicación. Nadie ve nada de nadie.",
   },
   {
     q: "¿Funciona offline para los operarios en bodega?",

@@ -24,7 +24,7 @@ import {
 
 export const Route = createFileRoute("/app/shipments")({
   head: () => ({
-    meta: [{ title: "Despachos · Nuclear WMS" }],
+    meta: [{ title: "Despachos · Krevo" }],
   }),
   component: ShipmentsPage,
 });

@@ -32,7 +32,7 @@ function AppleIcon() {
 export function SsoButtons({ mode = "login" }: { mode?: "login" | "register" }) {
   const verb = mode === "login" ? "Continuar" : "Registrarme";
   const handle = (provider: string) =>
-    toast.info(`${provider} estará disponible al activar Lovable Cloud`, {
+    toast.info(`${provider} estará disponible al activar integración SSO`, {
       description: "Por ahora puedes usar email y contraseña.",
     });
   return (

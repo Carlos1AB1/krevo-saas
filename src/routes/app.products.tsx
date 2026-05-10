@@ -3,7 +3,7 @@ import { AppTopbar } from "@/components/app/app-topbar";
 import { ProductsTable } from "@/components/app/products-table";
 
 export const Route = createFileRoute("/app/products")({
-  head: () => ({ meta: [{ title: "Productos · Nuclear WMS" }] }),
+  head: () => ({ meta: [{ title: "Productos · Krevo" }] }),
   component: ProductsPage,
 });
 

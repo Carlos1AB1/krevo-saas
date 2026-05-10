@@ -12,14 +12,14 @@ import { Textarea } from "@/components/ui/textarea";
 export const Route = createFileRoute("/contact")({
   head: () => ({
     meta: [
-      { title: "Contacto — Nuclear WMS" },
+      { title: "Contacto — Krevo" },
       {
         name: "description",
         content:
-          "Solicita una demo personalizada de Nuclear WMS. Te respondemos en menos de 24 horas hábiles.",
+          "Solicita una demo personalizada de Krevo. Te respondemos en menos de 24 horas hábiles.",
       },
-      { property: "og:title", content: "Contacto — Nuclear WMS" },
-      { property: "og:description", content: "Solicita tu demo de Nuclear WMS." },
+      { property: "og:title", content: "Contacto — Krevo" },
+      { property: "og:description", content: "Solicita tu demo de Krevo." },
     ],
   }),
   component: ContactPage,

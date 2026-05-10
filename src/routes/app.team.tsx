@@ -5,7 +5,7 @@ import { Input } from "@/components/ui/input";
 
 export const Route = createFileRoute("/app/team")({
   head: () => ({
-    meta: [{ title: "Equipo · Nuclear WMS" }],
+    meta: [{ title: "Equipo · Krevo" }],
   }),
   component: TeamPage,
 });

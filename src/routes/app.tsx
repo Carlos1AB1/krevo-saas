@@ -3,7 +3,7 @@ import { AppSidebar } from "@/components/app/app-sidebar";
 
 export const Route = createFileRoute("/app")({
   head: () => ({
-    meta: [{ title: "Nuclear WMS · App" }, { name: "robots", content: "noindex" }],
+    meta: [{ title: "Krevo · App" }, { name: "robots", content: "noindex" }],
   }),
   component: AppLayout,
 });

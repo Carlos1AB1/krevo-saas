@@ -26,7 +26,7 @@ import {
 
 export const Route = createFileRoute("/app/picking")({
   head: () => ({
-    meta: [{ title: "Picking · Nuclear WMS" }],
+    meta: [{ title: "Picking · Krevo" }],
   }),
   component: PickingPage,
 });

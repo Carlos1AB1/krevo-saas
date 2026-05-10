@@ -58,11 +58,11 @@ const steps = [
 export const Route = createFileRoute("/register")({
   head: () => ({
     meta: [
-      { title: "Crear cuenta — Nuclear WMS" },
+      { title: "Crear cuenta — Krevo" },
       {
         name: "description",
         content:
-          "Crea tu organización en Nuclear WMS en 3 pasos. Inventario inteligente para tu CEDI desde el día uno.",
+          "Crea tu organización en Krevo en 3 pasos. Inventario inteligente para tu CEDI desde el día uno.",
       },
     ],
   }),
@@ -381,7 +381,7 @@ function Stepper({ step }: { step: number }) {
                 "flex size-7 shrink-0 items-center justify-center rounded-full border text-xs font-semibold transition-colors",
                 done && "border-transparent bg-[var(--nuclear)] text-white",
                 current &&
-                  "border-[var(--nuclear)] bg-background text-[var(--nuclear)] shadow-[0_0_0_4px_color-mix(in_oklab,var(--nuclear)_18%,transparent)]",
+                "border-[var(--nuclear)] bg-background text-[var(--nuclear)] shadow-[0_0_0_4px_color-mix(in_oklab,var(--nuclear)_18%,transparent)]",
                 !done && !current && "border-border bg-card text-muted-foreground",
               )}
             >

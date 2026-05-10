@@ -5,7 +5,7 @@ import { Badge } from "@/components/ui/badge";
 
 export const Route = createFileRoute("/app/billing")({
   head: () => ({
-    meta: [{ title: "Facturación y Suscripción · Nuclear WMS" }],
+    meta: [{ title: "Facturación y Suscripción · Krevo" }],
   }),
   component: BillingPage,
 });

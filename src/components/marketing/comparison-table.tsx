@@ -8,15 +8,15 @@ const rows: {
   legacy: "yes" | "no" | "limited";
   nuclear: boolean;
 }[] = [
-  { feature: "Multi-tenant nativo", excel: false, legacy: "no", nuclear: true },
-  { feature: "Trazabilidad por lote (FEFO)", excel: false, legacy: "limited", nuclear: true },
-  { feature: "ROP dinámico con lead time real", excel: false, legacy: "limited", nuclear: true },
-  { feature: "Pareto / ABC automático", excel: false, legacy: "no", nuclear: true },
-  { feature: "Tiempo real (WebSockets)", excel: false, legacy: "no", nuclear: true },
-  { feature: "App operario PWA + escáner", excel: false, legacy: "limited", nuclear: true },
-  { feature: "Pasarela COP (ePayco/Wompi)", excel: false, legacy: "no", nuclear: true },
-  { feature: "Auditoría inmutable", excel: false, legacy: "limited", nuclear: true },
-];
+    { feature: "Multi-tenant nativo", excel: false, legacy: "no", nuclear: true },
+    { feature: "Trazabilidad por lote (FEFO)", excel: false, legacy: "limited", nuclear: true },
+    { feature: "ROP dinámico con lead time real", excel: false, legacy: "limited", nuclear: true },
+    { feature: "Pareto / ABC automático", excel: false, legacy: "no", nuclear: true },
+    { feature: "Tiempo real (WebSockets)", excel: false, legacy: "no", nuclear: true },
+    { feature: "App operario PWA + escáner", excel: false, legacy: "limited", nuclear: true },
+    { feature: "Pasarela COP (ePayco/Wompi)", excel: false, legacy: "no", nuclear: true },
+    { feature: "Auditoría inmutable", excel: false, legacy: "limited", nuclear: true },
+  ];
 
 function Cell({ value }: { value: boolean | "limited" | "yes" | "no" }) {
   if (value === true || value === "yes")
@@ -69,7 +69,7 @@ export function ComparisonTable() {
                     "bg-gradient-to-b from-nuclear/10 to-transparent",
                   )}
                 >
-                  Nuclear WMS
+                  Krevo
                 </th>
               </tr>
             </thead>

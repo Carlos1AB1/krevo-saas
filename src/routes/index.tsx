@@ -16,13 +16,13 @@ import { FinalCTA } from "@/components/marketing/final-cta";
 export const Route = createFileRoute("/")({
   head: () => ({
     meta: [
-      { title: "Nuclear WMS — El cerebro de tu Centro de Distribución" },
+      { title: "Krevo — El cerebro de tu Centro de Distribución" },
       {
         name: "description",
         content:
           "WMS multi-tenant con IA logística para LATAM: FEFO/FIFO, ROP dinámico, Pareto ABC, trazabilidad por lote y operación en tiempo real. Adiós Excel.",
       },
-      { property: "og:title", content: "Nuclear WMS — El cerebro de tu CEDI" },
+      { property: "og:title", content: "Krevo — El cerebro de tu CEDI" },
       {
         property: "og:description",
         content: "Adiós Excel. Hola control real. WMS multi-tenant con IA logística.",

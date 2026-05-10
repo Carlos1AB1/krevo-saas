@@ -11,7 +11,7 @@ import { cn } from "@/lib/utils";
 
 export const Route = createFileRoute("/app/analytics")({
   head: () => ({
-    meta: [{ title: "Analítica · Nuclear WMS" }],
+    meta: [{ title: "Analítica · Krevo" }],
   }),
   component: AnalyticsPage,
 });

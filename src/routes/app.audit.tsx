@@ -5,7 +5,7 @@ import { Input } from "@/components/ui/input";
 
 export const Route = createFileRoute("/app/audit")({
   head: () => ({
-    meta: [{ title: "Auditoría · Nuclear WMS" }],
+    meta: [{ title: "Auditoría · Krevo" }],
   }),
   component: AuditPage,
 });

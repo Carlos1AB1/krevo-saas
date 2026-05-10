@@ -73,22 +73,22 @@ export const Route = createRootRouteWithContext<{ queryClient: QueryClient }>()(
     meta: [
       { charSet: "utf-8" },
       { name: "viewport", content: "width=device-width, initial-scale=1" },
-      { title: "Nuclear WMS — El cerebro de tu Centro de Distribución" },
+      { title: "Krevo — El cerebro de tu Centro de Distribución" },
       {
         name: "description",
         content:
           "SaaS multi-tenant para Centros de Distribución. Inventario inteligente, FEFO/FIFO, ROP dinámico, Pareto/ABC y trazabilidad por lote en tiempo real.",
       },
-      { name: "author", content: "Nuclear WMS" },
+      { name: "author", content: "Krevo" },
       { name: "theme-color", content: "#0B5FFF" },
-      { property: "og:title", content: "Nuclear WMS — El cerebro de tu Centro de Distribución" },
+      { property: "og:title", content: "Krevo — El cerebro de tu Centro de Distribución" },
       {
         property: "og:description",
         content: "Adiós Excel. Hola control real. WMS multi-tenant con IA logística para LATAM.",
       },
       { property: "og:type", content: "website" },
       { name: "twitter:card", content: "summary_large_image" },
-      { name: "twitter:title", content: "Nuclear WMS" },
+      { name: "twitter:title", content: "Krevo" },
       { name: "twitter:description", content: "El cerebro de tu Centro de Distribución." },
     ],
     links: [

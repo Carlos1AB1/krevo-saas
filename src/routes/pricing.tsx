@@ -10,13 +10,13 @@ import { Button } from "@/components/ui/button";
 export const Route = createFileRoute("/pricing")({
   head: () => ({
     meta: [
-      { title: "Precios — Nuclear WMS" },
+      { title: "Precios — Krevo" },
       {
         name: "description",
         content:
           "Planes Básico, Pro y Enterprise en pesos colombianos. Sin contratos forzados, cancela cuando quieras.",
       },
-      { property: "og:title", content: "Precios — Nuclear WMS" },
+      { property: "og:title", content: "Precios — Krevo" },
       { property: "og:description", content: "Planes en COP, claros y sin sorpresas." },
     ],
   }),

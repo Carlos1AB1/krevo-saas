@@ -7,13 +7,13 @@ import { FinalCTA } from "@/components/marketing/final-cta";
 export const Route = createFileRoute("/about")({
   head: () => ({
     meta: [
-      { title: "Sobre Nuclear WMS" },
+      { title: "Sobre Krevo" },
       {
         name: "description",
         content:
-          "Nuclear WMS nació para devolverle el control a las operaciones logísticas de LATAM. Construido en Colombia con estándares globales.",
+          "Krevo nació para devolverle el control a las operaciones logísticas de LATAM. Construido en Colombia con estándares globales.",
       },
-      { property: "og:title", content: "Sobre Nuclear WMS" },
+      { property: "og:title", content: "Sobre Krevo" },
       {
         property: "og:description",
         content: "Construido en Colombia para empresas que mueven el mundo.",
@@ -37,7 +37,7 @@ function AboutPage() {
                 <span className="text-gradient-nuclear">mueven el mundo</span>.
               </>
             }
-            description="Nuclear WMS nació de una conversación en una bodega de Bogotá: ¿por qué los WMS son tan caros, tan feos y tan complicados?"
+            description="Krevo nació de una conversación en una bodega de Bogotá: ¿por qué los WMS son tan caros, tan feos y tan complicados?"
             align="left"
           />
           <div className="prose prose-lg dark:prose-invert mt-10 space-y-6 text-base leading-relaxed text-muted-foreground">

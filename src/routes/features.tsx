@@ -10,13 +10,13 @@ import { FinalCTA } from "@/components/marketing/final-cta";
 export const Route = createFileRoute("/features")({
   head: () => ({
     meta: [
-      { title: "Características — Nuclear WMS" },
+      { title: "Características — Krevo" },
       {
         name: "description",
         content:
-          "Multi-tenant, FEFO/FIFO, ROP dinámico, Pareto ABC, tiempo real, PWA operario y más. Todas las capacidades de Nuclear WMS.",
+          "Multi-tenant, FEFO/FIFO, ROP dinámico, Pareto ABC, tiempo real, PWA operario y más. Todas las capacidades de Krevo.",
       },
-      { property: "og:title", content: "Características — Nuclear WMS" },
+      { property: "og:title", content: "Características — Krevo" },
       { property: "og:description", content: "Todo lo que un CEDI moderno necesita, integrado." },
     ],
   }),

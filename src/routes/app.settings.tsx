@@ -6,7 +6,7 @@ import { Label } from "@/components/ui/label";
 
 export const Route = createFileRoute("/app/settings")({
   head: () => ({
-    meta: [{ title: "Ajustes · Nuclear WMS" }],
+    meta: [{ title: "Ajustes · Krevo" }],
   }),
   component: SettingsPage,
 });

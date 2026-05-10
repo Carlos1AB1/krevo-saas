@@ -4,7 +4,7 @@ import { Button } from "@/components/ui/button";
 
 export const Route = createFileRoute("/app/roles")({
   head: () => ({
-    meta: [{ title: "Roles y Permisos · Nuclear WMS" }],
+    meta: [{ title: "Roles y Permisos · Krevo" }],
   }),
   component: RolesPage,
 });
