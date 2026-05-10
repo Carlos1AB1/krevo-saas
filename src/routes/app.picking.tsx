@@ -1,9 +1,28 @@
 import { createFileRoute } from "@tanstack/react-router";
-import { ClipboardCheck, Scan, Box, Search, Filter, Play, CheckCircle, Flame, Route as RouteIcon, Target, Users } from "lucide-react";
+import {
+  ClipboardCheck,
+  Scan,
+  Box,
+  Search,
+  Filter,
+  Play,
+  CheckCircle,
+  Flame,
+  Route as RouteIcon,
+  Target,
+  Users,
+} from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { useState } from "react";
-import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle, DialogFooter } from "@/components/ui/dialog";
+import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogHeader,
+  DialogTitle,
+  DialogFooter,
+} from "@/components/ui/dialog";
 
 export const Route = createFileRoute("/app/picking")({
   head: () => ({
@@ -47,7 +66,7 @@ const mockBatches = [
 ];
 
 function PickingPage() {
-  const [startWave, setStartWave] = useState<typeof mockBatches[0] | null>(null);
+  const [startWave, setStartWave] = useState<(typeof mockBatches)[0] | null>(null);
 
   return (
     <div className="flex flex-col h-full">
@@ -105,10 +124,15 @@ function PickingPage() {
                         {batch.type}
                       </span>
                     </div>
-                    <p className="mt-1 text-sm text-muted-foreground">Zonas Objetivo: {batch.zones}</p>
+                    <p className="mt-1 text-sm text-muted-foreground">
+                      Zonas Objetivo: {batch.zones}
+                    </p>
                   </div>
                   {batch.priority === "high" && (
-                    <Flame className="size-5 text-destructive animate-pulse" title="Prioridad Alta (Despacho pronto)" />
+                    <Flame
+                      className="size-5 text-destructive animate-pulse"
+                      title="Prioridad Alta (Despacho pronto)"
+                    />
                   )}
                 </div>
 
@@ -135,9 +159,9 @@ function PickingPage() {
 
                 <div className="mt-5">
                   {batch.status === "ready" && (
-                    <Button 
-                        className="w-full h-12 text-base font-medium shadow-sm transition-transform active:scale-[0.98]"
-                        onClick={() => setStartWave(batch)}
+                    <Button
+                      className="w-full h-12 text-base font-medium shadow-sm transition-transform active:scale-[0.98]"
+                      onClick={() => setStartWave(batch)}
                     >
                       <RouteIcon className="mr-2 size-5" />
                       Planificar Ruta
@@ -182,49 +206,76 @@ function PickingPage() {
 
       <Dialog open={!!startWave} onOpenChange={(v) => !v && setStartWave(null)}>
         <DialogContent className="max-w-md">
-           {startWave && (
-               <>
-                  <DialogHeader>
-                      <DialogTitle>Asignación de Ruta: {startWave.id}</DialogTitle>
-                      <DialogDescription>
-                          Algoritmo de enrutamiento en pasillos para minimizar tiempo de caminata.
-                      </DialogDescription>
-                  </DialogHeader>
-                  <div className="space-y-4 py-4 border-y border-border my-2">
-                     <div className="rounded-lg bg-muted/50 p-3 flex items-center justify-between">
-                         <div className="flex items-center gap-2 text-sm font-medium">
-                             <RouteIcon className="size-4 text-nuclear" /> Ruta Optimizada (TSP)
-                         </div>
-                         <span className="text-xs bg-card border border-border px-2 py-1 rounded font-mono">Pasillos A2 {'>'} B4 {'>'} B5</span>
-                     </div>
-                     <div className="space-y-2 text-left">
-                         <label htmlFor="operator-select" className="text-xs font-semibold text-muted-foreground flex items-center gap-1.5"><Users className="size-3" /> Asignar Operario</label>
-                         <select id="operator-select" className="flex h-10 w-full rounded-md border border-input bg-background px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-ring focus:ring-offset-2">
-                             <option>Juan Pérez (En Turno)</option>
-                             <option>Carlos Mejía (En Turno)</option>
-                             <option>Auto-asignar (Balanceo Carga)</option>
-                         </select>
-                     </div>
-                     <div className="space-y-2 text-left">
-                         <span id="confirm-type-label" className="text-xs font-semibold text-muted-foreground flex items-center gap-1.5"><Target className="size-3" /> Tipo de Confirmación</span>
-                         <div className="flex gap-2" role="group" aria-labelledby="confirm-type-label">
-                             <button type="button" className="flex-1 border-2 border-nuclear bg-nuclear/5 p-2 rounded-lg text-center cursor-pointer focus:outline-none focus:ring-2 focus:ring-nuclear">
-                                 <span className="block text-sm font-medium text-nuclear mt-1">Escaner PDA</span>
-                                 <span className="text-[10px] text-muted-foreground">Código EAN</span>
-                             </button>
-                             <button type="button" className="flex-1 border border-border bg-card p-2 rounded-lg text-center opacity-70 cursor-pointer hover:opacity-100 transition-opacity focus:outline-none focus:ring-2 focus:ring-ring">
-                                 <span className="block text-sm font-medium mt-1">Pick by Voice</span>
-                                 <span className="text-[10px] text-muted-foreground">Premium</span>
-                             </button>
-                         </div>
-                     </div>
+          {startWave && (
+            <>
+              <DialogHeader>
+                <DialogTitle>Asignación de Ruta: {startWave.id}</DialogTitle>
+                <DialogDescription>
+                  Algoritmo de enrutamiento en pasillos para minimizar tiempo de caminata.
+                </DialogDescription>
+              </DialogHeader>
+              <div className="space-y-4 py-4 border-y border-border my-2">
+                <div className="rounded-lg bg-muted/50 p-3 flex items-center justify-between">
+                  <div className="flex items-center gap-2 text-sm font-medium">
+                    <RouteIcon className="size-4 text-nuclear" /> Ruta Optimizada (TSP)
                   </div>
-                  <DialogFooter>
-                      <Button variant="ghost" onClick={() => setStartWave(null)}>Cancelar</Button>
-                      <Button variant="nuclear" onClick={() => setStartWave(null)}>Confirmar emisión de ola</Button>
-                  </DialogFooter>
-               </>
-           )}
+                  <span className="text-xs bg-card border border-border px-2 py-1 rounded font-mono">
+                    Pasillos A2 {">"} B4 {">"} B5
+                  </span>
+                </div>
+                <div className="space-y-2 text-left">
+                  <label
+                    htmlFor="operator-select"
+                    className="text-xs font-semibold text-muted-foreground flex items-center gap-1.5"
+                  >
+                    <Users className="size-3" /> Asignar Operario
+                  </label>
+                  <select
+                    id="operator-select"
+                    className="flex h-10 w-full rounded-md border border-input bg-background px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-ring focus:ring-offset-2"
+                  >
+                    <option>Juan Pérez (En Turno)</option>
+                    <option>Carlos Mejía (En Turno)</option>
+                    <option>Auto-asignar (Balanceo Carga)</option>
+                  </select>
+                </div>
+                <div className="space-y-2 text-left">
+                  <span
+                    id="confirm-type-label"
+                    className="text-xs font-semibold text-muted-foreground flex items-center gap-1.5"
+                  >
+                    <Target className="size-3" /> Tipo de Confirmación
+                  </span>
+                  <div className="flex gap-2" role="group" aria-labelledby="confirm-type-label">
+                    <button
+                      type="button"
+                      className="flex-1 border-2 border-nuclear bg-nuclear/5 p-2 rounded-lg text-center cursor-pointer focus:outline-none focus:ring-2 focus:ring-nuclear"
+                    >
+                      <span className="block text-sm font-medium text-nuclear mt-1">
+                        Escaner PDA
+                      </span>
+                      <span className="text-[10px] text-muted-foreground">Código EAN</span>
+                    </button>
+                    <button
+                      type="button"
+                      className="flex-1 border border-border bg-card p-2 rounded-lg text-center opacity-70 cursor-pointer hover:opacity-100 transition-opacity focus:outline-none focus:ring-2 focus:ring-ring"
+                    >
+                      <span className="block text-sm font-medium mt-1">Pick by Voice</span>
+                      <span className="text-[10px] text-muted-foreground">Premium</span>
+                    </button>
+                  </div>
+                </div>
+              </div>
+              <DialogFooter>
+                <Button variant="ghost" onClick={() => setStartWave(null)}>
+                  Cancelar
+                </Button>
+                <Button variant="nuclear" onClick={() => setStartWave(null)}>
+                  Confirmar emisión de ola
+                </Button>
+              </DialogFooter>
+            </>
+          )}
         </DialogContent>
       </Dialog>
     </div>

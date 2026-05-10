@@ -1,10 +1,33 @@
 import { createFileRoute } from "@tanstack/react-router";
 import { useState } from "react";
-import { Warehouse, Plus, LayoutGrid, Search, MapPin, Activity, Settings2, Grid3X3, ArrowRight } from "lucide-react";
+import {
+  Warehouse,
+  Plus,
+  LayoutGrid,
+  Search,
+  MapPin,
+  Activity,
+  Settings2,
+  Grid3X3,
+  ArrowRight,
+} from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
-import { Sheet, SheetContent, SheetHeader, SheetTitle, SheetDescription } from "@/components/ui/sheet";
-import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from "@/components/ui/dialog";
+import {
+  Sheet,
+  SheetContent,
+  SheetHeader,
+  SheetTitle,
+  SheetDescription,
+} from "@/components/ui/sheet";
+import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogFooter,
+  DialogHeader,
+  DialogTitle,
+} from "@/components/ui/dialog";
 
 export const Route = createFileRoute("/app/warehouses")({
   head: () => ({
@@ -44,7 +67,7 @@ const mockWarehouses = [
 ];
 
 function WarehousesPage() {
-  const [selectedWh, setSelectedWh] = useState<typeof mockWarehouses[0] | null>(null);
+  const [selectedWh, setSelectedWh] = useState<(typeof mockWarehouses)[0] | null>(null);
   const [createOpen, setCreateOpen] = useState(false);
 
   return (
@@ -155,22 +178,26 @@ function WarehousesPage() {
                     <Grid3X3 className="size-4" /> Parametrización Espacial
                   </h4>
                   <div className="rounded-lg border border-border overflow-hidden">
-                    <div className="bg-muted px-3 py-2 text-xs font-medium border-b border-border">Zonas configuradas</div>
+                    <div className="bg-muted px-3 py-2 text-xs font-medium border-b border-border">
+                      Zonas configuradas
+                    </div>
                     <div className="divide-y divide-border bg-card">
-                      {selectedWh.zones.map(zone => (
-                         <div key={zone} className="p-3">
-                           <div className="flex items-center justify-between mb-2">
-                             <span className="font-medium text-sm">Zona {zone}</span>
-                             <span className="text-xs text-muted-foreground">Alta rotación</span>
-                           </div>
-                           <div className="flex items-center gap-2 text-xs text-muted-foreground">
-                             <span className="bg-muted px-1.5 py-0.5 rounded">6 Pasillos</span>
-                             <ArrowRight className="size-3" />
-                             <span className="bg-muted px-1.5 py-0.5 rounded">12 Estantes/racks</span>
-                             <ArrowRight className="size-3" />
-                             <span className="bg-muted px-1.5 py-0.5 rounded">4 Niveles</span>
-                           </div>
-                         </div>
+                      {selectedWh.zones.map((zone) => (
+                        <div key={zone} className="p-3">
+                          <div className="flex items-center justify-between mb-2">
+                            <span className="font-medium text-sm">Zona {zone}</span>
+                            <span className="text-xs text-muted-foreground">Alta rotación</span>
+                          </div>
+                          <div className="flex items-center gap-2 text-xs text-muted-foreground">
+                            <span className="bg-muted px-1.5 py-0.5 rounded">6 Pasillos</span>
+                            <ArrowRight className="size-3" />
+                            <span className="bg-muted px-1.5 py-0.5 rounded">
+                              12 Estantes/racks
+                            </span>
+                            <ArrowRight className="size-3" />
+                            <span className="bg-muted px-1.5 py-0.5 rounded">4 Niveles</span>
+                          </div>
+                        </div>
                       ))}
                     </div>
                   </div>
@@ -195,17 +222,23 @@ function WarehousesPage() {
           </DialogHeader>
           <div className="space-y-4 py-4 border-y border-border">
             <div className="space-y-1.5">
-               <label htmlFor="cedi-name" className="text-xs font-medium">Nombre del CEDI</label>
-               <Input id="cedi-name" placeholder="Ej. Bodega Norte" required />
+              <label htmlFor="cedi-name" className="text-xs font-medium">
+                Nombre del CEDI
+              </label>
+              <Input id="cedi-name" placeholder="Ej. Bodega Norte" required />
             </div>
             <div className="space-y-1.5">
-               <label htmlFor="cedi-address" className="text-xs font-medium">Dirección</label>
-               <Input id="cedi-address" placeholder="Ej. Calle 123 #45-67" required />
+              <label htmlFor="cedi-address" className="text-xs font-medium">
+                Dirección
+              </label>
+              <Input id="cedi-address" placeholder="Ej. Calle 123 #45-67" required />
             </div>
           </div>
           <DialogFooter>
-             <Button variant="ghost" onClick={() => setCreateOpen(false)}>Cancelar</Button>
-             <Button onClick={() => setCreateOpen(false)}>Confirmar creación de CEDI</Button>
+            <Button variant="ghost" onClick={() => setCreateOpen(false)}>
+              Cancelar
+            </Button>
+            <Button onClick={() => setCreateOpen(false)}>Confirmar creación de CEDI</Button>
           </DialogFooter>
         </DialogContent>
       </Dialog>

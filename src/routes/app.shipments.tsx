@@ -8,12 +8,18 @@ import {
   PackageCheck,
   AlertCircle,
   ClipboardList,
-  Weight
+  Weight,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { useState } from "react";
-import { Sheet, SheetContent, SheetHeader, SheetTitle, SheetDescription } from "@/components/ui/sheet";
+import {
+  Sheet,
+  SheetContent,
+  SheetHeader,
+  SheetTitle,
+  SheetDescription,
+} from "@/components/ui/sheet";
 
 export const Route = createFileRoute("/app/shipments")({
   head: () => ({
@@ -31,7 +37,7 @@ const mockShipments = [
     status: "packing",
     dispatchTime: "16:00",
     boxes: 4,
-    weight: "85 kg"
+    weight: "85 kg",
   },
   {
     id: "SHP-1050",
@@ -41,7 +47,7 @@ const mockShipments = [
     status: "ready",
     dispatchTime: "18:00",
     boxes: 12,
-    weight: "320 kg"
+    weight: "320 kg",
   },
   {
     id: "SHP-1048",
@@ -51,12 +57,12 @@ const mockShipments = [
     status: "shipped",
     dispatchTime: "Ayer",
     boxes: 1,
-    weight: "12 kg"
+    weight: "12 kg",
   },
 ];
 
 function ShipmentsPage() {
-  const [auditShp, setAuditShp] = useState<typeof mockShipments[0] | null>(null);
+  const [auditShp, setAuditShp] = useState<(typeof mockShipments)[0] | null>(null);
 
   return (
     <div className="flex flex-col h-full">
@@ -125,7 +131,9 @@ function ShipmentsPage() {
                       <h3 className="mt-1 font-semibold leading-tight">{shp.carrier}</h3>
                     </div>
                     {shp.status === "ready" && <PackageCheck className="size-5 text-success" />}
-                    {shp.status === "packing" && <AlertCircle className="size-5 text-warning animate-pulse" />}
+                    {shp.status === "packing" && (
+                      <AlertCircle className="size-5 text-warning animate-pulse" />
+                    )}
                     {shp.status === "shipped" && <Truck className="size-5 text-muted-foreground" />}
                   </div>
 
@@ -141,7 +149,9 @@ function ShipmentsPage() {
                     </div>
                     <div className="flex items-center justify-between border-b border-border/50 pb-2">
                       <span className="text-muted-foreground">Volumen</span>
-                      <span className="font-medium">{shp.boxes} Cajas ({shp.weight})</span>
+                      <span className="font-medium">
+                        {shp.boxes} Cajas ({shp.weight})
+                      </span>
                     </div>
                     <div className="flex items-center justify-between pb-1">
                       <span className="text-muted-foreground">Corte (Dock)</span>
@@ -152,7 +162,12 @@ function ShipmentsPage() {
                   <div className="mt-5 flex gap-2">
                     {shp.status === "packing" && (
                       <>
-                        <Button variant="outline" className="w-full text-xs" size="sm" onClick={() => setAuditShp(shp)}>
+                        <Button
+                          variant="outline"
+                          className="w-full text-xs"
+                          size="sm"
+                          onClick={() => setAuditShp(shp)}
+                        >
                           Packing
                         </Button>
                         <Button
@@ -184,71 +199,111 @@ function ShipmentsPage() {
           </div>
         </div>
       </div>
-      
+
       <Sheet open={!!auditShp} onOpenChange={(v) => !v && setAuditShp(null)}>
-          <SheetContent className="w-full sm:max-w-md">
-              {auditShp && (
-                 <>
-                    <SheetHeader>
-                        <p className="font-mono text-xs text-muted-foreground">{auditShp.id}</p>
-                        <SheetTitle className="font-display">Auditoría de Packing</SheetTitle>
-                        <SheetDescription>
-                            Validación de contenido y pesaje antes de emitir rótulos de despacho.
-                        </SheetDescription>
-                    </SheetHeader>
-                    <div className="mt-6 space-y-6">
-                        <div className="flex items-center gap-3 p-3 rounded-lg border border-border bg-muted/30">
-                            <Truck className="size-5 text-muted-foreground" />
-                            <div>
-                                <p className="text-sm font-semibold">{auditShp.carrier}</p>
-                                <p className="text-xs text-muted-foreground truncate max-w-[200px]">{auditShp.destination}</p>
-                            </div>
-                        </div>
+        <SheetContent className="w-full sm:max-w-md">
+          {auditShp && (
+            <>
+              <SheetHeader>
+                <p className="font-mono text-xs text-muted-foreground">{auditShp.id}</p>
+                <SheetTitle className="font-display">Auditoría de Packing</SheetTitle>
+                <SheetDescription>
+                  Validación de contenido y pesaje antes de emitir rótulos de despacho.
+                </SheetDescription>
+              </SheetHeader>
+              <div className="mt-6 space-y-6">
+                <div className="flex items-center gap-3 p-3 rounded-lg border border-border bg-muted/30">
+                  <Truck className="size-5 text-muted-foreground" />
+                  <div>
+                    <p className="text-sm font-semibold">{auditShp.carrier}</p>
+                    <p className="text-xs text-muted-foreground truncate max-w-[200px]">
+                      {auditShp.destination}
+                    </p>
+                  </div>
+                </div>
 
-                        <div className="space-y-3">
-                            <label htmlFor="scan-verify" className="text-sm font-semibold flex items-center gap-2">
-                                <ScanBarcode className="size-4" /> Escaneo de Verificación
-                            </label>
-                            <div className="flex items-center gap-2">
-                                <Input id="scan-verify" placeholder="Escanear producto para validar..." className="font-mono text-xs h-10" />
-                                <Button size="icon" variant="outline" className="shrink-0"><ScanBarcode className="size-4" /></Button>
-                            </div>
-                            <div className="space-y-2 mt-3 text-sm">
-                                <div className="flex justify-between items-center p-2 rounded bg-success/10 border border-success/30 text-success">
-                                    <span className="font-medium">CQ-ARE-125 (100 org)</span>
-                                    <span className="font-mono">100/100 ✓</span>
-                                </div>
-                                <div className="flex justify-between items-center p-2 rounded bg-warning/10 border border-warning/30 text-warning">
-                                    <span className="font-medium">CQ-GAL-100 (20 org)</span>
-                                    <span className="font-mono">15/20</span>
-                                </div>
-                            </div>
-                        </div>
-
-                        <div className="space-y-3">
-                            <h4 className="text-sm font-semibold flex items-center gap-2">
-                                <Weight className="size-4" /> Embalaje Final
-                            </h4>
-                            <div className="grid grid-cols-2 gap-3">
-                                <div>
-                                    <label htmlFor="box-count" className="text-xs font-semibold text-muted-foreground">Cajas Corrugadas</label>
-                                    <Input id="box-count" defaultValue="4" type="number" min="1" className="mt-1" required />
-                                </div>
-                                <div>
-                                    <label htmlFor="total-weight" className="text-xs font-semibold text-muted-foreground">Peso Total (kg)</label>
-                                    <Input id="total-weight" defaultValue="85" type="number" min="0" step="0.1" className="mt-1" required />
-                                </div>
-                            </div>
-                        </div>
-
-                        <div className="pt-4 flex flex-col gap-2">
-                            <Button variant="nuclear" className="w-full">Generar Rótulos 4x6" PDF</Button>
-                            <Button variant="outline" className="w-full" onClick={() => setAuditShp(null)}>Pausar Auditoría</Button>
-                        </div>
+                <div className="space-y-3">
+                  <label
+                    htmlFor="scan-verify"
+                    className="text-sm font-semibold flex items-center gap-2"
+                  >
+                    <ScanBarcode className="size-4" /> Escaneo de Verificación
+                  </label>
+                  <div className="flex items-center gap-2">
+                    <Input
+                      id="scan-verify"
+                      placeholder="Escanear producto para validar..."
+                      className="font-mono text-xs h-10"
+                    />
+                    <Button size="icon" variant="outline" className="shrink-0">
+                      <ScanBarcode className="size-4" />
+                    </Button>
+                  </div>
+                  <div className="space-y-2 mt-3 text-sm">
+                    <div className="flex justify-between items-center p-2 rounded bg-success/10 border border-success/30 text-success">
+                      <span className="font-medium">CQ-ARE-125 (100 org)</span>
+                      <span className="font-mono">100/100 ✓</span>
                     </div>
-                 </>
-              )}
-          </SheetContent>
+                    <div className="flex justify-between items-center p-2 rounded bg-warning/10 border border-warning/30 text-warning">
+                      <span className="font-medium">CQ-GAL-100 (20 org)</span>
+                      <span className="font-mono">15/20</span>
+                    </div>
+                  </div>
+                </div>
+
+                <div className="space-y-3">
+                  <h4 className="text-sm font-semibold flex items-center gap-2">
+                    <Weight className="size-4" /> Embalaje Final
+                  </h4>
+                  <div className="grid grid-cols-2 gap-3">
+                    <div>
+                      <label
+                        htmlFor="box-count"
+                        className="text-xs font-semibold text-muted-foreground"
+                      >
+                        Cajas Corrugadas
+                      </label>
+                      <Input
+                        id="box-count"
+                        defaultValue="4"
+                        type="number"
+                        min="1"
+                        className="mt-1"
+                        required
+                      />
+                    </div>
+                    <div>
+                      <label
+                        htmlFor="total-weight"
+                        className="text-xs font-semibold text-muted-foreground"
+                      >
+                        Peso Total (kg)
+                      </label>
+                      <Input
+                        id="total-weight"
+                        defaultValue="85"
+                        type="number"
+                        min="0"
+                        step="0.1"
+                        className="mt-1"
+                        required
+                      />
+                    </div>
+                  </div>
+                </div>
+
+                <div className="pt-4 flex flex-col gap-2">
+                  <Button variant="nuclear" className="w-full">
+                    Generar Rótulos 4x6" PDF
+                  </Button>
+                  <Button variant="outline" className="w-full" onClick={() => setAuditShp(null)}>
+                    Pausar Auditoría
+                  </Button>
+                </div>
+              </div>
+            </>
+          )}
+        </SheetContent>
       </Sheet>
     </div>
   );

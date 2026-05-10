@@ -15,6 +15,7 @@ import {
   Package,
 } from "lucide-react";
 import { Input } from "@/components/ui/input";
+import { Label } from "@/components/ui/label";
 import { Button } from "@/components/ui/button";
 import {
   Sheet,
@@ -183,7 +184,7 @@ export function ProductsTable() {
             }}
           >
             <X className="size-3.5" />
-            Limpiar
+            Limpiar filtros
           </Button>
         )}
       </div>
@@ -195,22 +196,44 @@ export function ProductsTable() {
             <thead className="bg-surface-2 text-left text-[11px] font-semibold uppercase tracking-wider text-muted-foreground">
               <tr>
                 <Th onClick={() => toggleSort("sku")} active={sort.key === "sku"}>
-                  SKU
+                  <button
+                    type="button"
+                    className="inline-flex items-center gap-1 font-semibold uppercase tracking-wider"
+                  >
+                    SKU
+                  </button>
                 </Th>
                 <Th onClick={() => toggleSort("name")} active={sort.key === "name"}>
-                  Producto
+                  <button
+                    type="button"
+                    className="inline-flex items-center gap-1 font-semibold uppercase tracking-wider"
+                  >
+                    Producto
+                  </button>
                 </Th>
-                <th className="px-3 py-2.5">Categoría</th>
+                <th className="px-3 py-2.5 font-semibold uppercase tracking-wider">Categoría</th>
                 <Th onClick={() => toggleSort("abc")} active={sort.key === "abc"}>
-                  ABC
+                  <button
+                    type="button"
+                    className="inline-flex items-center gap-1 font-semibold uppercase tracking-wider"
+                  >
+                    ABC
+                  </button>
                 </Th>
                 <Th onClick={() => toggleSort("stock")} active={sort.key === "stock"} align="right">
-                  Stock
+                  <button
+                    type="button"
+                    className="inline-flex items-center gap-1 font-semibold uppercase tracking-wider ml-auto"
+                  >
+                    Stock
+                  </button>
                 </Th>
-                <th className="px-3 py-2.5 text-right">ROP</th>
-                <th className="px-3 py-2.5">Bodega</th>
-                <th className="px-3 py-2.5">Estado</th>
-                <th className="px-3 py-2.5">Último mov.</th>
+                <th className="px-3 py-2.5 font-semibold uppercase tracking-wider text-right">
+                  ROP
+                </th>
+                <th className="px-3 py-2.5 font-semibold uppercase tracking-wider">Bodega</th>
+                <th className="px-3 py-2.5 font-semibold uppercase tracking-wider">Estado</th>
+                <th className="px-3 py-2.5 font-semibold uppercase tracking-wider">Último mov.</th>
               </tr>
             </thead>
             <tbody className="divide-y divide-border">
@@ -232,43 +255,67 @@ export function ProductsTable() {
                       initial={{ opacity: 0, y: 4 }}
                       animate={{ opacity: 1, y: 0 }}
                       transition={{ duration: 0.25, delay: Math.min(i * 0.015, 0.2) }}
-                      onClick={() => setSelected(p)}
-                      className="cursor-pointer transition-colors hover:bg-accent/60"
                     >
-                      <td className="px-3 py-2.5 font-mono text-xs text-muted-foreground">
-                        {p.sku}
+                      <td className="px-3 py-2.5">
+                        <button
+                          type="button"
+                          onClick={() => setSelected(p)}
+                          className="block w-full text-left font-mono text-xs text-muted-foreground hover:text-foreground"
+                        >
+                          {p.sku}
+                        </button>
                       </td>
-                      <td className="px-3 py-2.5 font-medium text-foreground">{p.name}</td>
+                      <td className="px-3 py-2.5">
+                        <button
+                          type="button"
+                          onClick={() => setSelected(p)}
+                          className="block w-full text-left font-medium text-foreground hover:underline"
+                        >
+                          {p.name}
+                        </button>
+                      </td>
                       <td className="px-3 py-2.5 text-muted-foreground">{p.category}</td>
                       <td className="px-3 py-2.5">
-                        <span
-                          className={cn(
-                            "rounded-md px-1.5 py-0.5 font-mono text-[10px] font-bold",
-                            abcMeta[p.abc],
-                          )}
+                        <button
+                          type="button"
+                          onClick={() => setSelected(p)}
+                          className="block w-full text-left"
                         >
-                          {p.abc}
-                        </span>
-                      </td>
-                      <td className="px-3 py-2.5 text-right font-mono">
-                        <div className="ml-auto flex max-w-[140px] items-center gap-2">
-                          <div className="h-1 flex-1 overflow-hidden rounded-full bg-surface-2">
-                            <div
-                              className={cn(
-                                "h-full rounded-full",
-                                p.status === "critical"
-                                  ? "bg-destructive"
-                                  : p.status === "low"
-                                    ? "bg-warning"
-                                    : "bg-success",
-                              )}
-                              style={{ width: `${cov}%` }}
-                            />
-                          </div>
-                          <span className="w-12 text-right text-xs">
-                            {p.stock.toLocaleString("es-CO")}
+                          <span
+                            className={cn(
+                              "rounded-md px-1.5 py-0.5 font-mono text-[10px] font-bold",
+                              abcMeta[p.abc],
+                            )}
+                          >
+                            {p.abc}
                           </span>
-                        </div>
+                        </button>
+                      </td>
+                      <td className="px-3 py-2.5 text-right">
+                        <button
+                          type="button"
+                          onClick={() => setSelected(p)}
+                          className="block w-full text-right font-mono"
+                        >
+                          <div className="ml-auto flex max-w-[140px] items-center gap-2">
+                            <div className="h-1 flex-1 overflow-hidden rounded-full bg-surface-2">
+                              <div
+                                className={cn(
+                                  "h-full rounded-full",
+                                  p.status === "critical"
+                                    ? "bg-destructive"
+                                    : p.status === "low"
+                                      ? "bg-warning"
+                                      : "bg-success",
+                                )}
+                                style={{ width: `${cov}%` }}
+                              />
+                            </div>
+                            <span className="w-12 text-right text-xs">
+                              {p.stock.toLocaleString("es-CO")}
+                            </span>
+                          </div>
+                        </button>
                       </td>
                       <td className="px-3 py-2.5 text-right font-mono text-xs text-muted-foreground">
                         {p.rop}
@@ -315,23 +362,26 @@ export function ProductsTable() {
 
           <div className="mt-6 space-y-6">
             <div className="space-y-4">
-              <h4 className="text-sm font-semibold border-b pb-2">Información Básica (RF-COR-03)</h4>
+              <h2 className="text-base font-semibold border-b pb-2">Información Básica</h2>
               <div className="grid grid-cols-2 gap-4">
                 <div className="space-y-1.5">
-                  <label htmlFor="prod-sku" className="text-xs font-medium">SKU</label>
+                  <Label htmlFor="prod-sku">SKU</Label>
                   <Input id="prod-sku" placeholder="Ej. CQ-CAF-04" required />
                 </div>
                 <div className="space-y-1.5">
-                  <label htmlFor="prod-ean" className="text-xs font-medium">Código de Barras (EAN-13)</label>
+                  <Label htmlFor="prod-ean">Código de Barras (EAN-13)</Label>
                   <Input id="prod-ean" placeholder="Ej. 7701234567890" required />
                 </div>
                 <div className="col-span-2 space-y-1.5">
-                  <label htmlFor="prod-name" className="text-xs font-medium">Nombre / Descripción</label>
+                  <Label htmlFor="prod-name">Nombre / Descripción</Label>
                   <Input id="prod-name" placeholder="Ej. Café Molido 500g" required />
                 </div>
                 <div className="space-y-1.5">
-                  <label htmlFor="prod-category" className="text-xs font-medium">Categoría</label>
-                  <select id="prod-category" className="flex h-10 w-full items-center justify-between rounded-md border border-input bg-background px-3 py-2 text-sm ring-offset-background placeholder:text-muted-foreground focus:outline-none focus:ring-2 focus:ring-ring focus:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-50">
+                  <Label htmlFor="prod-category">Categoría</Label>
+                  <select
+                    id="prod-category"
+                    className="flex h-10 w-full items-center justify-between rounded-md border border-input bg-background px-3 py-2 text-sm ring-offset-background placeholder:text-muted-foreground focus:outline-none focus:ring-2 focus:ring-ring focus:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-50"
+                  >
                     <option>Materia Prima</option>
                     <option>Insumos (Empaques)</option>
                     <option>Producto Terminado</option>
@@ -341,11 +391,16 @@ export function ProductsTable() {
             </div>
 
             <div className="space-y-4">
-              <h4 className="text-sm font-semibold border-b pb-2">Unidades de Medida y Conversiones (RF-COR-02)</h4>
+              <h2 className="text-base font-semibold border-b pb-2">
+                Unidades de Medida y Conversiones
+              </h2>
               <div className="grid grid-cols-2 gap-4">
                 <div className="space-y-1.5">
-                  <label htmlFor="prod-uom" className="text-xs font-medium">Unidad Base (UoM)</label>
-                  <select id="prod-uom" className="flex h-10 w-full items-center justify-between rounded-md border border-input bg-background px-3 py-2 text-sm ring-offset-background placeholder:text-muted-foreground focus:outline-none focus:ring-2 focus:ring-ring focus:ring-offset-2">
+                  <Label htmlFor="prod-uom">Unidad Base (UoM)</Label>
+                  <select
+                    id="prod-uom"
+                    className="flex h-10 w-full items-center justify-between rounded-md border border-input bg-background px-3 py-2 text-sm ring-offset-background placeholder:text-muted-foreground focus:outline-none focus:ring-2 focus:ring-ring focus:ring-offset-2"
+                  >
                     <option>Unidad</option>
                     <option>Bolsa</option>
                     <option>Caja</option>
@@ -353,18 +408,36 @@ export function ProductsTable() {
                   </select>
                 </div>
                 <div className="space-y-1.5">
-                  <label htmlFor="prod-conv-box" className="text-xs font-medium">Factor de Conversión (Empaque)</label>
+                  <label htmlFor="prod-conv-box" className="text-xs font-medium">
+                    Factor de Conversión (Empaque)
+                  </label>
                   <div className="flex items-center gap-2">
                     <span className="text-xs whitespace-nowrap">1 Caja =</span>
-                    <Input id="prod-conv-box" type="number" placeholder="24" className="w-20" required min="1" />
+                    <Input
+                      id="prod-conv-box"
+                      type="number"
+                      placeholder="24"
+                      className="w-20"
+                      required
+                      min="1"
+                    />
                     <span className="text-xs text-muted-foreground">UoM</span>
                   </div>
                 </div>
                 <div className="space-y-1.5">
-                  <label htmlFor="prod-conv-pallet" className="text-xs font-medium">Estiba (Pallet)</label>
+                  <label htmlFor="prod-conv-pallet" className="text-xs font-medium">
+                    Estiba (Pallet)
+                  </label>
                   <div className="flex items-center gap-2">
                     <span className="text-xs whitespace-nowrap">1 Estiba =</span>
-                    <Input id="prod-conv-pallet" type="number" placeholder="40" className="w-20" required min="1" />
+                    <Input
+                      id="prod-conv-pallet"
+                      type="number"
+                      placeholder="40"
+                      className="w-20"
+                      required
+                      min="1"
+                    />
                     <span className="text-xs text-muted-foreground">Cajas</span>
                   </div>
                 </div>
@@ -372,32 +445,44 @@ export function ProductsTable() {
             </div>
 
             <div className="space-y-4">
-              <h4 className="text-sm font-semibold border-b pb-2">Tiempos y Costos para EOQ/ROP (RF-COR-04)</h4>
+              <h2 className="text-base font-semibold border-b pb-2">
+                Tiempos y Costos para EOQ/ROP
+              </h2>
               <div className="grid grid-cols-2 gap-4">
                 <div className="space-y-1.5">
-                  <label htmlFor="prod-lead" className="text-xs font-medium text-nuclear">Lead Time (Tiempo de Entrega)</label>
+                  <Label htmlFor="prod-lead">Lead Time (Tiempo de Entrega)</Label>
                   <div className="flex gap-2">
                     <Input id="prod-lead" type="number" placeholder="5" required min="0" />
                     <span className="flex items-center text-xs text-muted-foreground">Días</span>
                   </div>
                 </div>
                 <div className="space-y-1.5">
-                  <label htmlFor="prod-cost" className="text-xs font-medium">Costo de Pedir (S)</label>
+                  <Label htmlFor="prod-cost">Costo de Pedir (S)</Label>
                   <div className="flex gap-2">
                     <Input id="prod-cost" type="number" placeholder="15000" required min="0" />
                     <span className="flex items-center text-xs text-muted-foreground">COP</span>
                   </div>
                 </div>
                 <div className="space-y-1.5">
-                  <label htmlFor="prod-maintenance" className="text-xs font-medium">Costo Mantenimiento % (H)</label>
+                  <Label htmlFor="prod-maintenance">Costo Mantenimiento % (H)</Label>
                   <div className="flex gap-2">
-                    <Input id="prod-maintenance" type="number" placeholder="15" required min="0" max="100" />
+                    <Input
+                      id="prod-maintenance"
+                      type="number"
+                      placeholder="15"
+                      required
+                      min="0"
+                      max="100"
+                    />
                     <span className="flex items-center text-xs text-muted-foreground">% / año</span>
                   </div>
                 </div>
                 <div className="space-y-1.5">
-                  <label htmlFor="prod-policy" className="text-xs font-medium">Política (Insumo vs Terminado)</label>
-                  <select id="prod-policy" className="flex h-10 w-full rounded-md border border-input bg-background px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-ring focus:ring-offset-2">
+                  <Label htmlFor="prod-policy">Política (Insumo vs Terminado)</Label>
+                  <select
+                    id="prod-policy"
+                    className="flex h-10 w-full rounded-md border border-input bg-background px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-ring focus:ring-offset-2"
+                  >
                     <option>Revisión Continua (Q)</option>
                     <option>Revisión Periódica (P)</option>
                     <option>FEFO (Producto Terminado)</option>
@@ -407,7 +492,9 @@ export function ProductsTable() {
             </div>
 
             <div className="pt-4 flex justify-end gap-2">
-              <Button variant="ghost" onClick={() => setCreateOpen(false)}>Cancelar</Button>
+              <Button variant="ghost" onClick={() => setCreateOpen(false)}>
+                Cancelar
+              </Button>
               <Button variant="nuclear">Confirmar guardado en catálogo</Button>
             </div>
           </div>

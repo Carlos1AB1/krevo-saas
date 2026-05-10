@@ -11,11 +11,51 @@ export const Route = createFileRoute("/app/audit")({
 });
 
 const mockAuditLogs = [
-  { id: "log_1", user: "Valentina Aristizábal", action: "Modificó ROP", resource: "CQ-ARE-125 (Arequipe x 125g)", previous: "800", new: "850", timestamp: "Hoy 10:45 AM" },
-  { id: "log_2", user: "Carlos Mejía", action: "Aprobó Despacho", resource: "SHP-1049", previous: "packing", new: "shipped", timestamp: "Hoy 09:12 AM" },
-  { id: "log_3", user: "Jorge Ramírez", action: "Ajuste de Inventario", resource: "CQ-GAL-100 (Bodega Armenia)", previous: "100", new: "96", timestamp: "Ayer 18:30" },
-  { id: "log_4", user: "Laura Martínez", action: "Recepción Mercancía", resource: "REC-2901", previous: "pending", new: "receiving", timestamp: "Ayer 14:15" },
-  { id: "log_5", user: "Valentina Aristizábal", action: "Cambio de Rol", resource: "Usuario: Carlos Mejía", previous: "Operario", new: "Supervisor", timestamp: "12 May, 2026" },
+  {
+    id: "log_1",
+    user: "Valentina Aristizábal",
+    action: "Modificó ROP",
+    resource: "CQ-ARE-125 (Arequipe x 125g)",
+    previous: "800",
+    new: "850",
+    timestamp: "Hoy 10:45 AM",
+  },
+  {
+    id: "log_2",
+    user: "Carlos Mejía",
+    action: "Aprobó Despacho",
+    resource: "SHP-1049",
+    previous: "packing",
+    new: "shipped",
+    timestamp: "Hoy 09:12 AM",
+  },
+  {
+    id: "log_3",
+    user: "Jorge Ramírez",
+    action: "Ajuste de Inventario",
+    resource: "CQ-GAL-100 (Bodega Armenia)",
+    previous: "100",
+    new: "96",
+    timestamp: "Ayer 18:30",
+  },
+  {
+    id: "log_4",
+    user: "Laura Martínez",
+    action: "Recepción Mercancía",
+    resource: "REC-2901",
+    previous: "pending",
+    new: "receiving",
+    timestamp: "Ayer 14:15",
+  },
+  {
+    id: "log_5",
+    user: "Valentina Aristizábal",
+    action: "Cambio de Rol",
+    resource: "Usuario: Carlos Mejía",
+    previous: "Operario",
+    new: "Supervisor",
+    timestamp: "12 May, 2026",
+  },
 ];
 
 function AuditPage() {
@@ -41,7 +81,10 @@ function AuditPage() {
           <div className="flex gap-2">
             <div className="relative flex-1">
               <Search className="absolute left-3 top-1/2 size-4 -translate-y-1/2 text-muted-foreground" />
-              <Input placeholder="Buscar por usuario, acción o recurso..." className="pl-9 h-10 bg-card shadow-sm" />
+              <Input
+                placeholder="Buscar por usuario, acción o recurso..."
+                className="pl-9 h-10 bg-card shadow-sm"
+              />
             </div>
           </div>
 
@@ -49,7 +92,8 @@ function AuditPage() {
             <div className="p-4 border-b border-border bg-muted/30 flex items-center gap-2 text-sm text-muted-foreground">
               <ShieldAlert className="size-4 text-warning" />
               <span className="font-medium text-foreground">Registro Inmutable:</span>
-              Todas las acciones críticas quedan registradas permanentemente según políticas de cumplimiento.
+              Todas las acciones críticas quedan registradas permanentemente según políticas de
+              cumplimiento.
             </div>
             <div className="overflow-x-auto">
               <table className="w-full text-sm text-left">
