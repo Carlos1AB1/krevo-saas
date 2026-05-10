@@ -2,6 +2,7 @@ import { createFileRoute } from "@tanstack/react-router";
 import { Truck, Plus, Search, Filter, Mail, Phone, Factory } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
+import { Label } from "@/components/ui/label";
 
 export const Route = createFileRoute("/app/suppliers")({
   head: () => ({
@@ -79,8 +80,12 @@ function SuppliersPage() {
         <div className="mx-auto max-w-5xl space-y-6">
           <div className="flex gap-2">
             <div className="relative flex-1">
+              <Label htmlFor="search-suppliers" className="sr-only">
+                Buscar proveedor por nombre, ID o email
+              </Label>
               <Search className="absolute left-3 top-1/2 size-4 -translate-y-1/2 text-muted-foreground" />
               <Input
+                id="search-suppliers"
                 placeholder="Buscar proveedor por nombre, ID o email..."
                 className="pl-9 h-10 bg-card shadow-sm"
               />
@@ -99,7 +104,7 @@ function SuppliersPage() {
                       <Factory className="size-5" />
                     </div>
                     <div>
-                      <h3 className="font-semibold leading-none">{sup.name}</h3>
+                      <h2 className="font-semibold leading-none text-foreground">{sup.name}</h2>
                       <div className="mt-1.5 flex items-center gap-2 text-xs text-muted-foreground">
                         <span className="font-mono">{sup.id}</span>
                         <span>•</span>

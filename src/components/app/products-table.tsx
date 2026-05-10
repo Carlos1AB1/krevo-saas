@@ -155,8 +155,12 @@ export function ProductsTable() {
       {/* Filters */}
       <div className="flex flex-wrap items-center gap-2 rounded-xl border border-border bg-card p-3">
         <div className="relative flex-1 min-w-[220px]">
+          <Label htmlFor="search-products" className="sr-only">
+            Buscar por SKU, nombre o bodega
+          </Label>
           <Search className="pointer-events-none absolute left-3 top-1/2 size-4 -translate-y-1/2 text-muted-foreground" />
           <Input
+            id="search-products"
             value={q}
             onChange={(e) => setQ(e.target.value)}
             placeholder="Buscar por SKU, nombre o bodega…"
@@ -196,37 +200,17 @@ export function ProductsTable() {
             <thead className="bg-surface-2 text-left text-[11px] font-semibold uppercase tracking-wider text-muted-foreground">
               <tr>
                 <Th onClick={() => toggleSort("sku")} active={sort.key === "sku"}>
-                  <button
-                    type="button"
-                    className="inline-flex items-center gap-1 font-semibold uppercase tracking-wider"
-                  >
-                    SKU
-                  </button>
+                  SKU
                 </Th>
                 <Th onClick={() => toggleSort("name")} active={sort.key === "name"}>
-                  <button
-                    type="button"
-                    className="inline-flex items-center gap-1 font-semibold uppercase tracking-wider"
-                  >
-                    Producto
-                  </button>
+                  Producto
                 </Th>
                 <th className="px-3 py-2.5 font-semibold uppercase tracking-wider">Categoría</th>
                 <Th onClick={() => toggleSort("abc")} active={sort.key === "abc"}>
-                  <button
-                    type="button"
-                    className="inline-flex items-center gap-1 font-semibold uppercase tracking-wider"
-                  >
-                    ABC
-                  </button>
+                  ABC
                 </Th>
                 <Th onClick={() => toggleSort("stock")} active={sort.key === "stock"} align="right">
-                  <button
-                    type="button"
-                    className="inline-flex items-center gap-1 font-semibold uppercase tracking-wider ml-auto"
-                  >
-                    Stock
-                  </button>
+                  Stock
                 </Th>
                 <th className="px-3 py-2.5 font-semibold uppercase tracking-wider text-right">
                   ROP
@@ -408,9 +392,9 @@ export function ProductsTable() {
                   </select>
                 </div>
                 <div className="space-y-1.5">
-                  <label htmlFor="prod-conv-box" className="text-xs font-medium">
+                  <Label htmlFor="prod-conv-box" className="text-xs font-medium text-foreground">
                     Factor de Conversión (Empaque)
-                  </label>
+                  </Label>
                   <div className="flex items-center gap-2">
                     <span className="text-xs whitespace-nowrap">1 Caja =</span>
                     <Input
@@ -425,9 +409,9 @@ export function ProductsTable() {
                   </div>
                 </div>
                 <div className="space-y-1.5">
-                  <label htmlFor="prod-conv-pallet" className="text-xs font-medium">
+                  <Label htmlFor="prod-conv-pallet" className="text-xs font-medium text-foreground">
                     Estiba (Pallet)
-                  </label>
+                  </Label>
                   <div className="flex items-center gap-2">
                     <span className="text-xs whitespace-nowrap">1 Estiba =</span>
                     <Input
@@ -557,18 +541,30 @@ function Th({
 }) {
   return (
     <th
-      onClick={onClick}
       className={cn(
         "px-3 py-2.5 select-none",
         align === "right" && "text-right",
-        onClick && "cursor-pointer hover:text-foreground",
         active && "text-foreground",
       )}
     >
-      <span className={cn("inline-flex items-center gap-1", align === "right" && "ml-auto")}>
-        {children}
-        {onClick && <ArrowUpDown className="size-3 opacity-50" />}
-      </span>
+      {onClick ? (
+        <button
+          type="button"
+          onClick={onClick}
+          className={cn(
+            "inline-flex items-center gap-1 font-semibold uppercase tracking-wider hover:text-foreground transition-colors",
+            align === "right" && "ml-auto",
+            active ? "text-foreground" : "text-muted-foreground"
+          )}
+        >
+          {children}
+          <ArrowUpDown className="size-3 opacity-50" />
+        </button>
+      ) : (
+        <span className={cn("inline-flex items-center gap-1", align === "right" && "ml-auto")}>
+          {children}
+        </span>
+      )}
     </th>
   );
 }

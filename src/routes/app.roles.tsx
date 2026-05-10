@@ -83,7 +83,7 @@ function RolesPage() {
                   <div className="flex size-8 shrink-0 items-center justify-center rounded-lg bg-nuclear/10 text-nuclear">
                     <Shield className="size-4" />
                   </div>
-                  <h3 className="font-semibold leading-none">{role.name}</h3>
+                  <h2 className="font-semibold leading-none text-foreground">{role.name}</h2>
                 </div>
                 <p className="text-xs text-muted-foreground min-h-[32px]">{role.description}</p>
                 <div className="mt-4 pt-4 border-t border-border flex items-center justify-between">
@@ -102,9 +102,9 @@ function RolesPage() {
 
           <div className="rounded-xl border border-border bg-card shadow-sm overflow-hidden">
             <div className="p-5 border-b border-border">
-              <h3 className="font-semibold leading-none flex items-center gap-2">
+              <h2 className="font-semibold leading-none flex items-center gap-2 text-foreground text-base">
                 <Lock className="size-4" /> Matriz de Permisos
-              </h3>
+              </h2>
               <p className="text-sm text-muted-foreground mt-1">
                 Visualización general de acceso por módulo y rol.
               </p>

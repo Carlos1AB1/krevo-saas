@@ -13,6 +13,7 @@ import {
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
+import { Label } from "@/components/ui/label";
 import {
   Sheet,
   SheetContent,
@@ -91,8 +92,11 @@ function WarehousesPage() {
         <div className="mx-auto max-w-5xl space-y-6">
           <div className="flex gap-2">
             <div className="relative flex-1">
+              <Label htmlFor="search-warehouses" className="sr-only">
+                Buscar bodega
+              </Label>
               <Search className="absolute left-3 top-1/2 size-4 -translate-y-1/2 text-muted-foreground" />
-              <Input placeholder="Buscar bodega..." className="pl-9 h-10 bg-card shadow-sm" />
+              <Input id="search-warehouses" placeholder="Buscar bodega..." className="pl-9 h-10 bg-card shadow-sm" />
             </div>
           </div>
 
@@ -110,7 +114,7 @@ function WarehousesPage() {
                       <Warehouse className="size-5" />
                     </div>
                     <div>
-                      <h3 className="font-semibold leading-none">{wh.name}</h3>
+                      <h2 className="font-semibold leading-none text-foreground">{wh.name}</h2>
                       <span className="mt-1 block text-xs font-medium text-muted-foreground uppercase">
                         {wh.id}
                       </span>

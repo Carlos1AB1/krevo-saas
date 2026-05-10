@@ -14,6 +14,7 @@ import {
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
+import { Label } from "@/components/ui/label";
 import { useState } from "react";
 import {
   Sheet,
@@ -85,8 +86,12 @@ function ReceiptsPage() {
         <div className="mx-auto max-w-5xl space-y-6">
           <div className="flex gap-2">
             <div className="relative flex-1">
+              <Label htmlFor="search-receipts" className="sr-only">
+                Buscar ASN, proveedor o REC
+              </Label>
               <Search className="absolute left-3 top-1/2 size-4 -translate-y-1/2 text-muted-foreground" />
               <Input
+                id="search-receipts"
                 placeholder="Buscar ASN, proveedor o REC-..."
                 className="pl-9 bg-card shadow-sm h-10 w-full"
               />
@@ -111,7 +116,7 @@ function ReceiptsPage() {
                     <span className="inline-flex items-center rounded-md bg-muted px-2 py-1 text-xs font-medium text-muted-foreground">
                       {rec.id}
                     </span>
-                    <h3 className="mt-2 font-semibold text-foreground">{rec.supplier}</h3>
+                    <h2 className="mt-2 text-base font-semibold text-foreground">{rec.supplier}</h2>
                   </div>
                   {rec.status === "pending" && <Clock className="size-4 text-warning" />}
                   {rec.status === "checking" && (
@@ -201,9 +206,9 @@ function ReceiptsPage() {
                       </span>
                     </div>
                     <div className="p-3 grid grid-cols-[1fr_auto] gap-2 items-center">
-                      <label htmlFor="qa-temp" className="sr-only">
+                      <Label htmlFor="qa-temp" className="sr-only">
                         T° de Lectura
-                      </label>
+                      </Label>
                       <Input
                         id="qa-temp"
                         placeholder="T° de Lectura"

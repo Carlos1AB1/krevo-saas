@@ -50,7 +50,7 @@ function BillingPage() {
             <div className="rounded-xl border border-destructive/50 bg-destructive/10 p-4 flex items-start gap-3 text-destructive shadow-sm">
               <ShieldAlert className="size-5 mt-0.5" />
               <div>
-                <h3 className="font-semibold text-sm">Suscripción en Mora (Modo Solo Lectura)</h3>
+                <h2 className="font-semibold text-base text-destructive">Suscripción en Mora (Modo Solo Lectura)</h2>
                 <p className="text-sm mt-1 opacity-90">
                   La pasarela de pagos reportó un rechazo en el último intento de cobro. Las
                   acciones de escritura (crear, editar, eliminar) han sido suspendidas. Actualice su
@@ -171,12 +171,12 @@ function BillingPage() {
 
               {/* Planes Disponibles */}
               <div className="rounded-xl border border-border bg-card shadow-sm p-5 sm:p-6">
-                <h3 className="font-semibold mb-4 flex items-center gap-2">
+                <h2 className="font-semibold mb-4 flex items-center gap-2 text-foreground text-base">
                   <Zap className="size-4 text-nuclear" /> Opciones de Suscripción
-                </h3>
+                </h2>
                 <div className="grid gap-4 sm:grid-cols-2">
                   <div className="border border-border rounded-lg p-4 opacity-70">
-                    <h4 className="font-medium">Básico</h4>
+                    <h3 className="font-medium text-sm text-foreground">Básico</h3>
                     <p className="text-2xl font-bold font-mono mt-2">
                       $99.000{" "}
                       <span className="text-xs font-normal text-muted-foreground">COP/mes</span>
@@ -191,7 +191,7 @@ function BillingPage() {
                     <div className="absolute top-0 right-0 bg-nuclear text-background text-[10px] uppercase font-bold px-2 py-0.5 rounded-bl-lg rounded-tr-sm">
                       Actual
                     </div>
-                    <h4 className="font-medium text-nuclear">Pro (Recomendado)</h4>
+                    <h3 className="font-medium text-nuclear text-sm">Pro (Recomendado)</h3>
                     <p className="text-2xl font-bold font-mono mt-2">
                       $299.000{" "}
                       <span className="text-xs font-normal text-muted-foreground">COP/mes</span>
@@ -209,9 +209,9 @@ function BillingPage() {
             {/* Invoices and Payment Method */}
             <div className="space-y-6">
               <div className="rounded-xl border border-border bg-card shadow-sm p-5">
-                <h3 className="font-semibold mb-4 flex items-center gap-2">
+                <h2 className="font-semibold mb-4 flex items-center gap-2 text-foreground text-base">
                   <CreditCard className="size-4" /> Método de Pago
-                </h3>
+                </h2>
                 <div className="flex items-center gap-3 p-3 border border-border rounded-lg bg-muted/30">
                   <div className="bg-background p-1 rounded border shadow-sm">
                     <Wallet className="size-5 text-muted-foreground" />
@@ -227,7 +227,7 @@ function BillingPage() {
               </div>
 
               <div className="rounded-xl border border-border bg-card shadow-sm p-5">
-                <h3 className="font-semibold mb-4">Historial de Pagos</h3>
+                <h2 className="font-semibold mb-4 text-foreground text-base">Historial de Pagos</h2>
                 <div className="space-y-3">
                   {pastInvoices.map((inv) => (
                     <div

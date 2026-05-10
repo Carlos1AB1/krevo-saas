@@ -12,6 +12,7 @@ import {
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
+import { Label } from "@/components/ui/label";
 import { useState } from "react";
 import {
   Sheet,
@@ -88,8 +89,12 @@ function ShipmentsPage() {
         <div className="mx-auto max-w-5xl space-y-6">
           <div className="flex gap-2">
             <div className="relative flex-1">
+              <Label htmlFor="search-shipments" className="sr-only">
+                Buscar despacho por guía TCC, destino o ID
+              </Label>
               <Search className="absolute left-3 top-1/2 size-4 -translate-y-1/2 text-muted-foreground" />
               <Input
+                id="search-shipments"
                 placeholder="Buscar despacho por guía TCC, destino..."
                 className="pl-9 h-12 text-base sm:h-10 sm:text-sm bg-card shadow-sm"
               />
@@ -128,7 +133,7 @@ function ShipmentsPage() {
                       <span className="text-xs font-semibold uppercase text-muted-foreground">
                         {shp.id}
                       </span>
-                      <h3 className="mt-1 font-semibold leading-tight">{shp.carrier}</h3>
+                      <h2 className="mt-1 text-base font-semibold leading-tight text-foreground">{shp.carrier}</h2>
                     </div>
                     {shp.status === "ready" && <PackageCheck className="size-5 text-success" />}
                     {shp.status === "packing" && (
@@ -223,12 +228,12 @@ function ShipmentsPage() {
                 </div>
 
                 <div className="space-y-3">
-                  <label
+                  <Label
                     htmlFor="scan-verify"
                     className="text-sm font-semibold flex items-center gap-2"
                   >
                     <ScanBarcode className="size-4" /> Escaneo de Verificación
-                  </label>
+                  </Label>
                   <div className="flex items-center gap-2">
                     <Input
                       id="scan-verify"
@@ -257,12 +262,12 @@ function ShipmentsPage() {
                   </h4>
                   <div className="grid grid-cols-2 gap-3">
                     <div>
-                      <label
+                      <Label
                         htmlFor="box-count"
                         className="text-xs font-semibold text-muted-foreground"
                       >
                         Cajas Corrugadas
-                      </label>
+                      </Label>
                       <Input
                         id="box-count"
                         defaultValue="4"
@@ -273,12 +278,12 @@ function ShipmentsPage() {
                       />
                     </div>
                     <div>
-                      <label
+                      <Label
                         htmlFor="total-weight"
                         className="text-xs font-semibold text-muted-foreground"
                       >
                         Peso Total (kg)
-                      </label>
+                      </Label>
                       <Input
                         id="total-weight"
                         defaultValue="85"
