@@ -12,6 +12,7 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Checkbox } from "@/components/ui/checkbox";
+import { useAuth } from "@/features/auth/AuthProvider";
 
 const loginSchema = z.object({
   email: z.string().trim().min(1, "Ingresa tu email").email("Formato de email inválido").max(255),
@@ -37,6 +38,7 @@ export const Route = createFileRoute("/login")({
 
 function LoginPage() {
   const navigate = useNavigate();
+  const { loginUser, isLoading, error } = useAuth();
   const [showPw, setShowPw] = useState(false);
   const {
     register,
@@ -45,20 +47,25 @@ function LoginPage() {
   } = useForm<LoginValues>({
     resolver: zodResolver(loginSchema),
     defaultValues: {
-      email: "demo@krevo.com",
-      password: "password123",
+      email: "superadmin@cedi.local",
+      password: "Admin1234!",
       remember: true,
     },
     mode: "onBlur",
   });
 
   const onSubmit = async (values: LoginValues) => {
-    await new Promise((r) => setTimeout(r, 900));
-    toast.success("Sesión iniciada", {
-      description: `Bienvenido de vuelta, ${values.email.split("@")[0]}.`,
-    });
-    navigate({ to: "/app" });
+    const success = await loginUser(values.email, values.password);
+
+    if (success) {
+      toast.success("Sesión iniciada", {
+        description: `Bienvenido de vuelta, ${values.email.split("@")[0]}.`,
+      });
+      navigate({ to: "/app" });
+    }
   };
+
+  const isAuthenticating = isSubmitting || isLoading;
 
   return (
     <AuthShell side="reactor">
@@ -138,6 +145,12 @@ function LoginPage() {
               ) : null}
             </div>
 
+            {error ? (
+              <p className="rounded-md border border-destructive/40 bg-destructive/10 px-3 py-2 text-sm text-destructive" role="alert">
+                {error}
+              </p>
+            ) : null}
+
             <label className="flex cursor-pointer select-none items-center gap-2 text-sm text-muted-foreground">
               <Checkbox defaultChecked />
               <span>Mantener mi sesión iniciada en este equipo</span>
@@ -148,9 +161,9 @@ function LoginPage() {
               variant="nuclear"
               size="lg"
               className="w-full"
-              disabled={isSubmitting}
+              disabled={isAuthenticating}
             >
-              {isSubmitting ? (
+              {isAuthenticating ? (
                 <>
                   <Loader2 className="size-4 animate-spin" /> Iniciando…
                 </>

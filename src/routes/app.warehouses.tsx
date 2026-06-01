@@ -1,249 +1,262 @@
 import { createFileRoute } from "@tanstack/react-router";
-import { useState } from "react";
+import { useState, useMemo } from "react";
+import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import {
-  Warehouse,
-  Plus,
-  LayoutGrid,
-  Search,
-  MapPin,
-  Activity,
-  Settings2,
-  Grid3X3,
-  ArrowRight,
+  Warehouse, Plus, LayoutGrid, Search, MapPin, Settings2, Loader2,
 } from "lucide-react";
+import { toast } from "sonner";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import {
-  Sheet,
-  SheetContent,
-  SheetHeader,
-  SheetTitle,
-  SheetDescription,
+  Sheet, SheetContent, SheetHeader, SheetTitle, SheetDescription,
 } from "@/components/ui/sheet";
 import {
-  Dialog,
-  DialogContent,
-  DialogDescription,
-  DialogFooter,
-  DialogHeader,
-  DialogTitle,
+  Dialog, DialogContent, DialogDescription, DialogFooter,
+  DialogHeader, DialogTitle,
 } from "@/components/ui/dialog";
+import {
+  getStorageLocations, createStorageLocation, type StorageLocationResponse,
+} from "@/features/inventory/inventory.api";
+import { cn } from "@/lib/utils";
 
 export const Route = createFileRoute("/app/warehouses")({
-  head: () => ({
-    meta: [{ title: "Bodegas · Krevo" }],
-  }),
+  head: () => ({ meta: [{ title: "Bodegas · Krevo" }] }),
   component: WarehousesPage,
 });
 
-const mockWarehouses = [
-  {
-    id: "CEDI-ARM-01",
-    name: "CEDI Principal Armenia",
-    location: "Cra 12 No 9 - 59 Armenia, Quindío",
-    capacity: 75,
-    zones: ["A (Recepción)", "B (Almacenamiento)", "C (Picking)", "P (Despacho)"],
-    status: "active",
-    temp: "Ambiente",
-  },
-  {
-    id: "CEDI-CIR-02",
-    name: "Planta y Bodega Circasia",
-    location: "Cra 9 No 4 - 57 Circasia, Quindío",
-    capacity: 88,
-    zones: ["A", "B"],
-    status: "active",
-    temp: "Frío & Ambiente",
-  },
-  {
-    id: "CEDI-BOG-03",
-    name: "Punto de Distribución Bogotá",
-    location: "Bogotá, Colombia",
-    capacity: 92,
-    zones: ["A"],
-    status: "warning",
-    temp: "Ambiente",
-  },
-];
+const WAREHOUSE_META: Record<string, { label: string; description: string }> = {
+  BODEGA_3:  { label: "Bodega 3",  description: "Insumos de empaque" },
+  BODEGA_4:  { label: "Bodega 4",  description: "Materia prima" },
+  BODEGA_12: { label: "Bodega 12", description: "Producto terminado + insumos" },
+};
 
 function WarehousesPage() {
-  const [selectedWh, setSelectedWh] = useState<(typeof mockWarehouses)[0] | null>(null);
+  const qc = useQueryClient();
+  const [q, setQ] = useState("");
+  const [selectedWh, setSelectedWh] = useState<string | null>(null);
   const [createOpen, setCreateOpen] = useState(false);
+
+  const { data: locations = [], isLoading, isError } = useQuery({
+    queryKey: ["inventory", "storage-locations"],
+    queryFn: getStorageLocations,
+  });
+
+  const createMutation = useMutation({
+    mutationFn: createStorageLocation,
+    onSuccess: () => {
+      toast.success("Ubicación creada");
+      setCreateOpen(false);
+      qc.invalidateQueries({ queryKey: ["inventory", "storage-locations"] });
+    },
+    onError: (e: Error) => toast.error(e.message),
+  });
+
+  const grouped = useMemo(() => {
+    const map: Record<string, StorageLocationResponse[]> = {};
+    locations.forEach((loc) => {
+      if (!map[loc.warehouse]) map[loc.warehouse] = [];
+      map[loc.warehouse].push(loc);
+    });
+    return map;
+  }, [locations]);
+
+  const warehouses = Object.keys(WAREHOUSE_META);
+
+  const filteredLocations = useMemo(() => {
+    if (!selectedWh) return [];
+    const locs = grouped[selectedWh] ?? [];
+    const ql = q.toLowerCase();
+    if (!ql) return locs;
+    return locs.filter((l) =>
+      l.code.toLowerCase().includes(ql) || (l.description ?? "").toLowerCase().includes(ql)
+    );
+  }, [grouped, selectedWh, q]);
+
+  const handleCreate = (e: React.FormEvent<HTMLFormElement>) => {
+    e.preventDefault();
+    const fd = new FormData(e.currentTarget);
+    createMutation.mutate({
+      warehouse: fd.get("warehouse") as string,
+      zone: fd.get("zone") as string,
+      code: fd.get("code") as string,
+      description: (fd.get("description") as string) || undefined,
+    });
+  };
 
   return (
     <div className="flex flex-col h-full">
       <header className="sticky top-0 z-10 flex h-16 items-center gap-4 border-b border-border bg-background px-4 sm:px-6">
         <div className="mr-auto">
-          <h1 className="text-xl font-semibold tracking-tight">Bodegas (CEDIs)</h1>
+          <h1 className="text-xl font-semibold tracking-tight">Bodegas & Ubicaciones</h1>
           <p className="text-xs text-muted-foreground hidden sm:block">
-            Gestión de centros de distribución y ubicaciones.
+            Centros de distribución y ubicaciones de almacenamiento.
           </p>
         </div>
-        <div className="flex items-center gap-2">
-          <Button size="sm" onClick={() => setCreateOpen(true)}>
-            <Plus className="mr-2 size-4" />
-            <span>Nueva Bodega</span>
-          </Button>
-        </div>
+        <Button size="sm" onClick={() => setCreateOpen(true)}>
+          <Plus className="mr-2 size-4" /> Nueva Ubicación
+        </Button>
       </header>
 
       <div className="flex-1 overflow-auto p-4 sm:p-6 bg-muted/20">
         <div className="mx-auto max-w-5xl space-y-6">
-          <div className="flex gap-2">
-            <div className="relative flex-1">
-              <Label htmlFor="search-warehouses" className="sr-only">
-                Buscar bodega
-              </Label>
-              <Search className="absolute left-3 top-1/2 size-4 -translate-y-1/2 text-muted-foreground" />
-              <Input id="search-warehouses" placeholder="Buscar bodega..." className="pl-9 h-10 bg-card shadow-sm" />
+
+          {isLoading && (
+            <div className="flex items-center justify-center py-12 text-muted-foreground">
+              <Loader2 className="mr-2 size-5 animate-spin" /> Cargando ubicaciones…
             </div>
-          </div>
+          )}
 
-          <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
-            {mockWarehouses.map((wh) => (
-              <button
-                type="button"
-                key={wh.id}
-                onClick={() => setSelectedWh(wh)}
-                className="text-left cursor-pointer relative flex flex-col rounded-xl border border-border bg-card p-5 shadow-sm transition-all hover:border-nuclear/50 hover:shadow-md focus:outline-none focus:ring-2 focus:ring-nuclear"
-              >
-                <div className="flex items-start justify-between">
-                  <div className="flex items-center gap-3">
-                    <div className="flex size-10 shrink-0 items-center justify-center rounded-lg bg-muted text-muted-foreground">
-                      <Warehouse className="size-5" />
-                    </div>
-                    <div>
-                      <h2 className="font-semibold leading-none text-foreground">{wh.name}</h2>
-                      <span className="mt-1 block text-xs font-medium text-muted-foreground uppercase">
-                        {wh.id}
-                      </span>
-                    </div>
-                  </div>
-                </div>
+          {isError && (
+            <div className="rounded-xl border border-destructive/30 bg-destructive/10 p-4 text-sm text-destructive">
+              No fue posible cargar las bodegas.
+            </div>
+          )}
 
-                <div className="mt-6 space-y-4">
-                  <div className="flex items-center text-sm text-muted-foreground">
-                    <MapPin className="mr-2 size-4" />
-                    <span>{wh.location}</span>
-                  </div>
+          {!isLoading && !isError && (
+            <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
+              {warehouses.map((wh) => {
+                const meta = WAREHOUSE_META[wh];
+                const locs = grouped[wh] ?? [];
+                const zones = [...new Set(locs.map((l) => l.zone))].sort();
+                const activeCount = locs.filter((l) => l.isActive).length;
 
-                  <div className="space-y-1">
-                    <div className="flex items-center justify-between text-xs font-medium">
-                      <span>Ocupación</span>
-                      <span className={wh.capacity > 90 ? "text-destructive" : "text-nuclear"}>
-                        {wh.capacity}%
-                      </span>
+                return (
+                  <button key={wh} type="button" onClick={() => setSelectedWh(wh)}
+                    className="text-left cursor-pointer relative flex flex-col rounded-xl border border-border bg-card p-5 shadow-sm transition-all hover:border-nuclear/50 hover:shadow-md focus:outline-none focus:ring-2 focus:ring-nuclear">
+                    <div className="flex items-center gap-3">
+                      <div className="flex size-10 shrink-0 items-center justify-center rounded-lg bg-muted text-muted-foreground">
+                        <Warehouse className="size-5" />
+                      </div>
+                      <div>
+                        <h2 className="font-semibold leading-none text-foreground">{meta.label}</h2>
+                        <p className="mt-1 text-xs text-muted-foreground">{meta.description}</p>
+                      </div>
                     </div>
-                    <div className="h-2 w-full overflow-hidden rounded-full bg-muted">
-                      <div
-                        className="h-full bg-nuclear transition-all"
-                        style={{
-                          width: `${wh.capacity}%`,
-                          backgroundColor:
-                            wh.capacity > 90 ? "var(--color-destructive)" : "var(--color-nuclear)",
-                        }}
-                      />
-                    </div>
-                  </div>
 
-                  <div className="flex items-center justify-between pt-2 border-t border-border/50 text-sm">
-                    <span className="text-muted-foreground flex items-center">
-                      <LayoutGrid className="mr-1.5 size-4" />
-                      {wh.zones.length} Zonas
-                    </span>
-                    <span className="text-muted-foreground flex items-center text-xs">
-                      <Activity className="mr-1.5 size-4" />
-                      {wh.temp}
-                    </span>
-                  </div>
-                </div>
-              </button>
-            ))}
-          </div>
+                    <div className="mt-5 space-y-3">
+                      <div className="flex items-center text-sm text-muted-foreground">
+                        <MapPin className="mr-2 size-4" />
+                        <span>{locs.length} ubicaciones · {activeCount} activas</span>
+                      </div>
+                      <div className="flex items-center gap-2 text-xs">
+                        <LayoutGrid className="size-3.5 text-muted-foreground" />
+                        <span className="text-muted-foreground">Zonas:</span>
+                        {zones.length === 0
+                          ? <span className="text-muted-foreground italic">Sin configurar</span>
+                          : zones.map((z) => (
+                            <span key={z} className="rounded bg-muted px-1.5 py-0.5 font-mono font-semibold">{z}</span>
+                          ))}
+                      </div>
+                    </div>
+                  </button>
+                );
+              })}
+            </div>
+          )}
         </div>
       </div>
 
+      {/* Sheet detalle bodega */}
       <Sheet open={!!selectedWh} onOpenChange={(v) => !v && setSelectedWh(null)}>
-        <SheetContent className="w-full sm:max-w-md">
+        <SheetContent className="w-full sm:max-w-lg overflow-y-auto">
           {selectedWh && (
             <>
               <SheetHeader>
-                <p className="font-mono text-xs text-muted-foreground">{selectedWh.id}</p>
-                <SheetTitle className="font-display text-xl">{selectedWh.name}</SheetTitle>
-                <SheetDescription className="flex items-center gap-1.5 mt-1">
-                  <MapPin className="size-3.5" /> {selectedWh.location}
-                </SheetDescription>
+                <SheetTitle>{WAREHOUSE_META[selectedWh].label}</SheetTitle>
+                <SheetDescription>{WAREHOUSE_META[selectedWh].description}</SheetDescription>
               </SheetHeader>
-
-              <div className="mt-6 space-y-6">
-                <div>
-                  <h4 className="text-sm font-semibold mb-3 flex items-center gap-2">
-                    <Grid3X3 className="size-4" /> Parametrización Espacial
-                  </h4>
-                  <div className="rounded-lg border border-border overflow-hidden">
-                    <div className="bg-muted px-3 py-2 text-xs font-medium border-b border-border">
-                      Zonas configuradas
-                    </div>
-                    <div className="divide-y divide-border bg-card">
-                      {selectedWh.zones.map((zone) => (
-                        <div key={zone} className="p-3">
-                          <div className="flex items-center justify-between mb-2">
-                            <span className="font-medium text-sm">Zona {zone}</span>
-                            <span className="text-xs text-muted-foreground">Alta rotación</span>
-                          </div>
-                          <div className="flex items-center gap-2 text-xs text-muted-foreground">
-                            <span className="bg-muted px-1.5 py-0.5 rounded">6 Pasillos</span>
-                            <ArrowRight className="size-3" />
-                            <span className="bg-muted px-1.5 py-0.5 rounded">
-                              12 Estantes/racks
-                            </span>
-                            <ArrowRight className="size-3" />
-                            <span className="bg-muted px-1.5 py-0.5 rounded">4 Niveles</span>
-                          </div>
-                        </div>
-                      ))}
-                    </div>
-                  </div>
-                  <Button variant="outline" size="sm" className="w-full mt-3">
-                    <Settings2 className="mr-2 size-4" />
-                    Editar Layout CEDI
-                  </Button>
+              <div className="mt-4 space-y-4">
+                <div className="relative">
+                  <Search className="absolute left-3 top-1/2 size-4 -translate-y-1/2 text-muted-foreground" />
+                  <Input value={q} onChange={(e) => setQ(e.target.value)}
+                    placeholder="Buscar código o descripción…" className="pl-9" />
                 </div>
+
+                {filteredLocations.length === 0 ? (
+                  <p className="text-center py-8 text-sm text-muted-foreground">
+                    Sin ubicaciones configuradas en esta bodega.
+                  </p>
+                ) : (
+                  <div className="rounded-lg border border-border overflow-hidden">
+                    <table className="w-full text-sm">
+                      <thead className="bg-muted text-muted-foreground text-xs font-medium">
+                        <tr>
+                          <th className="px-3 py-2 text-left">Código</th>
+                          <th className="px-3 py-2 text-left">Zona</th>
+                          <th className="px-3 py-2 text-left">Descripción</th>
+                          <th className="px-3 py-2 text-center">Estado</th>
+                        </tr>
+                      </thead>
+                      <tbody className="divide-y divide-border bg-card">
+                        {filteredLocations.map((loc) => (
+                          <tr key={loc.id} className="hover:bg-muted/20">
+                            <td className="px-3 py-2 font-mono font-semibold text-xs">{loc.code}</td>
+                            <td className="px-3 py-2">
+                              <span className="rounded bg-muted px-1.5 py-0.5 font-mono text-xs font-bold">
+                                {loc.zone}
+                              </span>
+                            </td>
+                            <td className="px-3 py-2 text-xs text-muted-foreground">{loc.description ?? "—"}</td>
+                            <td className="px-3 py-2 text-center">
+                              <span className={cn("rounded-full px-2 py-0.5 text-[10px] font-semibold",
+                                loc.isActive ? "bg-success/15 text-success" : "bg-muted text-muted-foreground")}>
+                                {loc.isActive ? "Activa" : "Inactiva"}
+                              </span>
+                            </td>
+                          </tr>
+                        ))}
+                      </tbody>
+                    </table>
+                  </div>
+                )}
+
+                <Button variant="outline" size="sm" className="w-full" onClick={() => { setSelectedWh(null); setCreateOpen(true); }}>
+                  <Settings2 className="mr-2 size-4" /> Añadir ubicación en {WAREHOUSE_META[selectedWh].label}
+                </Button>
               </div>
             </>
           )}
         </SheetContent>
       </Sheet>
 
+      {/* Dialog nueva ubicación */}
       <Dialog open={createOpen} onOpenChange={setCreateOpen}>
         <DialogContent>
           <DialogHeader>
-            <DialogTitle>Nueva Bodega / CEDI</DialogTitle>
-            <DialogDescription>
-              Crea un nuevo centro de distribución para tu tenant.
-            </DialogDescription>
+            <DialogTitle>Nueva Ubicación</DialogTitle>
+            <DialogDescription>Crea una posición de almacenamiento en una bodega.</DialogDescription>
           </DialogHeader>
-          <div className="space-y-4 py-4 border-y border-border">
-            <div className="space-y-1.5">
-              <label htmlFor="cedi-name" className="text-xs font-medium">
-                Nombre del CEDI
-              </label>
-              <Input id="cedi-name" placeholder="Ej. Bodega Norte" required />
+          <form onSubmit={handleCreate} className="space-y-4 py-2">
+            <div className="grid grid-cols-2 gap-4">
+              <div className="space-y-1.5">
+                <Label htmlFor="warehouse">Bodega</Label>
+                <select name="warehouse" required className="flex h-9 w-full rounded-md border border-input bg-background px-3 text-sm shadow-sm focus:outline-none focus:ring-1 focus:ring-ring">
+                  {warehouses.map((w) => <option key={w} value={w}>{WAREHOUSE_META[w].label}</option>)}
+                </select>
+              </div>
+              <div className="space-y-1.5">
+                <Label htmlFor="zone">Zona</Label>
+                <select name="zone" required className="flex h-9 w-full rounded-md border border-input bg-background px-3 text-sm shadow-sm focus:outline-none focus:ring-1 focus:ring-ring">
+                  {["A", "B", "C", "D"].map((z) => <option key={z} value={z}>Zona {z}</option>)}
+                </select>
+              </div>
+              <div className="col-span-2 space-y-1.5">
+                <Label htmlFor="code">Código (Ej: B12-A-01-03)</Label>
+                <Input name="code" placeholder="B12-A-01-03" required />
+              </div>
+              <div className="col-span-2 space-y-1.5">
+                <Label htmlFor="description">Descripción (opcional)</Label>
+                <Input name="description" placeholder="Estante 1, nivel 3" />
+              </div>
             </div>
-            <div className="space-y-1.5">
-              <label htmlFor="cedi-address" className="text-xs font-medium">
-                Dirección
-              </label>
-              <Input id="cedi-address" placeholder="Ej. Calle 123 #45-67" required />
-            </div>
-          </div>
-          <DialogFooter>
-            <Button variant="ghost" onClick={() => setCreateOpen(false)}>
-              Cancelar
-            </Button>
-            <Button onClick={() => setCreateOpen(false)}>Confirmar creación de CEDI</Button>
-          </DialogFooter>
+            <DialogFooter>
+              <Button type="button" variant="ghost" onClick={() => setCreateOpen(false)}>Cancelar</Button>
+              <Button type="submit" disabled={createMutation.isPending}>
+                {createMutation.isPending ? <><Loader2 className="mr-2 size-4 animate-spin" /> Creando…</> : "Crear ubicación"}
+              </Button>
+            </DialogFooter>
+          </form>
         </DialogContent>
       </Dialog>
     </div>

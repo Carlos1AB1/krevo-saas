@@ -1,5 +1,6 @@
 import { createFileRoute } from "@tanstack/react-router";
 import { useState } from "react";
+import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import {
   Factory,
   Plus,
@@ -11,7 +12,12 @@ import {
   Clock,
   ArrowRight,
   Beaker,
+  Loader2,
+  XCircle,
+  FlaskConical,
+  Trash2,
 } from "lucide-react";
+import { toast } from "sonner";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -24,123 +30,160 @@ import {
   SheetFooter,
 } from "@/components/ui/sheet";
 import { cn } from "@/lib/utils";
+import {
+  getOrders,
+  getFormulas,
+  createOrder,
+  createFormula,
+  startOrder,
+  completeOrder,
+  cancelOrder,
+  type ProductionOrderResponse,
+  type FormulaResponse,
+} from "@/features/production/production.api";
+import { getProducts } from "@/features/inventory/inventory.api";
 
 export const Route = createFileRoute("/app/manufacturing")({
   component: ManufacturingPage,
 });
 
-type OrderStatus = "pending" | "marmita" | "empaque" | "completed";
-
-interface ManufacturingOrder {
-  id: string;
-  productName: string;
-  sku: string;
-  quantity: number;
-  status: OrderStatus;
-  priority: "high" | "medium" | "low";
-  createdAt: string;
-  assignee: string;
-}
-
-const mockOrders: ManufacturingOrder[] = [
-  {
-    id: "OP-1024",
-    productName: "Cafequipe 6x50 GR",
-    sku: "PT-CQ-6X50",
-    quantity: 500,
-    status: "pending",
-    priority: "high",
-    createdAt: "Hace 2 horas",
-    assignee: "Jefe de Producción",
-  },
-  {
-    id: "OP-1025",
-    productName: "Arequipe de Macadamia x 125 GR",
-    sku: "PT-ARE-MAC125",
-    quantity: 120,
-    status: "marmita",
-    priority: "medium",
-    createdAt: "Hace 5 horas",
-    assignee: "Operario L2",
-  },
-  {
-    id: "OP-1021",
-    productName: "Galleta de Café Display",
-    sku: "PT-GAL-35",
-    quantity: 300,
-    status: "empaque",
-    priority: "high",
-    createdAt: "Ayer",
-    assignee: "Operario L1",
-  },
-  {
-    id: "OP-1019",
-    productName: "Cuyabrito de Macadamia Cuadrado",
-    sku: "PT-CUY-MAC",
-    quantity: 80,
-    status: "completed",
-    priority: "low",
-    createdAt: "Hace 2 días",
-    assignee: "Jefe de Producción",
-  },
+const COLUMNS: {
+  id: ProductionOrderResponse["status"];
+  title: string;
+  icon: typeof ListTodo;
+  color: string;
+}[] = [
+  { id: "PENDING", title: "Por Iniciar", icon: ListTodo, color: "text-muted-foreground" },
+  { id: "IN_PROGRESS", title: "En Producción", icon: Flame, color: "text-warning" },
+  { id: "COMPLETED", title: "Finalizado", icon: CheckCircle2, color: "text-success" },
+  { id: "CANCELLED", title: "Cancelados", icon: XCircle, color: "text-destructive" },
 ];
 
-const COLUMNS = [
-  { id: "pending", title: "Por Iniciar", icon: ListTodo, color: "text-muted-foreground" },
-  { id: "marmita", title: "En Marmita / Cocción", icon: Flame, color: "text-warning" },
-  { id: "empaque", title: "Dosificación y Empaque", icon: Package, color: "text-info" },
-  { id: "completed", title: "Finalizado (Bodega 3)", icon: CheckCircle2, color: "text-success" },
-] as const;
-
 function ManufacturingPage() {
-  const [orders, setOrders] = useState<ManufacturingOrder[]>(mockOrders);
+  const qc = useQueryClient();
   const [isNewOrderOpen, setIsNewOrderOpen] = useState(false);
-  const [selectedRecipe, setSelectedRecipe] = useState("cafequipe-250");
-  const [produceQty, setProduceQty] = useState(100);
+  const [selectedFormulaId, setSelectedFormulaId] = useState("");
+  const [plannedQty, setPlannedQty] = useState(100);
+  const [completeTarget, setCompleteTarget] = useState<ProductionOrderResponse | null>(null);
+  const [actualQty, setActualQty] = useState(0);
 
-  const BOM = {
-    "cafequipe-250": [
-      { sku: "INS-LCH-01", name: "Leche Líquida", qty: 2.5 * produceQty, uom: "Litros", stock: 1255 },
-      { sku: "INS-AZU-01", name: "Azúcar", qty: 0.8 * produceQty, uom: "Kg", stock: 696 },
-      { sku: "INS-ENV-250", name: "Envase Cafequipe 250g", qty: produceQty, uom: "Und", stock: 1500 },
-    ],
-    "macadamia-125": [
-      { sku: "INS-LCH-01", name: "Leche Líquida", qty: 1.2 * produceQty, uom: "Litros", stock: 1255 },
-      { sku: "INS-AZU-01", name: "Azúcar", qty: 0.4 * produceQty, uom: "Kg", stock: 696 },
-      { sku: "INS-MAC-01", name: "Macadamia Simple", qty: 0.15 * produceQty, uom: "Kg", stock: 13 },
-      { sku: "INS-ENV-125", name: "Envase Cafequipe 125g", qty: produceQty, uom: "Und", stock: 800 },
-    ]
-  };
+  const [isNewFormulaOpen, setIsNewFormulaOpen] = useState(false);
+  const [formulaName, setFormulaName] = useState("");
+  const [formulaDescription, setFormulaDescription] = useState("");
+  const [formulaOutputProductId, setFormulaOutputProductId] = useState("");
+  const [formulaOutputQty, setFormulaOutputQty] = useState(1);
+  const [formulaIngredients, setFormulaIngredients] = useState<{ _key: string; productId: string; quantity: number }[]>([
+    { _key: "i0", productId: "", quantity: 1 },
+  ]);
+
+  const { data: ordersData, isLoading: loadingOrders } = useQuery({
+    queryKey: ["production", "orders", { limit: 100 }],
+    queryFn: () => getOrders({ limit: 100 }),
+  });
+
+  const { data: formulas = [], isLoading: loadingFormulas } = useQuery({
+    queryKey: ["production", "formulas"],
+    queryFn: getFormulas,
+  });
+
+  const { data: productsData } = useQuery({
+    queryKey: ["inventory", "products", { limit: 200 }],
+    queryFn: () => getProducts({ limit: 200 }),
+  });
+  const allProducts = productsData?.data ?? [];
+
+  const orders = ordersData?.data ?? [];
+
+  const selectedFormula: FormulaResponse | undefined = formulas.find((f) => f.id === selectedFormulaId);
+
+  const invalidateOrders = () => qc.invalidateQueries({ queryKey: ["production", "orders"] });
+
+  const createMutation = useMutation({
+    mutationFn: createOrder,
+    onSuccess: () => {
+      toast.success("Orden de producción creada");
+      setIsNewOrderOpen(false);
+      invalidateOrders();
+    },
+    onError: (e: Error) => toast.error(e.message),
+  });
+
+  const startMutation = useMutation({
+    mutationFn: startOrder,
+    onSuccess: () => {
+      toast.success("Producción iniciada — insumos consumidos por FEFO");
+      invalidateOrders();
+      qc.invalidateQueries({ queryKey: ["inventory"] });
+    },
+    onError: (e: Error) => toast.error(e.message),
+  });
+
+  const completeMutation = useMutation({
+    mutationFn: ({ id, qty }: { id: string; qty: number }) => completeOrder(id, { actualQty: qty }),
+    onSuccess: () => {
+      toast.success("Orden completada — producto terminado registrado en inventario");
+      setCompleteTarget(null);
+      invalidateOrders();
+      qc.invalidateQueries({ queryKey: ["inventory"] });
+    },
+    onError: (e: Error) => toast.error(e.message),
+  });
+
+  const cancelMutation = useMutation({
+    mutationFn: cancelOrder,
+    onSuccess: () => {
+      toast.success("Orden cancelada");
+      invalidateOrders();
+    },
+    onError: (e: Error) => toast.error(e.message),
+  });
+
+  const createFormulaMutation = useMutation({
+    mutationFn: createFormula,
+    onSuccess: () => {
+      toast.success("Fórmula creada");
+      setIsNewFormulaOpen(false);
+      resetFormulaForm();
+      qc.invalidateQueries({ queryKey: ["production", "formulas"] });
+    },
+    onError: (e: Error) => toast.error(e.message),
+  });
+
+  function resetFormulaForm() {
+    setFormulaName("");
+    setFormulaDescription("");
+    setFormulaOutputProductId("");
+    setFormulaOutputQty(1);
+    setFormulaIngredients([{ _key: "i0", productId: "", quantity: 1 }]);
+  }
+
+  function updateIngredient(key: string, patch: { productId?: string; quantity?: number }) {
+    setFormulaIngredients((prev) => prev.map((i) => (i._key === key ? { ...i, ...patch } : i)));
+  }
+
+  function removeIngredient(key: string) {
+    setFormulaIngredients((prev) => (prev.length > 1 ? prev.filter((i) => i._key !== key) : prev));
+  }
+
+  function handleSubmitFormula() {
+    const validIngredients = formulaIngredients.filter((i) => i.productId && i.quantity > 0);
+    if (!formulaName.trim()) { toast.error("El nombre de la fórmula es requerido"); return; }
+    if (!formulaOutputProductId) { toast.error("Selecciona el producto de salida"); return; }
+    if (formulaOutputQty <= 0) { toast.error("La cantidad de salida debe ser mayor a 0"); return; }
+    if (validIngredients.length === 0) { toast.error("Agrega al menos un ingrediente"); return; }
+    createFormulaMutation.mutate({
+      name: formulaName.trim(),
+      description: formulaDescription || undefined,
+      outputProductId: formulaOutputProductId,
+      outputQty: formulaOutputQty,
+      ingredients: validIngredients.map((i) => ({ productId: i.productId, quantity: i.quantity })),
+    });
+  }
 
   const handleCreateOrder = () => {
-    const newOrder: ManufacturingOrder = {
-      id: `OP-${1026 + orders.length}`,
-      productName: selectedRecipe === "cafequipe-250" ? "Cafequipe x 250 GR" : "Arequipe de Macadamia x 125 GR",
-      sku: selectedRecipe === "cafequipe-250" ? "PT-CQ-250" : "PT-ARE-MAC125",
-      quantity: produceQty,
-      status: "pending",
-      priority: "medium",
-      createdAt: "Ahora",
-      assignee: "Jefe de Producción",
-    };
-    setOrders([newOrder, ...orders]);
-    setIsNewOrderOpen(false);
-  };
-
-  const moveOrder = (orderId: string, direction: "next" | "prev") => {
-    setOrders((current) =>
-      current.map((order) => {
-        if (order.id !== orderId) return order;
-
-        const currentStatusIdx = COLUMNS.findIndex((c) => c.id === order.status);
-        let nextIdx = direction === "next" ? currentStatusIdx + 1 : currentStatusIdx - 1;
-        
-        if (nextIdx < 0) nextIdx = 0;
-        if (nextIdx >= COLUMNS.length) nextIdx = COLUMNS.length - 1;
-
-        return { ...order, status: COLUMNS[nextIdx].id };
-      })
-    );
+    if (!selectedFormulaId) return;
+    const orderNumber = `OP-${Date.now().toString().slice(-6)}`;
+    createMutation.mutate({ orderNumber, formulaId: selectedFormulaId, plannedQty });
   };
 
   return (
@@ -152,10 +195,13 @@ function ManufacturingPage() {
           </div>
           <div>
             <h1 className="font-display text-lg font-semibold text-foreground">Control de Piso (MRP)</h1>
-            <p className="text-xs text-muted-foreground">Flujo de transformación y consumo de Bodega 12 a Bodega 3</p>
+            <p className="text-xs text-muted-foreground">Órdenes de producción con FEFO automático</p>
           </div>
         </div>
-        <div className="flex items-center gap-3">
+        <div className="flex gap-2">
+          <Button variant="outline" size="sm" className="gap-2" onClick={() => setIsNewFormulaOpen(true)}>
+            <FlaskConical className="size-4" /> Nueva Fórmula
+          </Button>
           <Button variant="nuclear" size="sm" className="gap-2" onClick={() => setIsNewOrderOpen(true)}>
             <Plus className="size-4" /> Nueva Orden
           </Button>
@@ -163,97 +209,53 @@ function ManufacturingPage() {
       </header>
 
       <main className="flex-1 overflow-x-auto p-6">
-        <div className="flex h-full min-w-max gap-6">
-          {COLUMNS.map((col) => {
-            const columnOrders = orders.filter((o) => o.status === col.id);
-            const Icon = col.icon;
+        {loadingOrders ? (
+          <div className="flex h-full items-center justify-center text-muted-foreground">
+            <Loader2 className="mr-2 size-5 animate-spin" /> Cargando órdenes…
+          </div>
+        ) : (
+          <div className="flex h-full min-w-max gap-6">
+            {COLUMNS.map((col) => {
+              const columnOrders = orders.filter((o) => o.status === col.id);
+              const Icon = col.icon;
 
-            return (
-              <div key={col.id} className="flex h-full w-[320px] flex-col rounded-xl bg-muted/30 border border-border">
-                <div className="flex items-center justify-between border-b border-border p-4">
-                  <div className="flex items-center gap-2">
-                    <Icon className={cn("size-4", col.color)} />
-                    <h3 className="font-semibold text-sm">{col.title}</h3>
+              return (
+                <div key={col.id} className="flex h-full w-[320px] flex-col rounded-xl bg-muted/30 border border-border">
+                  <div className="flex items-center justify-between border-b border-border p-4">
+                    <div className="flex items-center gap-2">
+                      <Icon className={cn("size-4", col.color)} />
+                      <h3 className="font-semibold text-sm">{col.title}</h3>
+                    </div>
+                    <span className="flex size-5 items-center justify-center rounded-full bg-background text-[10px] font-bold text-muted-foreground shadow-sm">
+                      {columnOrders.length}
+                    </span>
                   </div>
-                  <span className="flex size-5 items-center justify-center rounded-full bg-background text-[10px] font-bold text-muted-foreground shadow-sm">
-                    {columnOrders.length}
-                  </span>
+
+                  <div className="flex-1 overflow-y-auto p-3 space-y-3">
+                    {columnOrders.map((order) => (
+                      <OrderCard
+                        key={order.id}
+                        order={order}
+                        onStart={() => startMutation.mutate(order.id)}
+                        onComplete={() => { setCompleteTarget(order); setActualQty(order.plannedQty); }}
+                        onCancel={() => cancelMutation.mutate(order.id)}
+                        isWorking={startMutation.isPending || cancelMutation.isPending || completeMutation.isPending}
+                      />
+                    ))}
+                    {columnOrders.length === 0 && (
+                      <div className="flex h-24 items-center justify-center rounded-lg border border-dashed border-border/60 bg-transparent">
+                        <p className="text-xs text-muted-foreground">Sin órdenes</p>
+                      </div>
+                    )}
+                  </div>
                 </div>
-
-                <div className="flex-1 overflow-y-auto p-3 space-y-3">
-                  {columnOrders.map((order) => (
-                    <div
-                      key={order.id}
-                      className="group relative flex flex-col gap-3 rounded-lg border border-border bg-card p-4 shadow-sm transition-all hover:shadow-md hover:border-border/80"
-                    >
-                      <div className="flex items-start justify-between">
-                        <div className="flex flex-col">
-                          <span className="text-[10px] font-bold tracking-wider text-muted-foreground">
-                            {order.id}
-                          </span>
-                          <h4 className="font-medium text-sm leading-tight mt-1">{order.productName}</h4>
-                          <span className="text-xs font-mono text-muted-foreground mt-0.5">{order.sku}</span>
-                        </div>
-                        <button className="text-muted-foreground hover:text-foreground">
-                          <MoreVertical className="size-4" />
-                        </button>
-                      </div>
-
-                      <div className="flex items-center gap-2 mt-1">
-                        <span className="bg-surface-2 px-2 py-0.5 rounded text-xs font-mono font-semibold">
-                          {order.quantity} UND
-                        </span>
-                        {order.priority === "high" && (
-                          <span className="bg-destructive/10 text-destructive px-2 py-0.5 rounded text-[10px] font-bold uppercase tracking-wider">
-                            Urgente
-                          </span>
-                        )}
-                      </div>
-
-                      <div className="flex items-center justify-between mt-2 pt-3 border-t border-border/50">
-                        <div className="flex items-center gap-1.5 text-xs text-muted-foreground">
-                          <Clock className="size-3" />
-                          <span>{order.createdAt}</span>
-                        </div>
-                        
-                        <div className="flex gap-1 opacity-0 transition-opacity group-hover:opacity-100">
-                          {order.status !== "pending" && (
-                            <Button
-                              variant="outline"
-                              size="icon"
-                              className="size-6 h-6"
-                              onClick={() => moveOrder(order.id, "prev")}
-                            >
-                              <ArrowRight className="size-3 rotate-180" />
-                            </Button>
-                          )}
-                          {order.status !== "completed" && (
-                            <Button
-                              variant="nuclear"
-                              size="icon"
-                              className="size-6 h-6"
-                              onClick={() => moveOrder(order.id, "next")}
-                            >
-                              <ArrowRight className="size-3" />
-                            </Button>
-                          )}
-                        </div>
-                      </div>
-                    </div>
-                  ))}
-
-                  {columnOrders.length === 0 && (
-                    <div className="flex h-24 items-center justify-center rounded-lg border border-dashed border-border/60 bg-transparent">
-                      <p className="text-xs text-muted-foreground">Sin órdenes</p>
-                    </div>
-                  )}
-                </div>
-              </div>
-            );
-          })}
-        </div>
+              );
+            })}
+          </div>
+        )}
       </main>
 
+      {/* New Order Sheet */}
       <Sheet open={isNewOrderOpen} onOpenChange={setIsNewOrderOpen}>
         <SheetContent className="w-full sm:max-w-md overflow-y-auto">
           <SheetHeader>
@@ -265,71 +267,254 @@ function ManufacturingPage() {
 
           <div className="mt-6 space-y-6">
             <div className="space-y-3">
-              <Label>Receta / Producto a Fabricar</Label>
-              <select
-                className="flex h-9 w-full items-center justify-between rounded-md border border-input bg-background px-3 py-2 text-sm shadow-sm ring-offset-background placeholder:text-muted-foreground focus:outline-none focus:ring-1 focus:ring-ring disabled:cursor-not-allowed disabled:opacity-50"
-                value={selectedRecipe}
-                onChange={(e) => setSelectedRecipe(e.target.value)}
-              >
-                <option value="cafequipe-250">Cafequipe x 250 GR (PT-CQ-250)</option>
-                <option value="macadamia-125">Arequipe de Macadamia x 125 GR (PT-ARE-MAC125)</option>
-              </select>
+              <Label>Fórmula / Producto a Fabricar</Label>
+              {loadingFormulas ? (
+                <div className="flex items-center gap-2 text-sm text-muted-foreground">
+                  <Loader2 className="size-4 animate-spin" /> Cargando fórmulas…
+                </div>
+              ) : (
+                <select
+                  className="flex h-9 w-full items-center justify-between rounded-md border border-input bg-background px-3 py-2 text-sm shadow-sm ring-offset-background focus:outline-none focus:ring-1 focus:ring-ring"
+                  value={selectedFormulaId}
+                  onChange={(e) => setSelectedFormulaId(e.target.value)}
+                >
+                  <option value="">— Seleccionar fórmula —</option>
+                  {formulas.filter((f) => f.isActive).map((f) => (
+                    <option key={f.id} value={f.id}>
+                      {f.name} → {f.outputProductName}
+                    </option>
+                  ))}
+                </select>
+              )}
             </div>
 
             <div className="space-y-3">
-              <Label>Cantidad a Producir (Unidades)</Label>
-              <Input
-                type="number"
-                min={1}
-                value={produceQty}
-                onChange={(e) => setProduceQty(Number(e.target.value))}
-              />
+              <Label>Cantidad a Producir</Label>
+              <Input type="number" min={1} value={plannedQty} onChange={(e) => setPlannedQty(Number(e.target.value))} />
             </div>
 
-            <div className="space-y-3 pt-2">
-              <div className="flex items-center gap-2 border-b border-border pb-2">
-                <Beaker className="size-4 text-info" />
-                <h3 className="font-semibold text-sm">Bill of Materials (BOM)</h3>
-              </div>
-              <p className="text-xs text-muted-foreground">
-                Consumo estimado desde <b>Bodega 12 (Materia Prima)</b>:
-              </p>
-              
-              <div className="rounded-lg border border-border bg-muted/10 divide-y divide-border text-xs">
-                {BOM[selectedRecipe as keyof typeof BOM].map((item) => {
-                  const hasStock = item.stock >= item.qty;
-                  return (
-                    <div key={item.sku} className="flex justify-between items-center p-3">
+            {selectedFormula && (
+              <div className="space-y-3 pt-2">
+                <div className="flex items-center gap-2 border-b border-border pb-2">
+                  <Beaker className="size-4 text-info" />
+                  <h3 className="font-semibold text-sm">Bill of Materials (BOM)</h3>
+                </div>
+                <p className="text-xs text-muted-foreground">
+                  Consumo estimado por <b>{plannedQty} unidades</b>:
+                </p>
+                <div className="rounded-lg border border-border bg-muted/10 divide-y divide-border text-xs">
+                  {selectedFormula.ingredients.map((ing) => (
+                    <div key={ing.id} className="flex justify-between items-center p-3">
                       <div>
-                        <p className="font-medium">{item.name}</p>
-                        <p className="text-[10px] text-muted-foreground font-mono">{item.sku}</p>
+                        <p className="font-medium">{ing.productName}</p>
+                        <p className="text-[10px] text-muted-foreground font-mono">{ing.productSku}</p>
                       </div>
                       <div className="text-right">
-                        <p className={cn("font-bold font-mono", hasStock ? "text-foreground" : "text-destructive")}>
-                          - {item.qty.toFixed(1)} {item.uom}
-                        </p>
-                        <p className="text-[10px] text-muted-foreground">Stock: {item.stock}</p>
+                        <p className="font-bold font-mono">- {(ing.quantity * plannedQty).toFixed(2)}</p>
                       </div>
                     </div>
-                  );
-                })}
+                  ))}
+                </div>
+                <p className="text-xs text-muted-foreground">
+                  Produce: <strong>{(selectedFormula.outputQty * plannedQty).toFixed(2)} {selectedFormula.outputProductName}</strong>
+                </p>
               </div>
-            </div>
+            )}
 
             <div className="rounded-lg border border-warning/30 bg-warning/5 p-4 flex gap-3">
               <Flame className="size-5 text-warning shrink-0" />
               <p className="text-xs text-muted-foreground leading-relaxed">
-                Al confirmar, estos insumos se reservarán en Bodega 12. Solo se descargarán del Kárdex definitivamente y se sumarán a Bodega 3 cuando la orden pase a estado <b>Finalizado</b>.
+                Al iniciar la orden, los insumos se consumirán automáticamente del inventario usando <b>FEFO</b> (primer lote en vencer, primero en salir).
               </p>
             </div>
           </div>
 
           <SheetFooter className="mt-6">
             <Button variant="outline" onClick={() => setIsNewOrderOpen(false)}>Cancelar</Button>
-            <Button variant="nuclear" onClick={handleCreateOrder}>Crear Orden y Consumir Insumos</Button>
+            <Button variant="nuclear" onClick={handleCreateOrder}
+              disabled={!selectedFormulaId || createMutation.isPending}>
+              {createMutation.isPending ? <><Loader2 className="mr-2 size-4 animate-spin" /> Creando…</> : "Crear Orden"}
+            </Button>
           </SheetFooter>
         </SheetContent>
       </Sheet>
+
+      {/* Complete Order Sheet */}
+      <Sheet open={!!completeTarget} onOpenChange={(v) => !v && setCompleteTarget(null)}>
+        <SheetContent className="w-full sm:max-w-sm">
+          <SheetHeader>
+            <SheetTitle>Completar Orden</SheetTitle>
+            <SheetDescription>
+              {completeTarget?.orderNumber} — {completeTarget?.outputProductName}
+            </SheetDescription>
+          </SheetHeader>
+          <div className="mt-6 space-y-4">
+            <div className="space-y-2">
+              <Label>Cantidad real producida</Label>
+              <Input type="number" min={0} value={actualQty} onChange={(e) => setActualQty(Number(e.target.value))} />
+              <p className="text-xs text-muted-foreground">Cantidad planificada: {completeTarget?.plannedQty}</p>
+            </div>
+          </div>
+          <SheetFooter className="mt-6">
+            <Button variant="outline" onClick={() => setCompleteTarget(null)}>Cancelar</Button>
+            <Button variant="nuclear"
+              disabled={actualQty <= 0 || completeMutation.isPending}
+              onClick={() => completeTarget && completeMutation.mutate({ id: completeTarget.id, qty: actualQty })}>
+              {completeMutation.isPending ? <><Loader2 className="mr-2 size-4 animate-spin" /> Completando…</> : "Registrar y Cerrar"}
+            </Button>
+          </SheetFooter>
+        </SheetContent>
+      </Sheet>
+
+      {/* New Formula Sheet */}
+      <Sheet open={isNewFormulaOpen} onOpenChange={(v) => { if (!v) { setIsNewFormulaOpen(false); resetFormulaForm(); } }}>
+        <SheetContent className="w-full sm:max-w-lg overflow-y-auto">
+          <SheetHeader>
+            <SheetTitle>Nueva Fórmula (BOM)</SheetTitle>
+            <SheetDescription>Define la receta de producción con ingredientes y cantidades.</SheetDescription>
+          </SheetHeader>
+
+          <div className="mt-6 space-y-5">
+            <div className="space-y-1.5">
+              <Label>Nombre de la fórmula</Label>
+              <Input value={formulaName} onChange={(e) => setFormulaName(e.target.value)} placeholder="Arequipe estándar 1kg" />
+            </div>
+
+            <div className="space-y-1.5">
+              <Label>Descripción (opcional)</Label>
+              <Input value={formulaDescription} onChange={(e) => setFormulaDescription(e.target.value)} placeholder="Descripción de la receta" />
+            </div>
+
+            <div className="grid grid-cols-2 gap-4">
+              <div className="col-span-2 space-y-1.5">
+                <Label>Producto de salida (output)</Label>
+                <select
+                  value={formulaOutputProductId}
+                  onChange={(e) => setFormulaOutputProductId(e.target.value)}
+                  className="flex h-9 w-full rounded-md border border-input bg-background px-3 text-sm shadow-sm focus:outline-none focus:ring-1 focus:ring-ring"
+                >
+                  <option value="">— Seleccionar producto —</option>
+                  {allProducts.map((p) => (
+                    <option key={p.id} value={p.id}>{p.name} ({p.sku})</option>
+                  ))}
+                </select>
+              </div>
+              <div className="col-span-2 space-y-1.5">
+                <Label>Cantidad producida por corrida</Label>
+                <Input type="number" min={0.001} step={0.001} value={formulaOutputQty}
+                  onChange={(e) => setFormulaOutputQty(Number(e.target.value))} />
+              </div>
+            </div>
+
+            <div className="space-y-3">
+              <div className="flex items-center justify-between">
+                <Label>Ingredientes (inputs)</Label>
+                <Button type="button" variant="outline" size="sm"
+                  onClick={() => setFormulaIngredients((p) => [...p, { _key: Math.random().toString(36).slice(2), productId: "", quantity: 1 }])}>
+                  <Plus className="size-3.5 mr-1" /> Agregar
+                </Button>
+              </div>
+              {formulaIngredients.map((ing, idx) => (
+                <div key={ing._key} className="rounded-lg border border-border bg-muted/10 p-3 space-y-3">
+                  <div className="flex items-center justify-between">
+                    <span className="text-xs font-medium text-muted-foreground">Ingrediente {idx + 1}</span>
+                    {formulaIngredients.length > 1 && (
+                      <button type="button" onClick={() => removeIngredient(ing._key)} className="text-muted-foreground hover:text-destructive">
+                        <Trash2 className="size-3.5" />
+                      </button>
+                    )}
+                  </div>
+                  <div className="grid grid-cols-2 gap-3">
+                    <div className="col-span-2 space-y-1">
+                      <Label className="text-xs">Producto (materia prima)</Label>
+                      <select
+                        value={ing.productId}
+                        onChange={(e) => updateIngredient(ing._key, { productId: e.target.value })}
+                        className="flex h-9 w-full rounded-md border border-input bg-background px-3 text-sm shadow-sm focus:outline-none focus:ring-1 focus:ring-ring"
+                      >
+                        <option value="">— Seleccionar —</option>
+                        {allProducts.map((p) => <option key={p.id} value={p.id}>{p.name} ({p.sku})</option>)}
+                      </select>
+                    </div>
+                    <div className="col-span-2 space-y-1">
+                      <Label className="text-xs">Cantidad por corrida</Label>
+                      <Input type="number" min={0.001} step={0.001} value={ing.quantity}
+                        onChange={(e) => updateIngredient(ing._key, { quantity: Number(e.target.value) })} />
+                    </div>
+                  </div>
+                </div>
+              ))}
+            </div>
+          </div>
+
+          <SheetFooter className="mt-6">
+            <Button variant="outline" onClick={() => { setIsNewFormulaOpen(false); resetFormulaForm(); }}>Cancelar</Button>
+            <Button variant="nuclear" disabled={createFormulaMutation.isPending} onClick={handleSubmitFormula}>
+              {createFormulaMutation.isPending
+                ? <><Loader2 className="mr-2 size-4 animate-spin" /> Guardando…</>
+                : <><Beaker className="mr-2 size-4" /> Crear Fórmula</>}
+            </Button>
+          </SheetFooter>
+        </SheetContent>
+      </Sheet>
+    </div>
+  );
+}
+
+function OrderCard({
+  order, onStart, onComplete, onCancel, isWorking,
+}: {
+  order: ProductionOrderResponse;
+  onStart: () => void;
+  onComplete: () => void;
+  onCancel: () => void;
+  isWorking: boolean;
+}) {
+  return (
+    <div className="group relative flex flex-col gap-3 rounded-lg border border-border bg-card p-4 shadow-sm transition-all hover:shadow-md hover:border-border/80">
+      <div className="flex items-start justify-between">
+        <div className="flex flex-col">
+          <span className="text-[10px] font-bold tracking-wider text-muted-foreground">{order.orderNumber}</span>
+          <h4 className="font-medium text-sm leading-tight mt-1">{order.outputProductName}</h4>
+          <span className="text-xs font-mono text-muted-foreground mt-0.5">{order.formulaName}</span>
+        </div>
+        {order.status !== "COMPLETED" && order.status !== "CANCELLED" && (
+          <button className="text-muted-foreground hover:text-foreground" onClick={onCancel} disabled={isWorking} title="Cancelar orden">
+            <MoreVertical className="size-4" />
+          </button>
+        )}
+      </div>
+
+      <div className="flex items-center gap-2 mt-1">
+        <span className="bg-surface-2 px-2 py-0.5 rounded text-xs font-mono font-semibold">
+          {order.plannedQty} UND plan.
+        </span>
+        {order.actualQty > 0 && (
+          <span className="bg-success/10 text-success px-2 py-0.5 rounded text-xs font-mono font-semibold">
+            {order.actualQty} real
+          </span>
+        )}
+      </div>
+
+      <div className="flex items-center justify-between mt-2 pt-3 border-t border-border/50">
+        <div className="flex items-center gap-1.5 text-xs text-muted-foreground">
+          <Clock className="size-3" />
+          <span>{new Date(order.createdAt).toLocaleDateString("es-CO")}</span>
+        </div>
+
+        <div className="flex gap-1 opacity-0 transition-opacity group-hover:opacity-100">
+          {order.status === "PENDING" && (
+            <Button variant="nuclear" size="sm" className="h-7 text-xs gap-1" onClick={onStart} disabled={isWorking}>
+              <ArrowRight className="size-3" /> Iniciar
+            </Button>
+          )}
+          {order.status === "IN_PROGRESS" && (
+            <Button variant="nuclear" size="sm" className="h-7 text-xs gap-1" onClick={onComplete} disabled={isWorking}>
+              <Package className="size-3" /> Completar
+            </Button>
+          )}
+        </div>
+      </div>
     </div>
   );
 }
