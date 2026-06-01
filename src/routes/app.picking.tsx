@@ -1,7 +1,7 @@
 import { createFileRoute } from "@tanstack/react-router";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import {
-  Search, Filter, Play, CheckCircle, Loader2, Box, XCircle, Plus, Trash2,
+  Search, Filter, Play, CheckCircle, Loader2, Box, Plus, Trash2, PackageCheck, Truck,
 } from "lucide-react";
 import { toast } from "sonner";
 import { Button } from "@/components/ui/button";
@@ -12,7 +12,7 @@ import {
   Sheet, SheetContent, SheetHeader, SheetTitle, SheetDescription, SheetFooter,
 } from "@/components/ui/sheet";
 import {
-  getDispatches, approveDispatch, createDispatch, type DispatchResponse,
+  getDispatches, confirmPicking, approveDispatch, createDispatch, type DispatchResponse,
 } from "@/features/logistics/logistics.api";
 import { getProducts } from "@/features/inventory/inventory.api";
 import { format, parseISO } from "date-fns";
@@ -49,8 +49,8 @@ function PickingPage() {
   });
 
   const { data: productsData } = useQuery({
-    queryKey: ["inventory", "products", { limit: 200 }],
-    queryFn: () => getProducts({ limit: 200 }),
+    queryKey: ["inventory", "products", { limit: 100 }],
+    queryFn: () => getProducts({ limit: 100 }),
   });
   const products = productsData?.data ?? [];
 
@@ -65,17 +65,31 @@ function PickingPage() {
     );
   });
 
-  const pending   = filtered.filter((d) => d.status === "PENDING");
-  const approved  = filtered.filter((d) => d.status === "APPROVED");
-  const rejected  = filtered.filter((d) => d.status === "REJECTED");
+  const pending    = filtered.filter((d) => d.status === "PENDING");
+  const picking    = filtered.filter((d) => d.status === "PICKING");
+  const dispatched = filtered.filter((d) => d.status === "DISPATCHED" || d.status === "APPROVED");
+
+  const invalidate = () => {
+    qc.invalidateQueries({ queryKey: ["logistics", "dispatches"] });
+    qc.invalidateQueries({ queryKey: ["inventory"] });
+  };
+
+  const confirmPickingMutation = useMutation({
+    mutationFn: confirmPicking,
+    onSuccess: () => {
+      toast.success("Picking confirmado — stock descontado por FEFO. Ahora puedes aprobar el despacho.");
+      setSelected(null);
+      invalidate();
+    },
+    onError: (e: Error) => toast.error(e.message),
+  });
 
   const approveMutation = useMutation({
     mutationFn: approveDispatch,
     onSuccess: () => {
-      toast.success("Despacho procesado — inventario actualizado por FEFO");
+      toast.success("Despacho aprobado y despachado correctamente.");
       setSelected(null);
-      qc.invalidateQueries({ queryKey: ["logistics", "dispatches"] });
-      qc.invalidateQueries({ queryKey: ["inventory"] });
+      invalidate();
     },
     onError: (e: Error) => toast.error(e.message),
   });
@@ -118,13 +132,15 @@ function PickingPage() {
     });
   }
 
+  const isWorking = confirmPickingMutation.isPending || approveMutation.isPending;
+
   return (
     <div className="flex flex-col h-full">
       <header className="sticky top-0 z-10 flex h-16 items-center gap-4 border-b border-border bg-background px-4 sm:px-6">
         <div className="mr-auto">
           <h1 className="text-xl font-semibold tracking-tight">Picking (Outbound)</h1>
           <p className="text-xs text-muted-foreground hidden sm:block">
-            Órdenes de despacho pendientes de procesar — consumo automático por FEFO.
+            Órdenes de despacho — confirmar picking y luego aprobar.
           </p>
         </div>
         <div className="flex gap-2">
@@ -160,47 +176,55 @@ function PickingPage() {
 
           {!isLoading && !isError && (
             <>
-              <SectionTitle label="Por Procesar" count={pending.length} tone="warning" />
-              {pending.length === 0 && (
-                <EmptyState message="No hay despachos pendientes." />
-              )}
+              {/* Paso 1 — PENDING */}
+              <SectionTitle label="1 · Por Procesar" count={pending.length} tone="warning"
+                hint="Confirmar picking descuenta el stock por FEFO" />
+              {pending.length === 0 && <EmptyState message="No hay despachos pendientes." />}
               <div className="space-y-3">
                 {pending.map((d) => (
-                  <DispatchCard key={d.id} dispatch={d} onProcess={() => setSelected(d)} />
+                  <DispatchCard key={d.id} dispatch={d}
+                    actionLabel="Confirmar Picking"
+                    actionIcon={<Play className="mr-2 size-4" />}
+                    onAction={() => setSelected(d)} />
                 ))}
               </div>
 
-              <SectionTitle label="Procesados" count={approved.length} tone="success" />
-              {approved.length === 0 && <EmptyState message="Sin despachos aprobados aún." />}
+              {/* Paso 2 — PICKING */}
+              <SectionTitle label="2 · En Picking" count={picking.length} tone="info"
+                hint="Stock ya descontado — aprobar para marcar como despachado" />
+              {picking.length === 0 && <EmptyState message="Sin órdenes en picking." />}
               <div className="space-y-3">
-                {approved.map((d) => (
+                {picking.map((d) => (
+                  <DispatchCard key={d.id} dispatch={d}
+                    actionLabel="Aprobar y Despachar"
+                    actionIcon={<PackageCheck className="mr-2 size-4" />}
+                    onAction={() => setSelected(d)} />
+                ))}
+              </div>
+
+              {/* Despachados */}
+              <SectionTitle label="Despachados" count={dispatched.length} tone="success" />
+              {dispatched.length === 0 && <EmptyState message="Sin despachos completados aún." />}
+              <div className="space-y-3">
+                {dispatched.map((d) => (
                   <DispatchCard key={d.id} dispatch={d} />
                 ))}
               </div>
-
-              {rejected.length > 0 && (
-                <>
-                  <SectionTitle label="Rechazados" count={rejected.length} tone="destructive" />
-                  <div className="space-y-3">
-                    {rejected.map((d) => (
-                      <DispatchCard key={d.id} dispatch={d} />
-                    ))}
-                  </div>
-                </>
-              )}
             </>
           )}
         </div>
       </div>
 
-      {/* Process Sheet */}
+      {/* Action Sheet — shared for PENDING (picking) and PICKING (approve) */}
       <Sheet open={!!selected} onOpenChange={(v) => !v && setSelected(null)}>
         <SheetContent className="w-full sm:max-w-md overflow-y-auto">
           {selected && (
             <>
               <SheetHeader>
                 <p className="font-mono text-xs text-muted-foreground">{selected.id.slice(0, 8).toUpperCase()}</p>
-                <SheetTitle>Procesar Despacho</SheetTitle>
+                <SheetTitle>
+                  {selected.status === "PENDING" ? "Confirmar Picking" : "Aprobar Despacho"}
+                </SheetTitle>
                 <SheetDescription>
                   {selected.destination ?? "Sin destino"} · {selected.lines.length} línea(s)
                 </SheetDescription>
@@ -212,7 +236,8 @@ function PickingPage() {
                     <thead className="bg-muted text-muted-foreground text-xs font-medium">
                       <tr>
                         <th className="px-3 py-2">Producto</th>
-                        <th className="px-3 py-2 text-right">Cant.</th>
+                        <th className="px-3 py-2 text-right">Cant. Sol.</th>
+                        {selected.status === "PICKING" && <th className="px-3 py-2 text-right">Cant. Pick.</th>}
                       </tr>
                     </thead>
                     <tbody className="divide-y divide-border">
@@ -221,17 +246,31 @@ function PickingPage() {
                           <td className="px-3 py-2">
                             <p className="font-medium">{line.productName}</p>
                             <p className="text-[10px] font-mono text-muted-foreground">{line.productSku}</p>
+                            {line.lotNumber && (
+                              <p className="text-[10px] text-info">Lote: {line.lotNumber}</p>
+                            )}
                           </td>
                           <td className="px-3 py-2 text-right font-mono">{line.requestedQty}</td>
+                          {selected.status === "PICKING" && (
+                            <td className="px-3 py-2 text-right font-mono text-success">{line.pickedQty}</td>
+                          )}
                         </tr>
                       ))}
                     </tbody>
                   </table>
                 </div>
 
-                <div className="rounded-lg border border-warning/30 bg-warning/5 p-3 text-xs text-muted-foreground">
-                  Al aprobar, el inventario se descontará automáticamente usando <strong>FEFO</strong> — los lotes más próximos a vencer salen primero.
-                </div>
+                {selected.status === "PENDING" && (
+                  <div className="rounded-lg border border-warning/30 bg-warning/5 p-3 text-xs text-muted-foreground">
+                    Al confirmar, el inventario se descontará automáticamente usando <strong>FEFO</strong> — los lotes más próximos a vencer salen primero.
+                  </div>
+                )}
+
+                {selected.status === "PICKING" && (
+                  <div className="rounded-lg border border-info/30 bg-info/5 p-3 text-xs text-muted-foreground">
+                    El picking ya fue confirmado y el stock fue descontado. Aprobar marcará el despacho como <strong>DESPACHADO</strong>.
+                  </div>
+                )}
 
                 {selected.notes && (
                   <p className="text-xs text-muted-foreground border-l-2 border-border pl-3">{selected.notes}</p>
@@ -240,13 +279,22 @@ function PickingPage() {
 
               <SheetFooter className="mt-6">
                 <Button variant="outline" onClick={() => setSelected(null)}>Cancelar</Button>
-                <Button variant="nuclear"
-                  disabled={approveMutation.isPending}
-                  onClick={() => approveMutation.mutate(selected.id)}>
-                  {approveMutation.isPending
-                    ? <><Loader2 className="mr-2 size-4 animate-spin" /> Procesando…</>
-                    : <><Play className="mr-2 size-4" /> Aprobar y Despachar</>}
-                </Button>
+                {selected.status === "PENDING" && (
+                  <Button variant="nuclear" disabled={isWorking}
+                    onClick={() => confirmPickingMutation.mutate(selected.id)}>
+                    {confirmPickingMutation.isPending
+                      ? <><Loader2 className="mr-2 size-4 animate-spin" /> Procesando…</>
+                      : <><Play className="mr-2 size-4" /> Confirmar Picking</>}
+                  </Button>
+                )}
+                {selected.status === "PICKING" && (
+                  <Button variant="nuclear" disabled={isWorking}
+                    onClick={() => approveMutation.mutate(selected.id)}>
+                    {approveMutation.isPending
+                      ? <><Loader2 className="mr-2 size-4 animate-spin" /> Aprobando…</>
+                      : <><PackageCheck className="mr-2 size-4" /> Aprobar y Despachar</>}
+                  </Button>
+                )}
               </SheetFooter>
             </>
           )}
@@ -316,7 +364,7 @@ function PickingPage() {
             </div>
 
             <div className="rounded-lg border border-info/30 bg-info/5 p-3 text-xs text-muted-foreground">
-              La orden quedará en estado <strong>PENDIENTE</strong>. El stock se descontará automáticamente al aprobarla usando FEFO.
+              La orden quedará en estado <strong>PENDIENTE</strong>. El stock se descuenta al confirmar el picking usando FEFO.
             </div>
           </div>
 
@@ -325,7 +373,7 @@ function PickingPage() {
             <Button variant="nuclear" disabled={createMutation.isPending} onClick={handleSubmitCreate}>
               {createMutation.isPending
                 ? <><Loader2 className="mr-2 size-4 animate-spin" /> Creando…</>
-                : <><Play className="mr-2 size-4" /> Crear Despacho</>}
+                : <><Truck className="mr-2 size-4" /> Crear Despacho</>}
             </Button>
           </SheetFooter>
         </SheetContent>
@@ -334,12 +382,26 @@ function PickingPage() {
   );
 }
 
-function DispatchCard({ dispatch: d, onProcess }: { dispatch: DispatchResponse; onProcess?: () => void }) {
+function DispatchCard({
+  dispatch: d,
+  actionLabel,
+  actionIcon,
+  onAction,
+}: {
+  dispatch: DispatchResponse;
+  actionLabel?: string;
+  actionIcon?: React.ReactNode;
+  onAction?: () => void;
+}) {
   const totalQty = d.lines.reduce((s, l) => s + l.requestedQty, 0);
+  const isCompleted = d.status === "DISPATCHED" || d.status === "APPROVED";
+
   return (
     <div className={cn(
       "relative overflow-hidden rounded-xl border bg-card p-4 shadow-sm transition-shadow hover:shadow-md",
-      d.status === "PENDING" ? "border-warning/40" : d.status === "APPROVED" ? "border-success/30" : "border-destructive/30"
+      d.status === "PENDING" ? "border-warning/40" :
+      d.status === "PICKING" ? "border-info/40" :
+      isCompleted ? "border-success/30" : "border-border"
     )}>
       <div className="flex items-start justify-between">
         <div>
@@ -347,9 +409,10 @@ function DispatchCard({ dispatch: d, onProcess }: { dispatch: DispatchResponse; 
             <span className="font-mono text-sm font-bold">{d.id.slice(0, 8).toUpperCase()}</span>
             <span className={cn("rounded-full px-2 py-0.5 text-[10px] font-semibold uppercase",
               d.status === "PENDING" ? "bg-warning/15 text-warning" :
-              d.status === "APPROVED" ? "bg-success/15 text-success" :
-              "bg-destructive/15 text-destructive")}>
-              {d.status === "PENDING" ? "Pendiente" : d.status === "APPROVED" ? "Aprobado" : "Rechazado"}
+              d.status === "PICKING" ? "bg-info/15 text-info" :
+              "bg-success/15 text-success")}>
+              {d.status === "PENDING" ? "Pendiente" :
+               d.status === "PICKING" ? "En Picking" : "Despachado"}
             </span>
           </div>
           <p className="mt-1 text-sm text-muted-foreground">
@@ -357,8 +420,8 @@ function DispatchCard({ dispatch: d, onProcess }: { dispatch: DispatchResponse; 
           </p>
         </div>
         {d.status === "PENDING" && <Box className="size-5 text-warning" />}
-        {d.status === "APPROVED" && <CheckCircle className="size-5 text-success" />}
-        {d.status === "REJECTED" && <XCircle className="size-5 text-destructive" />}
+        {d.status === "PICKING" && <PackageCheck className="size-5 text-info" />}
+        {isCompleted && <CheckCircle className="size-5 text-success" />}
       </div>
 
       <div className="mt-3 grid grid-cols-3 gap-2 text-center divide-x divide-border border-t border-border/50 pt-3">
@@ -376,12 +439,12 @@ function DispatchCard({ dispatch: d, onProcess }: { dispatch: DispatchResponse; 
         </div>
       </div>
 
-      {d.status === "PENDING" && onProcess && (
-        <Button className="w-full mt-4" onClick={onProcess}>
-          <Play className="mr-2 size-4" /> Procesar Despacho
+      {onAction && actionLabel && (
+        <Button className="w-full mt-4" onClick={onAction}>
+          {actionIcon}{actionLabel}
         </Button>
       )}
-      {d.status === "APPROVED" && (
+      {isCompleted && (
         <Button variant="outline" className="w-full mt-4 text-muted-foreground" disabled>
           <CheckCircle className="mr-2 size-4" /> Completado
         </Button>
@@ -390,16 +453,23 @@ function DispatchCard({ dispatch: d, onProcess }: { dispatch: DispatchResponse; 
   );
 }
 
-function SectionTitle({ label, count, tone }: { label: string; count: number; tone: "warning" | "success" | "destructive" }) {
+function SectionTitle({ label, count, tone, hint }: {
+  label: string; count: number;
+  tone: "warning" | "success" | "info" | "destructive";
+  hint?: string;
+}) {
   return (
     <div className="flex items-center gap-2 pt-2">
       <h2 className={cn("font-semibold text-sm",
-        tone === "warning" ? "text-warning" : tone === "success" ? "text-success" : "text-destructive")}>
+        tone === "warning" ? "text-warning" :
+        tone === "success" ? "text-success" :
+        tone === "info" ? "text-info" : "text-destructive")}>
         {label}
       </h2>
       <span className="flex size-5 items-center justify-center rounded-full bg-muted text-[10px] font-bold text-muted-foreground">
         {count}
       </span>
+      {hint && <span className="text-[11px] text-muted-foreground hidden sm:inline">· {hint}</span>}
     </div>
   );
 }

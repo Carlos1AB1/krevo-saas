@@ -87,8 +87,8 @@ function ManufacturingPage() {
   });
 
   const { data: productsData } = useQuery({
-    queryKey: ["inventory", "products", { limit: 200 }],
-    queryFn: () => getProducts({ limit: 200 }),
+    queryKey: ["inventory", "products", { limit: 100 }],
+    queryFn: () => getProducts({ limit: 100 }),
   });
   const allProducts = productsData?.data ?? [];
 

@@ -59,8 +59,8 @@ function SuppliersPage() {
   });
 
   const { data: productsData } = useQuery({
-    queryKey: ["inventory", "products", { limit: 200 }],
-    queryFn: () => getProducts({ limit: 200 }),
+    queryKey: ["inventory", "products", { limit: 100 }],
+    queryFn: () => getProducts({ limit: 100 }),
   });
   const products = productsData?.data ?? [];
 
@@ -221,7 +221,10 @@ function SuppliersPage() {
                       <div>
                         <h2 className="font-semibold leading-none">{sup.name}</h2>
                         <p className="mt-1 text-xs text-muted-foreground">
-                          Última recepción: {format(parseISO(sup.lastReceiptAt), "dd MMM yyyy", { locale: es })}
+                          Última recepción:{" "}
+                          {sup.lastReceiptAt
+                            ? format(parseISO(sup.lastReceiptAt), "dd MMM yyyy", { locale: es })
+                            : "Sin recepciones"}
                         </p>
                       </div>
                     </div>

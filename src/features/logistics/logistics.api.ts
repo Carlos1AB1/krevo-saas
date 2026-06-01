@@ -98,7 +98,7 @@ export interface DispatchLine {
 
 export interface DispatchResponse {
   id: string;
-  status: "PENDING" | "APPROVED" | "REJECTED";
+  status: "PENDING" | "PICKING" | "APPROVED" | "DISPATCHED";
   destination: string | null;
   notes: string | null;
   dispatchedAt: string | null;
@@ -119,15 +119,12 @@ export function getDispatches(params?: { page?: number; limit?: number; status?:
   return authRequest(`/logistics/dispatches?${qs.toString()}`);
 }
 
-export function approveDispatch(id: string): Promise<DispatchResponse> {
-  return authRequest(`/logistics/dispatches/${id}/approve`, { method: "POST" });
+export function confirmPicking(id: string): Promise<DispatchResponse> {
+  return authRequest(`/logistics/dispatches/${id}/picking`, { method: "POST" });
 }
 
-export function rejectDispatch(id: string, reason?: string): Promise<DispatchResponse> {
-  return authRequest(`/logistics/dispatches/${id}/reject`, {
-    method: "POST",
-    body: JSON.stringify({ reason }),
-  });
+export function approveDispatch(id: string): Promise<DispatchResponse> {
+  return authRequest(`/logistics/dispatches/${id}/approve`, { method: "POST" });
 }
 
 export interface CreateDispatchLineInput {
