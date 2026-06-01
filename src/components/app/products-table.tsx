@@ -1,828 +1,533 @@
 import { useMemo, useState } from "react";
+import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { motion } from "framer-motion";
 import {
-  Search,
-  Filter,
-  Plus,
-  Upload,
-  Download,
-  ArrowUpDown,
-  X,
-  Boxes,
-  Calendar,
-  Warehouse,
-  TrendingUp,
-  Package,
-  Loader2,
-  Trash2,
+  Search, Filter, Plus, ArrowUpDown, X,
+  Boxes, Calendar, Warehouse, TrendingUp, Package, Loader2, Trash2, MapPin,
 } from "lucide-react";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Button } from "@/components/ui/button";
 import {
-  Sheet,
-  SheetContent,
-  SheetHeader,
-  SheetTitle,
-  SheetDescription,
+  Sheet, SheetContent, SheetHeader, SheetTitle, SheetDescription,
 } from "@/components/ui/sheet";
 import {
-  Dialog,
-  DialogContent,
-  DialogDescription,
-  DialogFooter,
-  DialogHeader,
-  DialogTitle,
-} from "@/components/ui/dialog";
-import {
-  AlertDialog,
-  AlertDialogAction,
-  AlertDialogCancel,
-  AlertDialogContent,
-  AlertDialogDescription,
-  AlertDialogFooter,
-  AlertDialogHeader,
-  AlertDialogTitle,
-} from "@/components/ui/alert-dialog";
-import { products, type Product } from "@/lib/wms-mock";
+  getProducts, getCategories, createProduct, createCategory, getLots, getMovements,
+  type ProductResponse,
+} from "@/features/inventory/inventory.api";
 import { cn } from "@/lib/utils";
 import { toast } from "sonner";
+import { format, parseISO, differenceInDays } from "date-fns";
+import { es } from "date-fns/locale";
 
-const categories = ["Todas", "Endulzantes", "Café Molido", "Café en Grano", "Dulces", "Insumos"];
-const statuses = ["Todos", "active", "low", "critical"] as const;
+type SortKey = "sku" | "name" | "abcClass";
+type DetailTab = "details" | "lots" | "movements";
 
-const statusMeta: Record<Product["status"], { label: string; cls: string }> = {
-  active: { label: "Activo", cls: "bg-success/15 text-success" },
-  low: { label: "Bajo", cls: "bg-warning/15 text-warning" },
-  critical: { label: "Crítico", cls: "bg-destructive/15 text-destructive" },
-  discontinued: { label: "Descontinuado", cls: "bg-muted text-muted-foreground" },
-};
-
-const abcMeta: Record<Product["abc"], string> = {
+const abcMeta: Record<string, string> = {
   A: "bg-nuclear/15 text-nuclear",
   B: "bg-reactor/15 text-reactor",
   C: "bg-muted text-muted-foreground",
 };
 
-type SortKey = "sku" | "name" | "stock" | "abc";
-
 export function ProductsTable() {
+  const qc = useQueryClient();
   const [q, setQ] = useState("");
-  const [cat, setCat] = useState("Todas");
-  const [status, setStatus] = useState<(typeof statuses)[number]>("Todos");
-  const [sort, setSort] = useState<{ key: SortKey; dir: "asc" | "desc" }>({
-    key: "sku",
-    dir: "asc",
-  });
-  const [selected, setSelected] = useState<Product | null>(null);
-  const [importOpen, setImportOpen] = useState(false);
+  const [catFilter, setCatFilter] = useState("");
+  const [sort, setSort] = useState<{ key: SortKey; dir: "asc" | "desc" }>({ key: "sku", dir: "asc" });
+  const [selected, setSelected] = useState<ProductResponse | null>(null);
+  const [detailTab, setDetailTab] = useState<DetailTab>("details");
   const [createOpen, setCreateOpen] = useState(false);
-  const [isSaving, setIsSaving] = useState(false);
-  const [errors, setErrors] = useState<Record<string, string>>({});
+  const [createCategoryOpen, setCreateCategoryOpen] = useState(false);
+  const [newCategoryName, setNewCategoryName] = useState("");
+  const [newCategoryDesc, setNewCategoryDesc] = useState("");
 
-  const handleSaveProduct = () => {
-    const sku = (document.getElementById("prod-sku") as HTMLInputElement)?.value;
-    const ean = (document.getElementById("prod-ean") as HTMLInputElement)?.value;
-    const name = (document.getElementById("prod-name") as HTMLInputElement)?.value;
+  const { data, isLoading, isError } = useQuery({
+    queryKey: ["inventory", "products", { limit: 100 }],
+    queryFn: () => getProducts({ limit: 100 }),
+  });
 
-    const newErrors: Record<string, string> = {};
-    if (!sku || sku.length < 3) newErrors.sku = "El SKU es obligatorio y debe tener al menos 3 caracteres.";
-    if (!ean || ean.length < 8) newErrors.ean = "El EAN es inválido. Ingresa un código numérico válido.";
-    if (!name) newErrors.name = "El nombre y descripción del producto no pueden estar vacíos.";
+  const { data: categories = [] } = useQuery({
+    queryKey: ["inventory", "categories"],
+    queryFn: getCategories,
+  });
 
-    if (Object.keys(newErrors).length > 0) {
-      setErrors(newErrors);
-      return;
-    }
-    
-    setErrors({});
-    setIsSaving(true);
-    setTimeout(() => {
-      setIsSaving(false);
+  const { data: lotsData, isLoading: lotsLoading } = useQuery({
+    queryKey: ["inventory", "lots", { productId: selected?.id }],
+    queryFn: () => getLots({ productId: selected!.id, limit: 100 }),
+    enabled: !!selected && detailTab === "lots",
+  });
+
+  const { data: movementsData, isLoading: movsLoading } = useQuery({
+    queryKey: ["inventory", "movements", { productId: selected?.id }],
+    queryFn: () => getMovements({ productId: selected!.id, limit: 100 }),
+    enabled: !!selected && detailTab === "movements",
+  });
+
+  const productLots = lotsData?.data ?? [];
+  const productMovements = movementsData?.data ?? [];
+
+  const products = data?.data ?? [];
+
+  const createMutation = useMutation({
+    mutationFn: createProduct,
+    onSuccess: () => {
+      toast.success("Producto creado");
       setCreateOpen(false);
-      toast.success("Producto creado", { description: "El producto ha sido guardado exitosamente." });
-    }, 1200);
-  };
+      qc.invalidateQueries({ queryKey: ["inventory", "products"] });
+    },
+    onError: (e: Error) => toast.error(e.message),
+  });
+
+  const createCategoryMutation = useMutation({
+    mutationFn: createCategory,
+    onSuccess: () => {
+      toast.success("Categoría creada");
+      setCreateCategoryOpen(false);
+      setNewCategoryName("");
+      setNewCategoryDesc("");
+      qc.invalidateQueries({ queryKey: ["inventory", "categories"] });
+    },
+    onError: (e: Error) => toast.error(e.message),
+  });
 
   const filtered = useMemo(() => {
     const ql = q.toLowerCase();
-    const out = products.filter((p) => {
-      if (cat !== "Todas" && p.category !== cat) return false;
-      if (status !== "Todos" && p.status !== status) return false;
-      if (!ql) return true;
-      return (
-        p.sku.toLowerCase().includes(ql) ||
-        p.name.toLowerCase().includes(ql) ||
-        p.warehouse.toLowerCase().includes(ql)
-      );
-    });
-    return out.sort((a, b) => {
-      const dir = sort.dir === "asc" ? 1 : -1;
-      const av = a[sort.key];
-      const bv = b[sort.key];
-      if (typeof av === "number" && typeof bv === "number") return (av - bv) * dir;
-      return String(av).localeCompare(String(bv)) * dir;
-    });
-  }, [q, cat, status, sort]);
+    return products
+      .filter((p) => {
+        if (catFilter && p.categoryId !== catFilter) return false;
+        if (!ql) return true;
+        return p.sku.toLowerCase().includes(ql) || p.name.toLowerCase().includes(ql);
+      })
+      .sort((a, b) => {
+        const dir = sort.dir === "asc" ? 1 : -1;
+        return String(a[sort.key]).localeCompare(String(b[sort.key])) * dir;
+      });
+  }, [products, q, catFilter, sort]);
 
-  const totals = useMemo(() => {
-    return {
-      count: filtered.length,
-      units: filtered.reduce((a, p) => a + p.stock, 0),
-      critical: filtered.filter((p) => p.status === "critical").length,
-      classA: filtered.filter((p) => p.abc === "A").length,
-    };
-  }, [filtered]);
+  const totals = useMemo(() => ({
+    count: filtered.length,
+    classA: filtered.filter((p) => p.abcClass === "A").length,
+    inactive: filtered.filter((p) => !p.isActive).length,
+    perishable: filtered.filter((p) => p.isPerishable).length,
+  }), [filtered]);
 
   const toggleSort = (key: SortKey) =>
     setSort((s) => ({ key, dir: s.key === key && s.dir === "asc" ? "desc" : "asc" }));
 
+  const handleCreate = (e: React.FormEvent<HTMLFormElement>) => {
+    e.preventDefault();
+    const fd = new FormData(e.currentTarget);
+    createMutation.mutate({
+      sku: fd.get("sku") as string,
+      name: fd.get("name") as string,
+      description: (fd.get("description") as string) || undefined,
+      unit: fd.get("unit") as string,
+      categoryId: fd.get("categoryId") as string,
+      minStock: Number(fd.get("minStock") ?? 0),
+      isPerishable: fd.get("isPerishable") === "true",
+    });
+  };
+
   return (
     <div className="space-y-4">
-      {/* Header */}
       <div className="flex flex-wrap items-end justify-between gap-3">
         <div>
-          <p className="text-xs font-medium uppercase tracking-wider text-muted-foreground">
-            Inventario · Catálogo maestro
-          </p>
-          <h1 className="mt-1 font-display text-2xl font-semibold tracking-tight lg:text-3xl">
-            Productos
-          </h1>
+          <p className="text-xs font-medium uppercase tracking-wider text-muted-foreground">Inventario · Catálogo maestro</p>
+          <h1 className="mt-1 font-display text-2xl font-semibold tracking-tight lg:text-3xl">Productos</h1>
           <p className="mt-1 text-sm text-muted-foreground">
-            {totals.count} SKUs · {totals.units.toLocaleString("es-CO")} unidades en piso
+            {isLoading ? "Cargando…" : `${totals.count} SKUs registrados`}
           </p>
         </div>
-        <div className="flex flex-wrap items-center gap-2">
-          <Button
-            variant="outline"
-            size="sm"
-            onClick={() => toast.message("Exportando catálogo a CSV…")}
-          >
-            <Download className="size-4" />
-            Exportar
-          </Button>
-          <Button variant="outline" size="sm" onClick={() => setImportOpen(true)}>
-            <Upload className="size-4" />
-            Importar CSV
+        <div className="flex gap-2">
+          <Button variant="outline" size="sm" onClick={() => setCreateCategoryOpen(true)}>
+            <Plus className="size-4" /> Nueva categoría
           </Button>
           <Button variant="nuclear" size="sm" onClick={() => setCreateOpen(true)}>
-            <Plus className="size-4" />
-            Nuevo producto
+            <Plus className="size-4" /> Nuevo producto
           </Button>
         </div>
       </div>
 
-      {/* Mini stats */}
       <div className="grid grid-cols-2 gap-3 lg:grid-cols-4">
-        <MiniStat icon={Package} label="SKUs filtrados" value={totals.count.toString()} />
-        <MiniStat icon={Boxes} label="Unidades" value={totals.units.toLocaleString("es-CO")} />
-        <MiniStat
-          icon={TrendingUp}
-          label="Clase A"
-          value={totals.classA.toString()}
-          tone="nuclear"
-        />
-        <MiniStat
-          icon={Warehouse}
-          label="Críticos"
-          value={totals.critical.toString()}
-          tone="destructive"
-        />
+        <MiniStat icon={Package} label="SKUs filtrados" value={String(totals.count)} />
+        <MiniStat icon={TrendingUp} label="Clase A" value={String(totals.classA)} tone="nuclear" />
+        <MiniStat icon={Boxes} label="Perecederos" value={String(totals.perishable)} />
+        <MiniStat icon={Warehouse} label="Inactivos" value={String(totals.inactive)} tone="destructive" />
       </div>
 
-      {/* Filters */}
       <div className="flex flex-wrap items-center gap-2 rounded-xl border border-border bg-card p-3">
         <div className="relative flex-1 min-w-[220px]">
-          <Label htmlFor="search-products" className="sr-only">
-            Buscar por SKU, nombre o bodega
-          </Label>
           <Search className="pointer-events-none absolute left-3 top-1/2 size-4 -translate-y-1/2 text-muted-foreground" />
-          <Input
-            id="search-products"
-            value={q}
-            onChange={(e) => setQ(e.target.value)}
-            placeholder="Buscar por SKU, nombre o bodega…"
-            className="pl-9"
-          />
+          <Input value={q} onChange={(e) => setQ(e.target.value)} placeholder="Buscar por SKU o nombre…" className="pl-9" />
         </div>
-        <FilterPills label="Categoría" value={cat} options={categories} onChange={setCat} />
-        <FilterPills
-          label="Estado"
-          value={status}
-          options={statuses as unknown as string[]}
-          onChange={(v) => setStatus(v as (typeof statuses)[number])}
-          renderLabel={(v) =>
-            v === "active" ? "Activo" : v === "low" ? "Bajo" : v === "critical" ? "Crítico" : v
-          }
-        />
-        {(q || cat !== "Todas" || status !== "Todos") && (
-          <Button
-            variant="ghost"
-            size="sm"
-            onClick={() => {
-              setQ("");
-              setCat("Todas");
-              setStatus("Todos");
-            }}
-          >
-            <X className="size-3.5" />
-            Limpiar filtros
+        <div className="flex items-center gap-1.5">
+          <Filter className="size-3.5 text-muted-foreground" />
+          <span className="text-xs text-muted-foreground">Categoría:</span>
+          <div className="flex flex-wrap gap-1">
+            <button type="button" onClick={() => setCatFilter("")}
+              className={cn("rounded-full border px-2.5 py-1 text-xs font-medium transition-colors", !catFilter ? "border-nuclear bg-nuclear/10 text-nuclear" : "border-border bg-background text-muted-foreground hover:bg-accent")}>
+              Todas
+            </button>
+            {categories.map((c) => (
+              <button key={c.id} type="button" onClick={() => setCatFilter(c.id)}
+                className={cn("rounded-full border px-2.5 py-1 text-xs font-medium transition-colors", catFilter === c.id ? "border-nuclear bg-nuclear/10 text-nuclear" : "border-border bg-background text-muted-foreground hover:bg-accent")}>
+                {c.name}
+              </button>
+            ))}
+          </div>
+        </div>
+        {(q || catFilter) && (
+          <Button variant="ghost" size="sm" onClick={() => { setQ(""); setCatFilter(""); }}>
+            <X className="size-3.5" /> Limpiar
           </Button>
         )}
       </div>
 
-      {/* Table */}
-      <div className="overflow-hidden rounded-xl border border-border bg-card">
-        <div className="overflow-x-auto">
-          <table className="w-full text-sm">
-            <thead className="bg-surface-2 text-left text-[11px] font-semibold uppercase tracking-wider text-muted-foreground">
-              <tr>
-                <Th onClick={() => toggleSort("sku")} active={sort.key === "sku"}>
-                  SKU
-                </Th>
-                <Th onClick={() => toggleSort("name")} active={sort.key === "name"}>
-                  Producto
-                </Th>
-                <th className="px-3 py-2.5 font-semibold uppercase tracking-wider">Categoría</th>
-                <Th onClick={() => toggleSort("abc")} active={sort.key === "abc"}>
-                  ABC
-                </Th>
-                <Th onClick={() => toggleSort("stock")} active={sort.key === "stock"} align="right">
-                  Stock
-                </Th>
-                <th className="px-3 py-2.5 font-semibold uppercase tracking-wider text-right">
-                  ROP
-                </th>
-                <th className="px-3 py-2.5 font-semibold uppercase tracking-wider">Bodega</th>
-                <th className="px-3 py-2.5 font-semibold uppercase tracking-wider">Estado</th>
-                <th className="px-3 py-2.5 font-semibold uppercase tracking-wider">Último mov.</th>
-              </tr>
-            </thead>
-            <tbody className="divide-y divide-border">
-              {filtered.length === 0 ? (
+      {isLoading && (
+        <div className="flex items-center justify-center py-12 text-muted-foreground">
+          <Loader2 className="mr-2 size-5 animate-spin" /> Cargando productos…
+        </div>
+      )}
+
+      {isError && (
+        <div className="rounded-xl border border-destructive/30 bg-destructive/10 p-4 text-sm text-destructive">
+          No fue posible cargar los productos. Verifica que el servidor esté activo.
+        </div>
+      )}
+
+      {!isLoading && !isError && (
+        <div className="overflow-hidden rounded-xl border border-border bg-card">
+          <div className="overflow-x-auto">
+            <table className="w-full text-sm">
+              <thead className="bg-muted/50 text-left text-[11px] font-semibold uppercase tracking-wider text-muted-foreground">
                 <tr>
-                  <td colSpan={9} className="px-6 py-16 text-center">
-                    <p className="text-sm font-medium text-foreground">Sin resultados</p>
-                    <p className="mt-1 text-xs text-muted-foreground">
-                      Ajusta los filtros o limpia la búsqueda.
-                    </p>
-                  </td>
+                  <Th onClick={() => toggleSort("sku")} active={sort.key === "sku"}>SKU</Th>
+                  <Th onClick={() => toggleSort("name")} active={sort.key === "name"}>Producto</Th>
+                  <th className="px-3 py-2.5">Categoría</th>
+                  <Th onClick={() => toggleSort("abcClass")} active={sort.key === "abcClass"}>ABC</Th>
+                  <th className="px-3 py-2.5">Unidad</th>
+                  <th className="px-3 py-2.5 text-right">Stock mín.</th>
+                  <th className="px-3 py-2.5">Estado</th>
                 </tr>
-              ) : (
-                filtered.map((p, i) => {
-                  const cov = Math.min(100, (p.stock / Math.max(p.rop, 1)) * 100);
-                  return (
-                    <motion.tr
-                      key={p.sku}
-                      initial={{ opacity: 0, y: 4 }}
-                      animate={{ opacity: 1, y: 0 }}
+              </thead>
+              <tbody className="divide-y divide-border">
+                {filtered.length === 0 ? (
+                  <tr>
+                    <td colSpan={7} className="px-6 py-16 text-center text-sm text-muted-foreground">
+                      Sin resultados — ajusta los filtros.
+                    </td>
+                  </tr>
+                ) : (
+                  filtered.map((p, i) => (
+                    <motion.tr key={p.id} initial={{ opacity: 0, y: 4 }} animate={{ opacity: 1, y: 0 }}
                       transition={{ duration: 0.25, delay: Math.min(i * 0.015, 0.2) }}
-                    >
+                      className="hover:bg-muted/30 transition-colors cursor-pointer"
+                      onClick={() => setSelected(p)}>
+                      <td className="px-3 py-2.5 font-mono text-xs text-muted-foreground">{p.sku}</td>
+                      <td className="px-3 py-2.5 font-medium">{p.name}</td>
+                      <td className="px-3 py-2.5 text-muted-foreground text-xs">{p.category.name}</td>
                       <td className="px-3 py-2.5">
-                        <button
-                          type="button"
-                          onClick={() => setSelected(p)}
-                          className="block w-full text-left font-mono text-xs text-muted-foreground hover:text-foreground"
-                        >
-                          {p.sku}
-                        </button>
-                      </td>
-                      <td className="px-3 py-2.5">
-                        <button
-                          type="button"
-                          onClick={() => setSelected(p)}
-                          className="block w-full text-left font-medium text-foreground hover:underline"
-                        >
-                          {p.name}
-                        </button>
-                      </td>
-                      <td className="px-3 py-2.5 text-muted-foreground">{p.category}</td>
-                      <td className="px-3 py-2.5">
-                        <button
-                          type="button"
-                          onClick={() => setSelected(p)}
-                          className="block w-full text-left"
-                        >
-                          <span
-                            className={cn(
-                              "rounded-md px-1.5 py-0.5 font-mono text-[10px] font-bold",
-                              abcMeta[p.abc],
-                            )}
-                          >
-                            {p.abc}
-                          </span>
-                        </button>
-                      </td>
-                      <td className="px-3 py-2.5 text-right">
-                        <button
-                          type="button"
-                          onClick={() => setSelected(p)}
-                          className="block w-full text-right font-mono"
-                        >
-                          <div className="ml-auto flex max-w-[140px] items-center gap-2">
-                            <div className="h-1 flex-1 overflow-hidden rounded-full bg-surface-2">
-                              <div
-                                className={cn(
-                                  "h-full rounded-full",
-                                  p.status === "critical"
-                                    ? "bg-destructive"
-                                    : p.status === "low"
-                                      ? "bg-warning"
-                                      : "bg-success",
-                                )}
-                                style={{ width: `${cov}%` }}
-                              />
-                            </div>
-                            <span className="w-12 text-right text-xs">
-                              {p.stock.toLocaleString("es-CO")}
-                            </span>
-                          </div>
-                        </button>
-                      </td>
-                      <td className="px-3 py-2.5 text-right font-mono text-xs text-muted-foreground">
-                        {p.rop}
-                      </td>
-                      <td className="px-3 py-2.5 text-muted-foreground">{p.warehouse}</td>
-                      <td className="px-3 py-2.5">
-                        <span
-                          className={cn(
-                            "rounded-full px-2 py-0.5 text-[10px] font-semibold",
-                            statusMeta[p.status].cls,
-                          )}
-                        >
-                          {statusMeta[p.status].label}
+                        <span className={cn("rounded-md px-1.5 py-0.5 font-mono text-[10px] font-bold", abcMeta[p.abcClass])}>
+                          {p.abcClass}
                         </span>
                       </td>
-                      <td className="px-3 py-2.5 text-xs text-muted-foreground">
-                        {p.lastMovement}
+                      <td className="px-3 py-2.5 text-xs text-muted-foreground">{p.unit}</td>
+                      <td className="px-3 py-2.5 text-right font-mono text-xs">{p.minStock}</td>
+                      <td className="px-3 py-2.5">
+                        <span className={cn("rounded-full px-2 py-0.5 text-[10px] font-semibold",
+                          p.isActive ? "bg-success/15 text-success" : "bg-muted text-muted-foreground")}>
+                          {p.isActive ? "Activo" : "Inactivo"}
+                        </span>
                       </td>
                     </motion.tr>
-                  );
-                })
-              )}
-            </tbody>
-          </table>
+                  ))
+                )}
+              </tbody>
+            </table>
+          </div>
         </div>
-      </div>
+      )}
 
-      {/* Drawer detalle */}
-      <Sheet open={!!selected} onOpenChange={(v) => !v && setSelected(null)}>
-        <SheetContent className="w-full sm:max-w-xl">
-          {selected && <ProductDetail product={selected} />}
+      {/* Detalle */}
+      <Sheet open={!!selected} onOpenChange={(v) => { if (!v) { setSelected(null); setDetailTab("details"); } }}>
+        <SheetContent className="w-full sm:max-w-lg overflow-y-auto">
+          {selected && (
+            <>
+              <SheetHeader>
+                <p className="font-mono text-xs text-muted-foreground">{selected.sku}</p>
+                <SheetTitle>{selected.name}</SheetTitle>
+                <SheetDescription>{selected.category.name} · {selected.unit}</SheetDescription>
+              </SheetHeader>
+
+              <div className="mt-4 flex gap-1 border-b border-border pb-1">
+                {(["details", "lots", "movements"] as DetailTab[]).map((tab) => (
+                  <button key={tab} type="button"
+                    onClick={() => setDetailTab(tab)}
+                    className={cn("rounded-md px-3 py-1.5 text-xs font-medium transition-colors",
+                      detailTab === tab ? "bg-nuclear/10 text-nuclear" : "text-muted-foreground hover:text-foreground")}>
+                    {tab === "details" ? "Detalles" : tab === "lots" ? "Lotes" : "Movimientos"}
+                  </button>
+                ))}
+              </div>
+
+              {detailTab === "details" && (
+                <div className="mt-4 space-y-4">
+                  <div className="grid grid-cols-2 gap-3">
+                    <StatBox label="Clase ABC" value={selected.abcClass} />
+                    <StatBox label="Stock mínimo" value={String(selected.minStock)} />
+                    <StatBox label="Stock máximo" value={selected.maxStock ? String(selected.maxStock) : "—"} />
+                    <StatBox label="Perecedero" value={selected.isPerishable ? "Sí" : "No"} />
+                  </div>
+                  {selected.description && (
+                    <p className="text-sm text-muted-foreground border-l-2 border-border pl-3">{selected.description}</p>
+                  )}
+                  <div className="flex gap-2 pt-2">
+                    <Button variant="outline" size="sm" className="flex-1" onClick={() => setDetailTab("lots")}>
+                      <Calendar className="size-4 mr-2" /> Ver lotes
+                    </Button>
+                    <Button variant="outline" size="sm" className="flex-1" onClick={() => setDetailTab("movements")}>
+                      <TrendingUp className="size-4 mr-2" /> Movimientos
+                    </Button>
+                  </div>
+                </div>
+              )}
+
+              {detailTab === "lots" && (
+                <div className="mt-4 space-y-3">
+                  {lotsLoading ? (
+                    <div className="flex items-center justify-center py-8 text-muted-foreground">
+                      <Loader2 className="mr-2 size-4 animate-spin" /> Cargando lotes…
+                    </div>
+                  ) : productLots.length === 0 ? (
+                    <p className="text-center py-8 text-sm text-muted-foreground">Sin lotes activos para este producto.</p>
+                  ) : (
+                    <div className="rounded-lg border border-border overflow-hidden text-sm">
+                      <table className="w-full text-left">
+                        <thead className="bg-muted text-muted-foreground text-xs font-medium">
+                          <tr>
+                            <th className="px-3 py-2">Lote</th>
+                            <th className="px-3 py-2 text-right">Cantidad</th>
+                            <th className="px-3 py-2">Vence</th>
+                            <th className="px-3 py-2">Ubicación</th>
+                          </tr>
+                        </thead>
+                        <tbody className="divide-y divide-border">
+                          {productLots.map((lot) => {
+                            const days = lot.expirationDate
+                              ? differenceInDays(parseISO(lot.expirationDate), new Date())
+                              : null;
+                            return (
+                              <tr key={lot.id} className="hover:bg-muted/20">
+                                <td className="px-3 py-2 font-mono text-xs font-semibold">{lot.lotNumber}</td>
+                                <td className="px-3 py-2 text-right font-mono">{lot.quantity}</td>
+                                <td className="px-3 py-2 text-xs">
+                                  {lot.expirationDate ? (
+                                    <span className={cn(days !== null && days <= 30 ? "text-warning font-semibold" : "")}>
+                                      {format(parseISO(lot.expirationDate), "dd MMM yy", { locale: es })}
+                                      {days !== null && <span className="ml-1 text-muted-foreground">({days}d)</span>}
+                                    </span>
+                                  ) : "—"}
+                                </td>
+                                <td className="px-3 py-2 text-xs">
+                                  <div className="flex items-center gap-1 text-muted-foreground">
+                                    <MapPin className="size-3" />
+                                    {lot.storageLocation?.code ?? "—"}
+                                  </div>
+                                </td>
+                              </tr>
+                            );
+                          })}
+                        </tbody>
+                      </table>
+                    </div>
+                  )}
+                </div>
+              )}
+
+              {detailTab === "movements" && (
+                <div className="mt-4 space-y-3">
+                  {movsLoading ? (
+                    <div className="flex items-center justify-center py-8 text-muted-foreground">
+                      <Loader2 className="mr-2 size-4 animate-spin" /> Cargando movimientos…
+                    </div>
+                  ) : productMovements.length === 0 ? (
+                    <p className="text-center py-8 text-sm text-muted-foreground">Sin movimientos registrados.</p>
+                  ) : (
+                    <div className="rounded-lg border border-border overflow-hidden text-sm">
+                      <table className="w-full text-left">
+                        <thead className="bg-muted text-muted-foreground text-xs font-medium">
+                          <tr>
+                            <th className="px-3 py-2">Tipo</th>
+                            <th className="px-3 py-2 text-right">Cant.</th>
+                            <th className="px-3 py-2 text-right">Stock tras</th>
+                            <th className="px-3 py-2">Fecha</th>
+                          </tr>
+                        </thead>
+                        <tbody className="divide-y divide-border">
+                          {productMovements.map((mov) => (
+                            <tr key={mov.id} className="hover:bg-muted/20">
+                              <td className="px-3 py-2">
+                                <span className={cn("rounded-full px-2 py-0.5 text-[10px] font-semibold",
+                                  mov.type === "RECEIPT" ? "bg-success/15 text-success" :
+                                  mov.type === "DISPATCH" ? "bg-warning/15 text-warning" :
+                                  mov.type === "TRANSFER" ? "bg-info/15 text-info" :
+                                  "bg-muted text-muted-foreground")}>
+                                  {mov.type === "RECEIPT" ? "Entrada" : mov.type === "DISPATCH" ? "Salida" : mov.type === "TRANSFER" ? "Traslado" : "Ajuste"}
+                                </span>
+                              </td>
+                              <td className={cn("px-3 py-2 text-right font-mono font-semibold",
+                                mov.quantity >= 0 ? "text-success" : "text-destructive")}>
+                                {mov.quantity >= 0 ? "+" : ""}{mov.quantity}
+                              </td>
+                              <td className="px-3 py-2 text-right font-mono text-xs">{mov.stockAfter}</td>
+                              <td className="px-3 py-2 text-xs text-muted-foreground">
+                                {format(parseISO(mov.createdAt), "dd MMM yy", { locale: es })}
+                              </td>
+                            </tr>
+                          ))}
+                        </tbody>
+                      </table>
+                    </div>
+                  )}
+                </div>
+              )}
+            </>
+          )}
         </SheetContent>
       </Sheet>
 
-      {/* Sheet nuevo producto */}
-      <Sheet open={createOpen} onOpenChange={setCreateOpen}>
-        <SheetContent className="w-full sm:max-w-xl overflow-y-auto">
+      {/* Crear categoría */}
+      <Sheet open={createCategoryOpen} onOpenChange={setCreateCategoryOpen}>
+        <SheetContent className="w-full sm:max-w-sm overflow-y-auto">
           <SheetHeader>
-            <SheetTitle>Nuevo Producto al Catálogo Maestro</SheetTitle>
-            <SheetDescription>
-              Parametrización de artículos, costos, UoM y variables logísticas.
-            </SheetDescription>
+            <SheetTitle>Nueva Categoría</SheetTitle>
+            <SheetDescription>Crea una categoría para agrupar productos en el catálogo.</SheetDescription>
           </SheetHeader>
-
-          <div className="mt-6 space-y-6">
-            <div className="space-y-4">
-              <h2 className="text-base font-semibold border-b pb-2">Información Básica</h2>
-              <div className="grid grid-cols-2 gap-4">
-                <div className="space-y-1.5">
-                  <Label htmlFor="prod-sku">SKU</Label>
-                  <Input id="prod-sku" placeholder="Ej. CQ-CAF-04" required className={errors.sku ? "border-destructive focus-visible:ring-destructive" : ""} />
-                  {errors.sku && <p className="text-[11px] font-medium text-destructive">{errors.sku}</p>}
-                </div>
-                <div className="space-y-1.5">
-                  <Label htmlFor="prod-ean">Código de Barras (EAN-13)</Label>
-                  <Input id="prod-ean" placeholder="Ej. 7701234567890" required className={errors.ean ? "border-destructive focus-visible:ring-destructive" : ""} />
-                  {errors.ean && <p className="text-[11px] font-medium text-destructive">{errors.ean}</p>}
-                </div>
-                <div className="col-span-2 space-y-1.5">
-                  <Label htmlFor="prod-name">Nombre / Descripción</Label>
-                  <Input id="prod-name" placeholder="Ej. Café Molido 500g" required className={errors.name ? "border-destructive focus-visible:ring-destructive" : ""} />
-                  {errors.name && <p className="text-[11px] font-medium text-destructive">{errors.name}</p>}
-                </div>
-                <div className="space-y-1.5">
-                  <Label htmlFor="prod-category">Categoría</Label>
-                  <select
-                    id="prod-category"
-                    className="flex h-10 w-full items-center justify-between rounded-md border border-input bg-background px-3 py-2 text-sm ring-offset-background placeholder:text-muted-foreground focus:outline-none focus:ring-2 focus:ring-ring focus:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-50"
-                  >
-                    <option>Materia Prima</option>
-                    <option>Insumos (Empaques)</option>
-                    <option>Producto Terminado</option>
-                  </select>
-                </div>
-              </div>
+          <form
+            onSubmit={(e) => {
+              e.preventDefault();
+              if (!newCategoryName.trim()) { toast.error("El nombre es requerido"); return; }
+              createCategoryMutation.mutate({ name: newCategoryName.trim(), description: newCategoryDesc || undefined });
+            }}
+            className="mt-6 space-y-4"
+          >
+            <div className="space-y-1.5">
+              <Label htmlFor="catName">Nombre</Label>
+              <Input id="catName" value={newCategoryName} onChange={(e) => setNewCategoryName(e.target.value)} placeholder="Ej: Materias Primas" required />
             </div>
-
-            <div className="space-y-4">
-              <h2 className="text-base font-semibold border-b pb-2">
-                Unidades de Medida y Conversiones
-              </h2>
-              <div className="grid grid-cols-2 gap-4">
-                <div className="space-y-1.5">
-                  <Label htmlFor="prod-uom">Unidad Base (UoM)</Label>
-                  <select
-                    id="prod-uom"
-                    className="flex h-10 w-full items-center justify-between rounded-md border border-input bg-background px-3 py-2 text-sm ring-offset-background placeholder:text-muted-foreground focus:outline-none focus:ring-2 focus:ring-ring focus:ring-offset-2"
-                  >
-                    <option>Unidad</option>
-                    <option>Bolsa</option>
-                    <option>Caja</option>
-                    <option>Kg</option>
-                  </select>
-                </div>
-                <div className="space-y-1.5">
-                  <Label htmlFor="prod-conv-box" className="text-xs font-medium text-foreground">
-                    Factor de Conversión (Empaque)
-                  </Label>
-                  <div className="flex items-center gap-2">
-                    <span className="text-xs whitespace-nowrap">1 Caja =</span>
-                    <Input
-                      id="prod-conv-box"
-                      type="number"
-                      placeholder="24"
-                      className="w-20"
-                      required
-                      min="1"
-                    />
-                    <span className="text-xs text-muted-foreground">UoM</span>
-                  </div>
-                </div>
-                <div className="space-y-1.5">
-                  <Label htmlFor="prod-conv-pallet" className="text-xs font-medium text-foreground">
-                    Estiba (Pallet)
-                  </Label>
-                  <div className="flex items-center gap-2">
-                    <span className="text-xs whitespace-nowrap">1 Estiba =</span>
-                    <Input
-                      id="prod-conv-pallet"
-                      type="number"
-                      placeholder="40"
-                      className="w-20"
-                      required
-                      min="1"
-                    />
-                    <span className="text-xs text-muted-foreground">Cajas</span>
-                  </div>
-                </div>
-              </div>
+            <div className="space-y-1.5">
+              <Label htmlFor="catDesc">Descripción (opcional)</Label>
+              <Input id="catDesc" value={newCategoryDesc} onChange={(e) => setNewCategoryDesc(e.target.value)} placeholder="Descripción breve" />
             </div>
-
-            <div className="space-y-4">
-              <h2 className="text-base font-semibold border-b pb-2">
-                Tiempos y Costos para EOQ/ROP
-              </h2>
-              <div className="grid grid-cols-2 gap-4">
-                <div className="space-y-1.5">
-                  <Label htmlFor="prod-lead">Lead Time (Tiempo de Entrega)</Label>
-                  <div className="flex gap-2">
-                    <Input id="prod-lead" type="number" placeholder="5" required min="0" />
-                    <span className="flex items-center text-xs text-muted-foreground">Días</span>
-                  </div>
-                </div>
-                <div className="space-y-1.5">
-                  <Label htmlFor="prod-cost">Costo de Pedir (S)</Label>
-                  <div className="flex gap-2">
-                    <Input id="prod-cost" type="number" placeholder="15000" required min="0" />
-                    <span className="flex items-center text-xs text-muted-foreground">COP</span>
-                  </div>
-                </div>
-                <div className="space-y-1.5">
-                  <Label htmlFor="prod-maintenance">Costo Mantenimiento % (H)</Label>
-                  <div className="flex gap-2">
-                    <Input
-                      id="prod-maintenance"
-                      type="number"
-                      placeholder="15"
-                      required
-                      min="0"
-                      max="100"
-                    />
-                    <span className="flex items-center text-xs text-muted-foreground">% / año</span>
-                  </div>
-                </div>
-                <div className="space-y-1.5">
-                  <Label htmlFor="prod-policy">Política (Insumo vs Terminado)</Label>
-                  <select
-                    id="prod-policy"
-                    className="flex h-10 w-full rounded-md border border-input bg-background px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-ring focus:ring-offset-2"
-                  >
-                    <option>Revisión Continua (Q)</option>
-                    <option>Revisión Periódica (P)</option>
-                    <option>FEFO (Producto Terminado)</option>
-                  </select>
-                </div>
-              </div>
-            </div>
-
-            <div className="pt-4 flex justify-end gap-2">
-              <Button variant="ghost" onClick={() => setCreateOpen(false)} disabled={isSaving}>
-                Cancelar
-              </Button>
-              <Button variant="nuclear" onClick={handleSaveProduct} disabled={isSaving}>
-                {isSaving ? <Loader2 className="mr-2 size-4 animate-spin" /> : null}
-                {isSaving ? "Guardando..." : "Guardar Producto"}
+            <div className="flex justify-end gap-2 pt-2">
+              <Button type="button" variant="outline" onClick={() => setCreateCategoryOpen(false)}>Cancelar</Button>
+              <Button type="submit" variant="nuclear" disabled={createCategoryMutation.isPending}>
+                {createCategoryMutation.isPending ? <><Loader2 className="mr-2 size-4 animate-spin" /> Guardando…</> : "Crear Categoría"}
               </Button>
             </div>
-          </div>
+          </form>
         </SheetContent>
       </Sheet>
 
-      {/* Import dialog */}
-      <Dialog open={importOpen} onOpenChange={setImportOpen}>
-        <DialogContent>
-          <DialogHeader>
-            <DialogTitle>Importar productos desde CSV</DialogTitle>
-            <DialogDescription>
-              Sube un archivo con columnas:{" "}
-              <span className="font-mono text-xs">sku, name, category, uom, rop, cost</span>.
-            </DialogDescription>
-          </DialogHeader>
-          <div className="rounded-lg border-2 border-dashed border-border bg-surface-2 p-8 text-center">
-            <Upload className="mx-auto size-8 text-muted-foreground" />
-            <p className="mt-2 text-sm font-medium">Arrastra tu CSV aquí</p>
-            <p className="mt-1 text-xs text-muted-foreground">o haz clic para seleccionar</p>
-            <label htmlFor="csv-upload" className="cursor-pointer">
-              <Button variant="outline" size="sm" className="mt-3 pointer-events-none">
-                Seleccionar archivo
+      {/* Crear producto */}
+      <Sheet open={createOpen} onOpenChange={setCreateOpen}>
+        <SheetContent className="w-full sm:max-w-md overflow-y-auto">
+          <SheetHeader>
+            <SheetTitle>Nuevo Producto</SheetTitle>
+            <SheetDescription>Agrega un SKU al catálogo maestro.</SheetDescription>
+          </SheetHeader>
+          <form onSubmit={handleCreate} className="mt-6 space-y-4">
+            <div className="grid grid-cols-2 gap-4">
+              <div className="space-y-1.5">
+                <Label htmlFor="sku">SKU</Label>
+                <Input id="sku" name="sku" placeholder="MP-LECHE-001" required />
+              </div>
+              <div className="space-y-1.5">
+                <Label htmlFor="unit">Unidad</Label>
+                <select name="unit" className="flex h-9 w-full rounded-md border border-input bg-background px-3 text-sm shadow-sm focus:outline-none focus:ring-1 focus:ring-ring">
+                  <option value="UN">Unidad (UN)</option>
+                  <option value="KG">Kilogramo (KG)</option>
+                  <option value="L">Litro (L)</option>
+                  <option value="G">Gramo (G)</option>
+                  <option value="ML">Mililitro (ML)</option>
+                  <option value="BOX">Caja (BOX)</option>
+                </select>
+              </div>
+              <div className="col-span-2 space-y-1.5">
+                <Label htmlFor="name">Nombre</Label>
+                <Input id="name" name="name" placeholder="Leche entera cruda" required />
+              </div>
+              <div className="col-span-2 space-y-1.5">
+                <Label htmlFor="description">Descripción (opcional)</Label>
+                <Input id="description" name="description" placeholder="Descripción breve" />
+              </div>
+              <div className="space-y-1.5">
+                <Label htmlFor="categoryId">Categoría</Label>
+                <select name="categoryId" required className="flex h-9 w-full rounded-md border border-input bg-background px-3 text-sm shadow-sm focus:outline-none focus:ring-1 focus:ring-ring">
+                  <option value="">— Seleccionar —</option>
+                  {categories.map((c) => <option key={c.id} value={c.id}>{c.name}</option>)}
+                </select>
+              </div>
+              <div className="space-y-1.5">
+                <Label htmlFor="minStock">Stock mínimo</Label>
+                <Input id="minStock" name="minStock" type="number" min={0} defaultValue={0} />
+              </div>
+              <div className="col-span-2 flex items-center gap-2">
+                <input type="checkbox" id="isPerishable" name="isPerishable" value="true" className="size-4" />
+                <Label htmlFor="isPerishable">Producto perecedero (FEFO)</Label>
+              </div>
+            </div>
+            <div className="flex justify-end gap-2 pt-2">
+              <Button type="button" variant="outline" onClick={() => setCreateOpen(false)}>Cancelar</Button>
+              <Button type="submit" variant="nuclear" disabled={createMutation.isPending}>
+                {createMutation.isPending ? <><Loader2 className="mr-2 size-4 animate-spin" /> Guardando…</> : "Guardar Producto"}
               </Button>
-            </label>
-            <Input type="file" id="csv-upload" className="hidden" accept=".csv" />
-          </div>
-          <DialogFooter>
-            <Button variant="ghost" onClick={() => setImportOpen(false)}>
-              Cancelar
-            </Button>
-            <Button
-              variant="nuclear"
-              onClick={() => {
-                setImportOpen(false);
-                toast.success("Importación procesada", {
-                  description: "12 productos validados · 0 errores",
-                });
-              }}
-            >
-              Validar e importar
-            </Button>
-          </DialogFooter>
-        </DialogContent>
-      </Dialog>
+            </div>
+          </form>
+        </SheetContent>
+      </Sheet>
     </div>
   );
 }
 
-function Th({
-  children,
-  onClick,
-  active,
-  align,
-}: {
-  children: React.ReactNode;
-  onClick?: () => void;
-  active?: boolean;
-  align?: "right";
-}) {
+function Th({ children, onClick, active }: { children: React.ReactNode; onClick?: () => void; active?: boolean }) {
   return (
-    <th
-      className={cn(
-        "px-3 py-2.5 select-none",
-        align === "right" && "text-right",
-        active && "text-foreground",
-      )}
-    >
+    <th className={cn("px-3 py-2.5 select-none", active && "text-foreground")}>
       {onClick ? (
-        <button
-          type="button"
-          onClick={onClick}
-          className={cn(
-            "inline-flex items-center gap-1 font-semibold uppercase tracking-wider hover:text-foreground transition-colors",
-            align === "right" && "ml-auto",
-            active ? "text-foreground" : "text-muted-foreground"
-          )}
-        >
-          {children}
-          <ArrowUpDown className="size-3 opacity-50" />
+        <button type="button" onClick={onClick}
+          className={cn("inline-flex items-center gap-1 font-semibold uppercase tracking-wider hover:text-foreground transition-colors",
+            active ? "text-foreground" : "text-muted-foreground")}>
+          {children}<ArrowUpDown className="size-3 opacity-50" />
         </button>
-      ) : (
-        <span className={cn("inline-flex items-center gap-1", align === "right" && "ml-auto")}>
-          {children}
-        </span>
-      )}
+      ) : <span className="inline-flex items-center gap-1">{children}</span>}
     </th>
   );
 }
 
-function MiniStat({
-  icon: Icon,
-  label,
-  value,
-  tone = "default",
-}: {
-  icon: typeof Package;
-  label: string;
-  value: string;
-  tone?: "default" | "nuclear" | "destructive";
+function MiniStat({ icon: Icon, label, value, tone = "default" }: {
+  icon: typeof Package; label: string; value: string; tone?: "default" | "nuclear" | "destructive";
 }) {
-  const toneCls =
-    tone === "nuclear"
-      ? "text-nuclear"
-      : tone === "destructive"
-        ? "text-destructive"
-        : "text-foreground";
   return (
     <div className="flex items-center gap-3 rounded-xl border border-border bg-card px-4 py-3">
       <span className="grid size-9 place-items-center rounded-lg border border-border bg-background/60 text-muted-foreground">
         <Icon className="size-4" />
       </span>
       <div>
-        <p className="text-[10px] font-semibold uppercase tracking-wider text-muted-foreground">
-          {label}
+        <p className="text-[10px] font-semibold uppercase tracking-wider text-muted-foreground">{label}</p>
+        <p className={cn("font-display text-lg font-semibold",
+          tone === "nuclear" ? "text-nuclear" : tone === "destructive" ? "text-destructive" : "text-foreground")}>
+          {value}
         </p>
-        <p className={cn("font-display text-lg font-semibold", toneCls)}>{value}</p>
       </div>
     </div>
   );
 }
 
-function FilterPills({
-  label,
-  value,
-  options,
-  onChange,
-  renderLabel,
-}: {
-  label: string;
-  value: string;
-  options: string[];
-  onChange: (v: string) => void;
-  renderLabel?: (v: string) => string;
-}) {
-  return (
-    <div className="flex items-center gap-1.5">
-      <Filter className="size-3.5 text-muted-foreground" />
-      <span className="text-xs text-muted-foreground">{label}:</span>
-      <div className="flex flex-wrap gap-1">
-        {options.map((o) => (
-          <button
-            key={o}
-            type="button"
-            onClick={() => onChange(o)}
-            className={cn(
-              "rounded-full border px-2.5 py-1 text-xs font-medium transition-colors",
-              value === o
-                ? "border-nuclear bg-nuclear/10 text-nuclear"
-                : "border-border bg-background text-muted-foreground hover:bg-accent",
-            )}
-          >
-            {renderLabel ? renderLabel(o) : o}
-          </button>
-        ))}
-      </div>
-    </div>
-  );
-}
-
-function ProductDetail({ product }: { product: Product }) {
-  const cov = Math.min(100, (product.stock / Math.max(product.rop, 1)) * 100);
-  const [deleteOpen, setDeleteOpen] = useState(false);
-  const [isDeleting, setIsDeleting] = useState(false);
-
-  const handleDelete = () => {
-    setIsDeleting(true);
-    setTimeout(() => {
-      setIsDeleting(false);
-      setDeleteOpen(false);
-      toast.success("Producto eliminado", { description: "El SKU ha sido removido del sistema." });
-    }, 1000);
-  };
-
-  return (
-    <>
-      <SheetHeader>
-        <p className="font-mono text-xs text-muted-foreground">{product.sku}</p>
-        <SheetTitle className="font-display text-xl">{product.name}</SheetTitle>
-        <SheetDescription>
-          {product.category} · {product.uom}
-        </SheetDescription>
-      </SheetHeader>
-
-      <div className="mt-6 space-y-5">
-        <div className="grid grid-cols-2 gap-3">
-          <DetailStat
-            label="Stock actual"
-            value={product.stock.toLocaleString("es-CO")}
-            hint={product.uom}
-          />
-          <DetailStat
-            label="Punto de reorden"
-            value={product.rop.toString()}
-            hint="Umbral dinámico"
-          />
-          <DetailStat
-            label="Costo unitario"
-            value={`$${product.cost.toLocaleString("es-CO")}`}
-            hint="COP"
-          />
-          <DetailStat label="Clase ABC" value={product.abc} hint="Análisis Pareto" />
-        </div>
-
-        <div className="rounded-lg border border-border bg-card p-4">
-          <div className="mb-2 flex items-center justify-between">
-            <p className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">
-              Cobertura
-            </p>
-            <span className="font-mono text-xs">{cov.toFixed(0)}%</span>
-          </div>
-          <div className="h-2 overflow-hidden rounded-full bg-surface-2">
-            <div
-              className={cn(
-                "h-full rounded-full",
-                product.status === "critical"
-                  ? "bg-destructive"
-                  : product.status === "low"
-                    ? "bg-warning"
-                    : "bg-success",
-              )}
-              style={{ width: `${cov}%` }}
-            />
-          </div>
-        </div>
-
-        <div>
-          <p className="mb-2 text-xs font-semibold uppercase tracking-wider text-muted-foreground">
-            Ubicación
-          </p>
-          <div className="rounded-lg border border-border bg-card p-3">
-            <p className="text-sm font-medium">{product.warehouse}</p>
-            <p className="mt-0.5 text-xs text-muted-foreground">
-              Último movimiento {product.lastMovement}
-            </p>
-          </div>
-        </div>
-
-        <div>
-          <p className="mb-2 text-xs font-semibold uppercase tracking-wider text-muted-foreground">
-            Acciones
-          </p>
-          <div className="grid grid-cols-2 gap-2">
-            <Button variant="outline" size="sm">
-              <Calendar className="size-4 mr-2" />
-              Ver lotes
-            </Button>
-            <Button variant="outline" size="sm">
-              <TrendingUp className="size-4 mr-2" />
-              Histórico
-            </Button>
-            <Button variant="outline" size="sm" className="col-span-2">
-              Ajustar stock
-            </Button>
-            <Button variant="destructive" size="sm" className="col-span-2 mt-4" onClick={() => setDeleteOpen(true)}>
-              <Trash2 className="size-4 mr-2" />
-              Eliminar Producto (Irreversible)
-            </Button>
-          </div>
-        </div>
-      </div>
-
-      <AlertDialog open={deleteOpen} onOpenChange={setDeleteOpen}>
-        <AlertDialogContent>
-          <AlertDialogHeader>
-            <AlertDialogTitle>¿Estás completamente seguro?</AlertDialogTitle>
-            <AlertDialogDescription>
-              Esta acción es irreversible. Se eliminará permanentemente el producto{" "}
-              <span className="font-semibold text-foreground">{product.sku}</span> del catálogo
-              maestro y no podrá ser utilizado en futuras órdenes o recepciones.
-            </AlertDialogDescription>
-          </AlertDialogHeader>
-          <AlertDialogFooter>
-            <AlertDialogCancel disabled={isDeleting}>Cancelar</AlertDialogCancel>
-            <AlertDialogAction
-              className="bg-destructive hover:bg-destructive/90 text-destructive-foreground"
-              disabled={isDeleting}
-              onClick={(e) => {
-                e.preventDefault();
-                handleDelete();
-              }}
-            >
-              {isDeleting ? <Loader2 className="mr-2 size-4 animate-spin" /> : null}
-              {isDeleting ? "Eliminando..." : "Sí, eliminar producto"}
-            </AlertDialogAction>
-          </AlertDialogFooter>
-        </AlertDialogContent>
-      </AlertDialog>
-    </>
-  );
-}
-
-function DetailStat({ label, value, hint }: { label: string; value: string; hint?: string }) {
+function StatBox({ label, value }: { label: string; value: string }) {
   return (
     <div className="rounded-lg border border-border bg-card p-3">
-      <p className="text-[10px] font-semibold uppercase tracking-wider text-muted-foreground">
-        {label}
-      </p>
+      <p className="text-[10px] font-semibold uppercase tracking-wider text-muted-foreground">{label}</p>
       <p className="mt-1 font-display text-xl font-semibold">{value}</p>
-      {hint && <p className="text-[11px] text-muted-foreground">{hint}</p>}
     </div>
   );
 }

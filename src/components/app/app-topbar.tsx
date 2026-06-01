@@ -32,6 +32,7 @@ import {
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 import { LiveBadge } from "@/components/nuclear-ui/live-badge";
 import { Avatar, AvatarFallback } from "@/components/ui/avatar";
+import { useAuth } from "@/features/auth/AuthProvider";
 
 const tenants = [
   { id: "t1", name: "Distribuidora Andina", role: "Owner" },
@@ -51,14 +52,19 @@ interface AppTopbarProps {
 
 export function AppTopbar({ breadcrumb = [] }: AppTopbarProps) {
   const navigate = useNavigate();
+  const { user, logoutUser } = useAuth();
   const [cmdOpen, setCmdOpen] = useState(false);
   const [tenant, setTenant] = useState(tenants[0]);
 
-  const handleLogout = () => {
-    toast.success("Sesión cerrada", {
-      description: "Has cerrado tu sesión de forma segura.",
-    });
-    navigate({ to: "/login" });
+  const handleLogout = async () => {
+    try {
+      await logoutUser();
+    } finally {
+      toast.success("Sesión cerrada", {
+        description: "Has cerrado tu sesión de forma segura.",
+      });
+      navigate({ to: "/login" });
+    }
   };
 
   useEffect(() => {
@@ -193,15 +199,17 @@ export function AppTopbar({ breadcrumb = [] }: AppTopbarProps) {
           <DropdownMenuTrigger className="flex items-center gap-2 rounded-md border border-border bg-card pl-1 pr-2 py-1 transition-colors hover:bg-accent">
             <Avatar className="size-7">
               <AvatarFallback className="bg-nuclear/15 text-xs font-semibold text-nuclear">
-                CG
+                {getUserInitials(user)}
               </AvatarFallback>
             </Avatar>
             <ChevronDown className="size-3.5 text-muted-foreground" />
           </DropdownMenuTrigger>
           <DropdownMenuContent align="end" className="w-56">
             <div className="px-2 py-1.5">
-              <p className="text-sm font-medium">Carlos Gómez</p>
-              <p className="text-xs text-muted-foreground">carlos@andina.co</p>
+              <p className="text-sm font-medium">
+                {user ? `${user.firstName} ${user.lastName}` : "Usuario"}
+              </p>
+              <p className="text-xs text-muted-foreground">{user?.email ?? "Sin sesión"}</p>
             </div>
             <DropdownMenuSeparator />
             <DropdownMenuItem>
@@ -254,4 +262,15 @@ export function AppTopbar({ breadcrumb = [] }: AppTopbarProps) {
       </CommandDialog>
     </>
   );
+}
+
+function getUserInitials(user: ReturnType<typeof useAuth>["user"]): string {
+  if (!user) {
+    return "U";
+  }
+
+  const firstInitial = user.firstName.trim().charAt(0);
+  const lastInitial = user.lastName.trim().charAt(0);
+
+  return `${firstInitial}${lastInitial}`.toUpperCase() || user.email.charAt(0).toUpperCase();
 }

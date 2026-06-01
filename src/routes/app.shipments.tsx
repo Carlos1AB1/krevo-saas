@@ -1,310 +1,238 @@
 import { createFileRoute } from "@tanstack/react-router";
+import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import {
-  ArrowUpFromLine,
-  Search,
-  Filter,
-  ScanBarcode,
-  Truck,
-  PackageCheck,
-  AlertCircle,
-  ClipboardList,
-  Weight,
+  ArrowUpFromLine, Search, Filter, Truck, PackageCheck,
+  AlertCircle, Loader2, XCircle, Box,
 } from "lucide-react";
+import { toast } from "sonner";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
-import { Label } from "@/components/ui/label";
 import { useState } from "react";
 import {
-  Sheet,
-  SheetContent,
-  SheetHeader,
-  SheetTitle,
-  SheetDescription,
+  Sheet, SheetContent, SheetHeader, SheetTitle, SheetDescription,
 } from "@/components/ui/sheet";
+import {
+  getDispatches, approveDispatch, rejectDispatch, type DispatchResponse,
+} from "@/features/logistics/logistics.api";
+import { format, parseISO } from "date-fns";
+import { es } from "date-fns/locale";
+import { cn } from "@/lib/utils";
 
 export const Route = createFileRoute("/app/shipments")({
-  head: () => ({
-    meta: [{ title: "Despachos · Krevo" }],
-  }),
+  head: () => ({ meta: [{ title: "Despachos · Krevo" }] }),
   component: ShipmentsPage,
 });
 
-const mockShipments = [
-  {
-    id: "SHP-1049",
-    carrier: "TCC Colombia",
-    destination: "Punto de Venta Armenia",
-    items: 120,
-    status: "packing",
-    dispatchTime: "16:00",
-    boxes: 4,
-    weight: "85 kg",
-  },
-  {
-    id: "SHP-1050",
-    carrier: "Servientrega",
-    destination: "Distribuidor Bogotá",
-    items: 450,
-    status: "ready",
-    dispatchTime: "18:00",
-    boxes: 12,
-    weight: "320 kg",
-  },
-  {
-    id: "SHP-1048",
-    carrier: "Vehículo Propio HQ",
-    destination: "Punto de Venta Circasia",
-    items: 15,
-    status: "shipped",
-    dispatchTime: "Ayer",
-    boxes: 1,
-    weight: "12 kg",
-  },
-];
+function statusColor(status: DispatchResponse["status"]) {
+  if (status === "APPROVED") return "var(--color-success)";
+  if (status === "PENDING") return "var(--color-warning)";
+  return "var(--color-destructive)";
+}
 
 function ShipmentsPage() {
-  const [auditShp, setAuditShp] = useState<(typeof mockShipments)[0] | null>(null);
+  const qc = useQueryClient();
+  const [selected, setSelected] = useState<DispatchResponse | null>(null);
+  const [q, setQ] = useState("");
+
+  const { data, isLoading, isError } = useQuery({
+    queryKey: ["logistics", "dispatches", { limit: 50 }],
+    queryFn: () => getDispatches({ limit: 50 }),
+  });
+
+  const dispatches = data?.data ?? [];
+
+  const filtered = dispatches.filter((d) => {
+    const ql = q.toLowerCase();
+    if (!ql) return true;
+    return (
+      (d.destination ?? "").toLowerCase().includes(ql) ||
+      d.id.toLowerCase().includes(ql) ||
+      d.status.toLowerCase().includes(ql)
+    );
+  });
+
+  const approveMutation = useMutation({
+    mutationFn: approveDispatch,
+    onSuccess: () => {
+      toast.success("Despacho aprobado — inventario actualizado");
+      setSelected(null);
+      qc.invalidateQueries({ queryKey: ["logistics", "dispatches"] });
+      qc.invalidateQueries({ queryKey: ["inventory"] });
+    },
+    onError: (e: Error) => toast.error(e.message),
+  });
+
+  const rejectMutation = useMutation({
+    mutationFn: (id: string) => rejectDispatch(id),
+    onSuccess: () => {
+      toast.success("Despacho rechazado");
+      setSelected(null);
+      qc.invalidateQueries({ queryKey: ["logistics", "dispatches"] });
+    },
+    onError: (e: Error) => toast.error(e.message),
+  });
+
+  const isWorking = approveMutation.isPending || rejectMutation.isPending;
 
   return (
     <div className="flex flex-col h-full">
       <header className="sticky top-0 z-10 flex h-16 items-center gap-4 border-b border-border bg-background px-4 sm:px-6">
         <div className="mr-auto">
-          <h1 className="text-xl font-semibold tracking-tight">Despachos (Shipping)</h1>
+          <h1 className="text-xl font-semibold tracking-tight">Despachos (Outbound)</h1>
           <p className="text-xs text-muted-foreground hidden sm:block">
-            Consolidación (Packing), auditoría de salida y asignación a muelles.
+            Órdenes de salida de inventario hacia destinos o producción.
           </p>
         </div>
-        <div className="flex items-center gap-2">
-          <Button variant="outline" size="sm" className="hidden sm:flex">
-            <Filter className="mr-2 size-4" />
-            <span>Filtros</span>
-          </Button>
-          <Button size="sm">
-            <span>Agendar Muelle</span>
-          </Button>
-        </div>
+        <Button variant="outline" size="sm" className="hidden sm:flex">
+          <Filter className="mr-2 size-4" /> Filtrar
+        </Button>
       </header>
 
       <div className="flex-1 overflow-auto p-4 sm:p-6 bg-muted/20">
         <div className="mx-auto max-w-5xl space-y-6">
-          <div className="flex gap-2">
-            <div className="relative flex-1">
-              <Label htmlFor="search-shipments" className="sr-only">
-                Buscar despacho por guía TCC, destino o ID
-              </Label>
-              <Search className="absolute left-3 top-1/2 size-4 -translate-y-1/2 text-muted-foreground" />
-              <Input
-                id="search-shipments"
-                placeholder="Buscar despacho por guía TCC, destino..."
-                className="pl-9 h-12 text-base sm:h-10 sm:text-sm bg-card shadow-sm"
-              />
-            </div>
-            <Button
-              variant="nuclear"
-              className="shrink-0 h-12 w-12 p-0 sm:h-10 sm:w-auto sm:px-4 shadow-sm"
-            >
-              <ScanBarcode className="size-5 sm:size-4 sm:mr-2" />
-              <span className="hidden sm:inline">Validar Caja Packing</span>
-            </Button>
+          <div className="relative">
+            <Search className="absolute left-3 top-1/2 size-4 -translate-y-1/2 text-muted-foreground" />
+            <Input value={q} onChange={(e) => setQ(e.target.value)}
+              placeholder="Buscar por destino, ID o estado…"
+              className="pl-9 h-10 bg-card shadow-sm" />
           </div>
 
-          <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
-            {mockShipments.map((shp) => (
-              <div
-                key={shp.id}
-                className="relative flex flex-col rounded-xl border border-border bg-card shadow-sm overflow-hidden transition-shadow hover:shadow-md"
-              >
-                {/* Header line for visually distinct state */}
-                <div
-                  className="h-1 w-full bg-border"
-                  style={{
-                    backgroundColor:
-                      shp.status === "ready"
-                        ? "var(--color-success)"
-                        : shp.status === "packing"
-                          ? "var(--color-warning)"
-                          : "var(--color-border)",
-                  }}
-                />
+          {isLoading && (
+            <div className="flex items-center justify-center py-12 text-muted-foreground">
+              <Loader2 className="mr-2 size-5 animate-spin" /> Cargando despachos…
+            </div>
+          )}
 
-                <div className="p-4">
-                  <div className="flex items-start justify-between">
-                    <div className="flex flex-col">
-                      <span className="text-xs font-semibold uppercase text-muted-foreground">
-                        {shp.id}
-                      </span>
-                      <h2 className="mt-1 text-base font-semibold leading-tight text-foreground">{shp.carrier}</h2>
-                    </div>
-                    {shp.status === "ready" && <PackageCheck className="size-5 text-success" />}
-                    {shp.status === "packing" && (
-                      <AlertCircle className="size-5 text-warning animate-pulse" />
-                    )}
-                    {shp.status === "shipped" && <Truck className="size-5 text-muted-foreground" />}
-                  </div>
+          {isError && (
+            <div className="rounded-xl border border-destructive/30 bg-destructive/10 p-4 text-sm text-destructive">
+              No fue posible cargar los despachos.
+            </div>
+          )}
 
-                  <div className="mt-4 space-y-2 text-sm">
-                    <div className="flex items-center justify-between border-b border-border/50 pb-2">
-                      <span className="text-muted-foreground">Destino</span>
-                      <span
-                        className="font-medium text-right truncate pl-4 max-w-[150px]"
-                        title={shp.destination}
-                      >
-                        {shp.destination}
-                      </span>
-                    </div>
-                    <div className="flex items-center justify-between border-b border-border/50 pb-2">
-                      <span className="text-muted-foreground">Volumen</span>
-                      <span className="font-medium">
-                        {shp.boxes} Cajas ({shp.weight})
-                      </span>
-                    </div>
-                    <div className="flex items-center justify-between pb-1">
-                      <span className="text-muted-foreground">Corte (Dock)</span>
-                      <span className="font-mono">{shp.dispatchTime}</span>
-                    </div>
-                  </div>
+          {!isLoading && !isError && filtered.length === 0 && (
+            <div className="rounded-xl border border-dashed border-border bg-card p-12 text-center text-sm text-muted-foreground">
+              No hay despachos registrados.
+            </div>
+          )}
 
-                  <div className="mt-5 flex gap-2">
-                    {shp.status === "packing" && (
-                      <>
-                        <Button
-                          variant="outline"
-                          className="w-full text-xs"
-                          size="sm"
-                          onClick={() => setAuditShp(shp)}
-                        >
-                          Packing
-                        </Button>
-                        <Button
-                          className="w-full text-xs bg-warning text-warning-foreground hover:bg-warning/90"
-                          size="sm"
-                          onClick={() => setAuditShp(shp)}
-                        >
-                          Auditar Salida
-                        </Button>
-                      </>
-                    )}
-                    {shp.status === "ready" && (
-                      <Button
-                        className="w-full text-xs bg-success text-success-foreground hover:bg-success/90"
-                        size="sm"
-                      >
-                        Cargar Rampa 2
+          {!isLoading && !isError && (
+            <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
+              {filtered.map((d) => (
+                <div key={d.id}
+                  className="relative flex flex-col rounded-xl border border-border bg-card shadow-sm overflow-hidden transition-shadow hover:shadow-md">
+                  <div className="h-1 w-full" style={{ backgroundColor: statusColor(d.status) }} />
+                  <div className="p-4">
+                    <div className="flex items-start justify-between">
+                      <div>
+                        <span className="text-xs font-semibold uppercase text-muted-foreground font-mono">
+                          {d.id.slice(0, 8).toUpperCase()}
+                        </span>
+                        <h2 className="mt-1 text-base font-semibold leading-tight">
+                          {d.destination ?? "Sin destino"}
+                        </h2>
+                      </div>
+                      {d.status === "APPROVED" && <PackageCheck className="size-5 text-success" />}
+                      {d.status === "PENDING" && <AlertCircle className="size-5 text-warning animate-pulse" />}
+                      {d.status === "REJECTED" && <XCircle className="size-5 text-destructive" />}
+                    </div>
+
+                    <div className="mt-4 space-y-2 text-sm">
+                      <div className="flex justify-between border-b border-border/50 pb-2">
+                        <span className="text-muted-foreground">Líneas</span>
+                        <span className="font-medium">{d.lines.length} producto(s)</span>
+                      </div>
+                      <div className="flex justify-between border-b border-border/50 pb-2">
+                        <span className="text-muted-foreground">Creado por</span>
+                        <span className="font-medium">{d.createdBy.firstName} {d.createdBy.lastName}</span>
+                      </div>
+                      <div className="flex justify-between pb-1">
+                        <span className="text-muted-foreground">Fecha</span>
+                        <span className="font-mono text-xs">
+                          {format(parseISO(d.createdAt), "dd MMM yyyy", { locale: es })}
+                        </span>
+                      </div>
+                    </div>
+
+                    <div className="mt-4 flex gap-2">
+                      <Button variant="outline" size="sm" className="w-full text-xs" onClick={() => setSelected(d)}>
+                        Ver detalle
                       </Button>
-                    )}
-                    {shp.status === "shipped" && (
-                      <Button variant="secondary" className="w-full text-xs" size="sm" disabled>
-                        En Tránsito
-                      </Button>
-                    )}
+                      {d.status === "PENDING" && (
+                        <Button size="sm" className="w-full text-xs" onClick={() => setSelected(d)}>
+                          Aprobar
+                        </Button>
+                      )}
+                    </div>
                   </div>
                 </div>
-              </div>
-            ))}
-          </div>
+              ))}
+            </div>
+          )}
         </div>
       </div>
 
-      <Sheet open={!!auditShp} onOpenChange={(v) => !v && setAuditShp(null)}>
-        <SheetContent className="w-full sm:max-w-md">
-          {auditShp && (
+      <Sheet open={!!selected} onOpenChange={(v) => !v && setSelected(null)}>
+        <SheetContent className="w-full sm:max-w-xl overflow-y-auto">
+          {selected && (
             <>
               <SheetHeader>
-                <p className="font-mono text-xs text-muted-foreground">{auditShp.id}</p>
-                <SheetTitle className="font-display">Auditoría de Packing</SheetTitle>
+                <p className="font-mono text-xs text-muted-foreground">{selected.id.slice(0, 8).toUpperCase()}</p>
+                <SheetTitle>{selected.destination ?? "Sin destino"}</SheetTitle>
                 <SheetDescription>
-                  Validación de contenido y pesaje antes de emitir rótulos de despacho.
+                  Estado: {selected.status === "PENDING" ? "Pendiente" : selected.status === "APPROVED" ? "Aprobado" : "Rechazado"}
+                  {" · "}{selected.lines.length} línea(s)
                 </SheetDescription>
               </SheetHeader>
+
               <div className="mt-6 space-y-6">
-                <div className="flex items-center gap-3 p-3 rounded-lg border border-border bg-muted/30">
-                  <Truck className="size-5 text-muted-foreground" />
-                  <div>
-                    <p className="text-sm font-semibold">{auditShp.carrier}</p>
-                    <p className="text-xs text-muted-foreground truncate max-w-[200px]">
-                      {auditShp.destination}
-                    </p>
-                  </div>
-                </div>
-
-                <div className="space-y-3">
-                  <Label
-                    htmlFor="scan-verify"
-                    className="text-sm font-semibold flex items-center gap-2"
-                  >
-                    <ScanBarcode className="size-4" /> Escaneo de Verificación
-                  </Label>
-                  <div className="flex items-center gap-2">
-                    <Input
-                      id="scan-verify"
-                      placeholder="Escanear producto para validar..."
-                      className="font-mono text-xs h-10"
-                    />
-                    <Button size="icon" variant="outline" className="shrink-0">
-                      <ScanBarcode className="size-4" />
-                    </Button>
-                  </div>
-                  <div className="space-y-2 mt-3 text-sm">
-                    <div className="flex justify-between items-center p-2 rounded bg-success/10 border border-success/30 text-success">
-                      <span className="font-medium">CQ-ARE-125 (100 org)</span>
-                      <span className="font-mono">100/100 ✓</span>
-                    </div>
-                    <div className="flex justify-between items-center p-2 rounded bg-warning/10 border border-warning/30 text-warning">
-                      <span className="font-medium">CQ-GAL-100 (20 org)</span>
-                      <span className="font-mono">15/20</span>
-                    </div>
-                  </div>
-                </div>
-
                 <div className="space-y-3">
                   <h4 className="text-sm font-semibold flex items-center gap-2">
-                    <Weight className="size-4" /> Embalaje Final
+                    <Box className="size-4" /> Líneas de Despacho
                   </h4>
-                  <div className="grid grid-cols-2 gap-3">
-                    <div>
-                      <Label
-                        htmlFor="box-count"
-                        className="text-xs font-semibold text-muted-foreground"
-                      >
-                        Cajas Corrugadas
-                      </Label>
-                      <Input
-                        id="box-count"
-                        defaultValue="4"
-                        type="number"
-                        min="1"
-                        className="mt-1"
-                        required
-                      />
-                    </div>
-                    <div>
-                      <Label
-                        htmlFor="total-weight"
-                        className="text-xs font-semibold text-muted-foreground"
-                      >
-                        Peso Total (kg)
-                      </Label>
-                      <Input
-                        id="total-weight"
-                        defaultValue="85"
-                        type="number"
-                        min="0"
-                        step="0.1"
-                        className="mt-1"
-                        required
-                      />
-                    </div>
+                  <div className="rounded-lg border border-border overflow-hidden text-sm">
+                    <table className="w-full text-left">
+                      <thead className="bg-muted text-muted-foreground text-xs font-medium">
+                        <tr>
+                          <th className="px-3 py-2">Producto / Lote</th>
+                          <th className="px-3 py-2 text-right">Solicitado</th>
+                          <th className="px-3 py-2 text-right">Despachado</th>
+                        </tr>
+                      </thead>
+                      <tbody className="divide-y divide-border">
+                        {selected.lines.map((line) => (
+                          <tr key={line.id}>
+                            <td className="px-3 py-2">
+                              <span className="block font-medium">{line.productName}</span>
+                              <span className="text-[10px] text-muted-foreground font-mono">{line.productSku}</span>
+                              {line.lotNumber && (
+                                <span className="text-[10px] text-muted-foreground block">Lote: {line.lotNumber}</span>
+                              )}
+                            </td>
+                            <td className="px-3 py-2 text-right font-mono">{line.requestedQty}</td>
+                            <td className="px-3 py-2 text-right font-mono">{line.pickedQty}</td>
+                          </tr>
+                        ))}
+                      </tbody>
+                    </table>
                   </div>
                 </div>
 
-                <div className="pt-4 flex flex-col gap-2">
-                  <Button variant="nuclear" className="w-full">
-                    Generar Rótulos 4x6" PDF
-                  </Button>
-                  <Button variant="outline" className="w-full" onClick={() => setAuditShp(null)}>
-                    Pausar Auditoría
-                  </Button>
-                </div>
+                {selected.notes && (
+                  <p className="text-xs text-muted-foreground border-l-2 border-border pl-3">{selected.notes}</p>
+                )}
+
+                {selected.status === "PENDING" && (
+                  <div className="pt-4 flex justify-end gap-2">
+                    <Button variant="outline" disabled={isWorking} onClick={() => rejectMutation.mutate(selected.id)}>
+                      {rejectMutation.isPending ? <Loader2 className="size-4 animate-spin" /> : "Rechazar"}
+                    </Button>
+                    <Button variant="nuclear" disabled={isWorking} onClick={() => approveMutation.mutate(selected.id)}>
+                      {approveMutation.isPending
+                        ? <><Loader2 className="mr-2 size-4 animate-spin" /> Aprobando…</>
+                        : <><ArrowUpFromLine className="mr-2 size-4" /> Aprobar Despacho</>}
+                    </Button>
+                  </div>
+                )}
               </div>
             </>
           )}
