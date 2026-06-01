@@ -1,4 +1,4 @@
-import { useMemo, useState } from "react";
+import { useState } from "react";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { motion } from "framer-motion";
 import {
@@ -15,6 +15,7 @@ import {
   getProducts, getCategories, createProduct, createCategory, getLots, getMovements,
   type ProductResponse,
 } from "@/features/inventory/inventory.api";
+import { useMemo } from "react";
 import { cn } from "@/lib/utils";
 import { toast } from "sonner";
 import { format, parseISO, differenceInDays } from "date-fns";
@@ -50,6 +51,20 @@ export function ProductsTable() {
     queryKey: ["inventory", "categories"],
     queryFn: getCategories,
   });
+
+  // All active lots for stock computation
+  const { data: allLotsData } = useQuery({
+    queryKey: ["inventory", "lots", { limit: 100, status: "ACTIVE" }],
+    queryFn: () => getLots({ limit: 100, status: "ACTIVE" }),
+  });
+
+  const stockByProduct = useMemo(() => {
+    const map = new Map<string, number>();
+    (allLotsData?.data ?? []).forEach((l) => {
+      map.set(l.productId, (map.get(l.productId) ?? 0) + l.quantity);
+    });
+    return map;
+  }, [allLotsData]);
 
   const { data: lotsData, isLoading: lotsLoading } = useQuery({
     queryKey: ["inventory", "lots", { productId: selected?.id }],
@@ -206,6 +221,7 @@ export function ProductsTable() {
                   <th className="px-3 py-2.5">Categoría</th>
                   <Th onClick={() => toggleSort("abcClass")} active={sort.key === "abcClass"}>ABC</Th>
                   <th className="px-3 py-2.5">Unidad</th>
+                  <th className="px-3 py-2.5 text-right">Stock actual</th>
                   <th className="px-3 py-2.5 text-right">Stock mín.</th>
                   <th className="px-3 py-2.5">Estado</th>
                 </tr>
@@ -232,6 +248,17 @@ export function ProductsTable() {
                         </span>
                       </td>
                       <td className="px-3 py-2.5 text-xs text-muted-foreground">{p.unit}</td>
+                      <td className="px-3 py-2.5 text-right font-mono text-xs">
+                        {(() => {
+                          const stock = stockByProduct.get(p.id) ?? 0;
+                          const belowMin = p.minStock > 0 && stock < p.minStock;
+                          return (
+                            <span className={cn("font-semibold", belowMin ? "text-destructive" : stock > 0 ? "text-success" : "text-muted-foreground")}>
+                              {stock.toLocaleString("es-CO")}
+                            </span>
+                          );
+                        })()}
+                      </td>
                       <td className="px-3 py-2.5 text-right font-mono text-xs">{p.minStock}</td>
                       <td className="px-3 py-2.5">
                         <span className={cn("rounded-full px-2 py-0.5 text-[10px] font-semibold",
@@ -274,6 +301,10 @@ export function ProductsTable() {
                 <div className="mt-4 space-y-4">
                   <div className="grid grid-cols-2 gap-3">
                     <StatBox label="Clase ABC" value={selected.abcClass} />
+                    <StatBox label="Stock actual" value={(stockByProduct.get(selected.id) ?? 0).toLocaleString("es-CO")} tone={
+                      (stockByProduct.get(selected.id) ?? 0) === 0 ? "destructive" :
+                      selected.minStock > 0 && (stockByProduct.get(selected.id) ?? 0) < selected.minStock ? "warning" : "success"
+                    } />
                     <StatBox label="Stock mínimo" value={String(selected.minStock)} />
                     <StatBox label="Stock máximo" value={selected.maxStock ? String(selected.maxStock) : "—"} />
                     <StatBox label="Perecedero" value={selected.isPerishable ? "Sí" : "No"} />
@@ -523,11 +554,16 @@ function MiniStat({ icon: Icon, label, value, tone = "default" }: {
   );
 }
 
-function StatBox({ label, value }: { label: string; value: string }) {
+function StatBox({ label, value, tone }: { label: string; value: string; tone?: "success" | "warning" | "destructive" }) {
   return (
     <div className="rounded-lg border border-border bg-card p-3">
       <p className="text-[10px] font-semibold uppercase tracking-wider text-muted-foreground">{label}</p>
-      <p className="mt-1 font-display text-xl font-semibold">{value}</p>
+      <p className={cn("mt-1 font-display text-xl font-semibold",
+        tone === "success" ? "text-success" :
+        tone === "warning" ? "text-warning" :
+        tone === "destructive" ? "text-destructive" : "")}>
+        {value}
+      </p>
     </div>
   );
 }

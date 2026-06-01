@@ -130,13 +130,13 @@ function AnalyticsPage() {
   const firstOfMonth = startOfMonth(new Date()).toISOString();
 
   const { data: productsData, isLoading: loadingProducts } = useQuery({
-    queryKey: ["inventory", "products", { limit: 200 }],
-    queryFn: () => getProducts({ limit: 200 }),
+    queryKey: ["inventory", "products", { limit: 100}],
+    queryFn: () => getProducts({ limit: 100}),
   });
 
   const { data: lotsData } = useQuery({
-    queryKey: ["inventory", "lots", { limit: 500 }],
-    queryFn: () => getLots({ limit: 500, status: "ACTIVE" }),
+    queryKey: ["inventory", "lots", { limit: 100, status: "ACTIVE" }],
+    queryFn: () => getLots({ limit: 100, status: "ACTIVE" }),
   });
 
   const { data: receiptsData } = useQuery({

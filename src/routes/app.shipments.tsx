@@ -12,7 +12,7 @@ import {
   Sheet, SheetContent, SheetHeader, SheetTitle, SheetDescription,
 } from "@/components/ui/sheet";
 import {
-  getDispatches, approveDispatch, rejectDispatch, type DispatchResponse,
+  getDispatches, approveDispatch, type DispatchResponse,
 } from "@/features/logistics/logistics.api";
 import { format, parseISO } from "date-fns";
 import { es } from "date-fns/locale";
@@ -62,17 +62,8 @@ function ShipmentsPage() {
     onError: (e: Error) => toast.error(e.message),
   });
 
-  const rejectMutation = useMutation({
-    mutationFn: (id: string) => rejectDispatch(id),
-    onSuccess: () => {
-      toast.success("Despacho rechazado");
-      setSelected(null);
-      qc.invalidateQueries({ queryKey: ["logistics", "dispatches"] });
-    },
-    onError: (e: Error) => toast.error(e.message),
-  });
 
-  const isWorking = approveMutation.isPending || rejectMutation.isPending;
+  const isWorking = approveMutation.isPending;
 
   return (
     <div className="flex flex-col h-full">
@@ -133,7 +124,7 @@ function ShipmentsPage() {
                       </div>
                       {d.status === "APPROVED" && <PackageCheck className="size-5 text-success" />}
                       {d.status === "PENDING" && <AlertCircle className="size-5 text-warning animate-pulse" />}
-                      {d.status === "REJECTED" && <XCircle className="size-5 text-destructive" />}
+                      {(d.status === "PICKING") && <XCircle className="size-5 text-info" />}
                     </div>
 
                     <div className="mt-4 space-y-2 text-sm">
@@ -223,9 +214,6 @@ function ShipmentsPage() {
 
                 {selected.status === "PENDING" && (
                   <div className="pt-4 flex justify-end gap-2">
-                    <Button variant="outline" disabled={isWorking} onClick={() => rejectMutation.mutate(selected.id)}>
-                      {rejectMutation.isPending ? <Loader2 className="size-4 animate-spin" /> : "Rechazar"}
-                    </Button>
                     <Button variant="nuclear" disabled={isWorking} onClick={() => approveMutation.mutate(selected.id)}>
                       {approveMutation.isPending
                         ? <><Loader2 className="mr-2 size-4 animate-spin" /> Aprobando…</>
