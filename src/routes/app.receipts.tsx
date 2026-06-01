@@ -32,7 +32,7 @@ import {
   rejectReceipt,
   type ReceiptResponse,
 } from "@/features/logistics/logistics.api";
-import { getProducts } from "@/features/inventory/inventory.api";
+import { getProducts, getLots } from "@/features/inventory/inventory.api";
 import { useSuppliers } from "@/features/suppliers/useSuppliers";
 import { format, parseISO } from "date-fns";
 import { es } from "date-fns/locale";
@@ -57,12 +57,98 @@ function statusLabel(status: ReceiptResponse["status"]) {
 interface LineState {
   _key: string;
   productId: string;
+  lotId: string;
   quantity: number;
   unitCost: string;
 }
 
 function makeEmptyLine(): LineState {
-  return { _key: Math.random().toString(36).slice(2), productId: "", quantity: 1, unitCost: "" };
+  return { _key: Math.random().toString(36).slice(2), productId: "", lotId: "", quantity: 1, unitCost: "" };
+}
+
+// Sub-component so each line can independently fetch its own lots
+function ReceiptLineRow({
+  line,
+  idx,
+  products,
+  showRemove,
+  onUpdate,
+  onRemove,
+}: {
+  line: LineState;
+  idx: number;
+  products: { id: string; name: string; sku: string }[];
+  showRemove: boolean;
+  onUpdate: (key: string, patch: Partial<LineState>) => void;
+  onRemove: (key: string) => void;
+}) {
+  const { data: lotsData } = useQuery({
+    queryKey: ["inventory", "lots", { productId: line.productId, status: "ACTIVE", limit: 100 }],
+    queryFn: () => getLots({ productId: line.productId, status: "ACTIVE", limit: 100 }),
+    enabled: !!line.productId,
+  });
+  const lots = lotsData?.data ?? [];
+
+  return (
+    <div className="rounded-lg border border-border bg-muted/10 p-3 space-y-3">
+      <div className="flex items-center justify-between">
+        <span className="text-xs font-medium text-muted-foreground">Línea {idx + 1}</span>
+        {showRemove && (
+          <button type="button" onClick={() => onRemove(line._key)} className="text-muted-foreground hover:text-destructive">
+            <Trash2 className="size-3.5" />
+          </button>
+        )}
+      </div>
+      <div className="grid grid-cols-2 gap-3">
+        <div className="col-span-2 space-y-1">
+          <Label className="text-xs">Producto</Label>
+          <select
+            value={line.productId}
+            onChange={(e) => onUpdate(line._key, { productId: e.target.value, lotId: "" })}
+            className="flex h-9 w-full rounded-md border border-input bg-background px-3 text-sm shadow-sm focus:outline-none focus:ring-1 focus:ring-ring"
+          >
+            <option value="">— Seleccionar producto —</option>
+            {products.map((p) => (
+              <option key={p.id} value={p.id}>{p.name} ({p.sku})</option>
+            ))}
+          </select>
+        </div>
+        {line.productId && (
+          <div className="col-span-2 space-y-1">
+            <Label className="text-xs">Lote existente (opcional)</Label>
+            <select
+              value={line.lotId}
+              onChange={(e) => onUpdate(line._key, { lotId: e.target.value })}
+              className="flex h-9 w-full rounded-md border border-input bg-background px-3 text-sm shadow-sm focus:outline-none focus:ring-1 focus:ring-ring"
+            >
+              <option value="">— Sin lote asignado —</option>
+              {lots.map((l) => (
+                <option key={l.id} value={l.id}>
+                  {l.lotNumber} · stock: {l.quantity.toLocaleString("es-CO")}
+                  {l.expirationDate ? ` · vence ${new Date(l.expirationDate).toLocaleDateString("es-CO")}` : ""}
+                </option>
+              ))}
+            </select>
+            <p className="text-[11px] text-muted-foreground">Si seleccionas un lote existente, la cantidad se sumará a ese lote al aprobar.</p>
+          </div>
+        )}
+        <div className="space-y-1">
+          <Label className="text-xs">Cantidad</Label>
+          <Input
+            type="number" min={0.001} step={0.001} value={line.quantity}
+            onChange={(e) => onUpdate(line._key, { quantity: Number(e.target.value) })}
+          />
+        </div>
+        <div className="space-y-1">
+          <Label className="text-xs">Costo unitario (opcional)</Label>
+          <Input
+            type="number" min={0} placeholder="0" value={line.unitCost}
+            onChange={(e) => onUpdate(line._key, { unitCost: e.target.value })}
+          />
+        </div>
+      </div>
+    </div>
+  );
 }
 
 function ReceiptsPage() {
@@ -155,6 +241,7 @@ function ReceiptsPage() {
       notes: notes || undefined,
       lines: validLines.map((l) => ({
         productId: l.productId,
+        lotId: l.lotId || undefined,
         quantity: l.quantity,
         unitCost: l.unitCost ? Number(l.unitCost) : undefined,
       })),
@@ -399,51 +486,15 @@ function ReceiptsPage() {
 
               <div className="space-y-3">
                 {lines.map((line, idx) => (
-                  <div key={line._key} className="rounded-lg border border-border bg-muted/10 p-3 space-y-3">
-                    <div className="flex items-center justify-between">
-                      <span className="text-xs font-medium text-muted-foreground">Línea {idx + 1}</span>
-                      {lines.length > 1 && (
-                        <button type="button" onClick={() => removeLine(line._key)} className="text-muted-foreground hover:text-destructive">
-                          <Trash2 className="size-3.5" />
-                        </button>
-                      )}
-                    </div>
-                    <div className="grid grid-cols-2 gap-3">
-                      <div className="col-span-2 space-y-1">
-                        <Label className="text-xs">Producto</Label>
-                        <select
-                          value={line.productId}
-                          onChange={(e) => updateLine(line._key, { productId: e.target.value })}
-                          className="flex h-9 w-full rounded-md border border-input bg-background px-3 text-sm shadow-sm focus:outline-none focus:ring-1 focus:ring-ring"
-                        >
-                          <option value="">— Seleccionar producto —</option>
-                          {products.map((p) => (
-                            <option key={p.id} value={p.id}>{p.name} ({p.sku})</option>
-                          ))}
-                        </select>
-                      </div>
-                      <div className="space-y-1">
-                        <Label className="text-xs">Cantidad</Label>
-                        <Input
-                          type="number"
-                          min={0.001}
-                          step={0.001}
-                          value={line.quantity}
-                          onChange={(e) => updateLine(line._key, { quantity: Number(e.target.value) })}
-                        />
-                      </div>
-                      <div className="space-y-1">
-                        <Label className="text-xs">Costo unitario (opcional)</Label>
-                        <Input
-                          type="number"
-                          min={0}
-                          placeholder="0"
-                          value={line.unitCost}
-                          onChange={(e) => updateLine(line._key, { unitCost: e.target.value })}
-                        />
-                      </div>
-                    </div>
-                  </div>
+                  <ReceiptLineRow
+                    key={line._key}
+                    line={line}
+                    idx={idx}
+                    products={products}
+                    showRemove={lines.length > 1}
+                    onUpdate={updateLine}
+                    onRemove={removeLine}
+                  />
                 ))}
               </div>
             </div>
