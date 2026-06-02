@@ -1,4 +1,5 @@
 import { createFileRoute } from "@tanstack/react-router";
+import { RequirePermission } from "@/features/auth/RequirePermission";
 import { Settings, User, Bell, Shield, Building, CreditCard, Blocks } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -8,7 +9,11 @@ export const Route = createFileRoute("/app/settings")({
   head: () => ({
     meta: [{ title: "Ajustes · Krevo" }],
   }),
-  component: SettingsPage,
+  component: () => (
+    <RequirePermission action="manage" subject="organizations">
+      <SettingsPage />
+    </RequirePermission>
+  ),
 });
 
 function SettingsPage() {

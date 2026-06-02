@@ -1,4 +1,5 @@
 import { createFileRoute } from "@tanstack/react-router";
+import { RequirePermission } from "@/features/auth/RequirePermission";
 import { CreditCard, ShieldAlert, CheckCircle2, AlertTriangle, Wallet, Zap } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
@@ -7,7 +8,11 @@ export const Route = createFileRoute("/app/billing")({
   head: () => ({
     meta: [{ title: "Facturación y Suscripción · Krevo" }],
   }),
-  component: BillingPage,
+  component: () => (
+    <RequirePermission action="manage" subject="organizations">
+      <BillingPage />
+    </RequirePermission>
+  ),
 });
 
 const currentPlan = {

@@ -5,7 +5,7 @@ import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { z } from "zod";
 import { toast } from "sonner";
-import { ArrowLeft, Eye, EyeOff, Loader2, LogIn } from "lucide-react";
+import { AlertCircle, ArrowLeft, Eye, EyeOff, Loader2, LogIn } from "lucide-react";
 import { AuthShell } from "@/components/auth/auth-shell";
 import { OrSeparator, SsoButtons } from "@/components/auth/sso-buttons";
 import { Button } from "@/components/ui/button";
@@ -38,7 +38,7 @@ export const Route = createFileRoute("/login")({
 
 function LoginPage() {
   const navigate = useNavigate();
-  const { loginUser, isLoading, error } = useAuth();
+  const { loginUser, isLoading, error, clearError } = useAuth();
   const [showPw, setShowPw] = useState(false);
   const {
     register,
@@ -100,7 +100,7 @@ function LoginPage() {
                 autoComplete="email"
                 placeholder="tu@empresa.com"
                 aria-invalid={!!errors.email}
-                {...register("email")}
+                {...register("email", { onChange: () => error && clearError() })}
               />
               {errors.email ? (
                 <p className="text-xs text-destructive" role="alert">
@@ -127,7 +127,7 @@ function LoginPage() {
                   placeholder="••••••••"
                   aria-invalid={!!errors.password}
                   className="pr-10"
-                  {...register("password")}
+                  {...register("password", { onChange: () => error && clearError() })}
                 />
                 <button
                   type="button"
@@ -146,9 +146,16 @@ function LoginPage() {
             </div>
 
             {error ? (
-              <p className="rounded-md border border-destructive/40 bg-destructive/10 px-3 py-2 text-sm text-destructive" role="alert">
-                {error}
-              </p>
+              <motion.div
+                role="alert"
+                initial={{ opacity: 0, y: -6, scale: 0.98 }}
+                animate={{ opacity: 1, y: 0, scale: 1 }}
+                transition={{ duration: 0.2 }}
+                className="flex items-start gap-2.5 rounded-lg border border-destructive/40 bg-destructive/10 px-3 py-2.5 text-sm text-destructive"
+              >
+                <AlertCircle className="mt-0.5 size-4 shrink-0" />
+                <span>{error}</span>
+              </motion.div>
             ) : null}
 
             <label className="flex cursor-pointer select-none items-center gap-2 text-sm text-muted-foreground">

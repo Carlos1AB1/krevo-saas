@@ -1,4 +1,5 @@
 import { createFileRoute } from "@tanstack/react-router";
+import { usePermissions } from "@/features/auth/usePermissions";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import {
   Search, Filter, Play, CheckCircle, Loader2, Box, Plus, Trash2, PackageCheck, Truck,
@@ -35,6 +36,7 @@ function makeEmptyLine(): LineState {
 }
 
 function PickingPage() {
+  const can = usePermissions();
   const qc = useQueryClient();
   const [q, setQ] = useState("");
   const [selected, setSelected] = useState<DispatchResponse | null>(null);
@@ -147,9 +149,11 @@ function PickingPage() {
           <Button variant="outline" size="sm" className="hidden sm:flex">
             <Filter className="mr-2 size-4" /> Filtros
           </Button>
-          <Button size="sm" onClick={() => setCreateOpen(true)}>
-            <Plus className="mr-2 size-4" /> Nuevo Despacho
-          </Button>
+          {can("manage", "logistics") && (
+            <Button size="sm" onClick={() => setCreateOpen(true)}>
+              <Plus className="mr-2 size-4" /> Nuevo Despacho
+            </Button>
+          )}
         </div>
       </header>
 
@@ -279,7 +283,7 @@ function PickingPage() {
 
               <SheetFooter className="mt-6">
                 <Button variant="outline" onClick={() => setSelected(null)}>Cancelar</Button>
-                {selected.status === "PENDING" && (
+                {selected.status === "PENDING" && can("manage", "logistics") && (
                   <Button variant="nuclear" disabled={isWorking}
                     onClick={() => confirmPickingMutation.mutate(selected.id)}>
                     {confirmPickingMutation.isPending
@@ -287,7 +291,7 @@ function PickingPage() {
                       : <><Play className="mr-2 size-4" /> Confirmar Picking</>}
                   </Button>
                 )}
-                {selected.status === "PICKING" && (
+                {selected.status === "PICKING" && can("manage", "logistics") && (
                   <Button variant="nuclear" disabled={isWorking}
                     onClick={() => approveMutation.mutate(selected.id)}>
                     {approveMutation.isPending

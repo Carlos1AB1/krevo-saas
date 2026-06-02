@@ -2,6 +2,20 @@ import { apiRequest } from "@/lib/api";
 import { getRefreshToken } from "./auth.storage";
 import type { AuthTokensResponse, AuthUser, LoginInput, MessageResponse } from "./auth.types";
 
+export interface RegisterInput {
+  firstName: string;
+  lastName: string;
+  email: string;
+  password: string;
+  orgName: string;
+}
+
+export interface TokensOnlyResponse {
+  accessToken: string;
+  refreshToken: string;
+  expiresIn: number;
+}
+
 export function login(input: LoginInput): Promise<AuthTokensResponse> {
   return apiRequest<AuthTokensResponse>("/auth/login", {
     method: "POST",
@@ -38,5 +52,23 @@ export function logout(accessToken: string, refreshToken?: string): Promise<Mess
       Authorization: `Bearer ${accessToken}`,
     },
     body: JSON.stringify({ refreshToken }),
+  });
+}
+
+export function register(input: RegisterInput): Promise<TokensOnlyResponse> {
+  return apiRequest<TokensOnlyResponse>("/auth/register", {
+    method: "POST",
+    body: JSON.stringify(input),
+  });
+}
+
+export function switchOrganization(
+  accessToken: string,
+  organizationId: string,
+): Promise<TokensOnlyResponse> {
+  return apiRequest<TokensOnlyResponse>("/auth/switch-organization", {
+    method: "POST",
+    headers: { Authorization: `Bearer ${accessToken}` },
+    body: JSON.stringify({ organizationId }),
   });
 }

@@ -1,4 +1,5 @@
 import { createFileRoute } from "@tanstack/react-router";
+import { usePermissions } from "@/features/auth/usePermissions";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import {
   ArrowUpFromLine, Search, Filter, Truck, PackageCheck,
@@ -30,6 +31,7 @@ function statusColor(status: DispatchResponse["status"]) {
 }
 
 function ShipmentsPage() {
+  const can = usePermissions();
   const qc = useQueryClient();
   const [selected, setSelected] = useState<DispatchResponse | null>(null);
   const [q, setQ] = useState("");
@@ -148,7 +150,7 @@ function ShipmentsPage() {
                       <Button variant="outline" size="sm" className="w-full text-xs" onClick={() => setSelected(d)}>
                         Ver detalle
                       </Button>
-                      {d.status === "PENDING" && (
+                      {d.status === "PENDING" && can("manage", "logistics") && (
                         <Button size="sm" className="w-full text-xs" onClick={() => setSelected(d)}>
                           Aprobar
                         </Button>
@@ -212,7 +214,7 @@ function ShipmentsPage() {
                   <p className="text-xs text-muted-foreground border-l-2 border-border pl-3">{selected.notes}</p>
                 )}
 
-                {selected.status === "PENDING" && (
+                {selected.status === "PENDING" && can("manage", "logistics") && (
                   <div className="pt-4 flex justify-end gap-2">
                     <Button variant="nuclear" disabled={isWorking} onClick={() => approveMutation.mutate(selected.id)}>
                       {approveMutation.isPending

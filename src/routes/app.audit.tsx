@@ -1,4 +1,5 @@
 import { createFileRoute } from "@tanstack/react-router";
+import { RequirePermission } from "@/features/auth/RequirePermission";
 import { useQuery } from "@tanstack/react-query";
 import { useState } from "react";
 import {
@@ -14,7 +15,11 @@ import { cn } from "@/lib/utils";
 
 export const Route = createFileRoute("/app/audit")({
   head: () => ({ meta: [{ title: "Auditoría · Krevo" }] }),
-  component: AuditPage,
+  component: () => (
+    <RequirePermission action="read" subject="audit">
+      <AuditPage />
+    </RequirePermission>
+  ),
 });
 
 // ── Action display helpers ──────────────────────────────────────────────────
