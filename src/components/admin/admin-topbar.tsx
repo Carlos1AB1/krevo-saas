@@ -1,6 +1,7 @@
 import { Link } from "@tanstack/react-router";
 import { ArrowRight, Bell, Search, ShieldCheck } from "lucide-react";
 import type { ReactNode } from "react";
+import { AdminMobileNav } from "@/components/admin/admin-mobile-nav";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -14,10 +15,11 @@ type AdminTopbarProps = {
 export function AdminTopbar({ title, description, action }: AdminTopbarProps) {
   return (
     <header className="sticky top-0 z-40 border-b border-border bg-background/88 backdrop-blur-xl">
-      <div className="flex h-16 items-center gap-3 px-4 lg:px-6">
+      <div className="flex min-h-16 items-center gap-2 px-3 py-2 sm:gap-3 sm:px-4 lg:px-6">
+        <AdminMobileNav />
         <div className="min-w-0 flex-1">
           <div className="flex items-center gap-2">
-            <h1 className="truncate text-xl font-semibold tracking-tight text-foreground">
+            <h1 className="truncate text-lg font-semibold tracking-tight text-foreground sm:text-xl">
               {title}
             </h1>
             <Badge
@@ -27,7 +29,9 @@ export function AdminTopbar({ title, description, action }: AdminTopbarProps) {
               SuperAdmin
             </Badge>
           </div>
-          <p className="hidden truncate text-xs text-muted-foreground sm:block">{description}</p>
+          <p className="hidden max-w-[68ch] truncate text-xs text-muted-foreground sm:block">
+            {description}
+          </p>
         </div>
 
         <div className="hidden w-full max-w-xs items-center gap-2 rounded-md border border-border bg-card px-3 py-1.5 text-sm text-muted-foreground md:flex">
@@ -48,7 +52,7 @@ export function AdminTopbar({ title, description, action }: AdminTopbarProps) {
           <span className="absolute right-1.5 top-1.5 size-2 rounded-full bg-destructive ring-2 ring-background" />
         </button>
 
-        {action}
+        {action ? <div className="flex shrink-0">{action}</div> : null}
 
         <Button asChild variant="outline" size="sm" className="hidden md:inline-flex">
           <Link to="/app">

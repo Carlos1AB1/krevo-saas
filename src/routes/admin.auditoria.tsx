@@ -31,7 +31,7 @@ function GlobalAuditPage() {
         action={
           <Button variant="outline" size="sm">
             <Download className="size-4" />
-            Exportar
+            <span className="hidden sm:inline">Exportar</span>
           </Button>
         }
       />
@@ -59,7 +59,32 @@ function GlobalAuditPage() {
               </CardTitle>
             </CardHeader>
             <CardContent>
-              <div className="overflow-hidden rounded-lg border border-border">
+              <div className="grid gap-3 md:hidden">
+                {globalAuditEvents.map((event) => (
+                  <article
+                    key={event.id}
+                    className="rounded-lg border border-border bg-background/70 p-4"
+                  >
+                    <div className="flex items-start justify-between gap-3">
+                      <div className="min-w-0">
+                        <p className="truncate font-semibold text-foreground">{event.action}</p>
+                        <p className="mt-1 truncate text-xs text-muted-foreground">
+                          {event.company}
+                        </p>
+                      </div>
+                      <SeverityBadge severity={event.severity} />
+                    </div>
+                    <div className="mt-4 flex items-center justify-between gap-3 border-t border-border pt-3">
+                      <p className="truncate text-xs text-muted-foreground">{event.actor}</p>
+                      <p className="shrink-0 font-mono text-xs text-muted-foreground">
+                        {event.timestamp}
+                      </p>
+                    </div>
+                  </article>
+                ))}
+              </div>
+
+              <div className="hidden overflow-hidden rounded-lg border border-border md:block">
                 <Table>
                   <TableHeader className="bg-muted/50">
                     <TableRow>

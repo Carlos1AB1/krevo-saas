@@ -37,7 +37,7 @@ function BillingAdminPage() {
         action={
           <Button variant="outline" size="sm">
             <Download className="size-4" />
-            Exportar
+            <span className="hidden sm:inline">Exportar</span>
           </Button>
         }
       />
@@ -72,7 +72,48 @@ function BillingAdminPage() {
               <CardTitle>Facturas recientes</CardTitle>
             </CardHeader>
             <CardContent>
-              <div className="overflow-hidden rounded-lg border border-border">
+              <div className="grid gap-3 md:hidden">
+                {invoices.map((invoice) => (
+                  <article
+                    key={invoice.id}
+                    className="rounded-lg border border-border bg-background/70 p-4"
+                  >
+                    <div className="flex items-start justify-between gap-3">
+                      <div className="min-w-0">
+                        <p className="font-mono text-xs text-muted-foreground">{invoice.id}</p>
+                        <p className="mt-1 truncate font-semibold text-foreground">
+                          {invoice.company}
+                        </p>
+                      </div>
+                      <StatusBadge status={invoice.status} />
+                    </div>
+                    <div className="mt-4 grid grid-cols-3 gap-3 text-sm">
+                      <div className="min-w-0">
+                        <p className="text-[10px] uppercase tracking-wider text-muted-foreground">
+                          Plan
+                        </p>
+                        <p className="mt-1 truncate font-medium">{invoice.plan}</p>
+                      </div>
+                      <div className="min-w-0">
+                        <p className="text-[10px] uppercase tracking-wider text-muted-foreground">
+                          Fecha
+                        </p>
+                        <p className="mt-1 truncate font-mono text-xs">{invoice.date}</p>
+                      </div>
+                      <div className="min-w-0 text-right">
+                        <p className="text-[10px] uppercase tracking-wider text-muted-foreground">
+                          Valor
+                        </p>
+                        <p className="mt-1 truncate font-mono font-semibold">
+                          ${formatCop(invoice.amount)}
+                        </p>
+                      </div>
+                    </div>
+                  </article>
+                ))}
+              </div>
+
+              <div className="hidden overflow-hidden rounded-lg border border-border md:block">
                 <Table>
                   <TableHeader className="bg-muted/50">
                     <TableRow>

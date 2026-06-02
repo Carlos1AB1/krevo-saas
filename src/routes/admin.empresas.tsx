@@ -32,14 +32,14 @@ function CompaniesPage() {
         action={
           <Button size="sm">
             <Plus className="size-4" />
-            Nueva empresa
+            <span className="hidden sm:inline">Nueva empresa</span>
           </Button>
         }
       />
 
       <main className="flex-1 overflow-auto bg-muted/20 p-4 sm:p-6">
         <div className="mx-auto max-w-7xl space-y-6">
-          <section className="grid gap-4 md:grid-cols-4">
+          <section className="grid grid-cols-2 gap-3 sm:gap-4 md:grid-cols-4">
             <SummaryTile label="Total empresas" value={companies.length.toString()} />
             <SummaryTile
               label="Activas"
@@ -74,19 +74,93 @@ function CompaniesPage() {
                     className="h-10 bg-background pl-9"
                   />
                 </div>
-                <div className="flex flex-wrap gap-2">
+                <div className="grid grid-cols-2 gap-2 sm:flex sm:flex-wrap">
                   <Button variant="outline" size="sm">
                     <Building2 className="size-4" />
-                    Filtrar estado
+                    <span className="truncate">Filtrar</span>
                   </Button>
                   <Button variant="outline" size="sm">
                     <Download className="size-4" />
-                    Exportar CSV
+                    <span className="truncate">Exportar</span>
                   </Button>
                 </div>
               </div>
 
-              <div className="mt-4 overflow-hidden rounded-lg border border-border">
+              <div className="mt-4 grid gap-3 md:hidden">
+                {companies.map((company) => (
+                  <article
+                    key={company.id}
+                    className="rounded-lg border border-border bg-background/70 p-4"
+                  >
+                    <div className="flex items-start justify-between gap-3">
+                      <div className="min-w-0">
+                        <p className="truncate font-semibold text-foreground">{company.name}</p>
+                        <p className="mt-0.5 text-xs text-muted-foreground">
+                          {company.nit} · {company.region}
+                        </p>
+                      </div>
+                      <StatusBadge status={company.status} />
+                    </div>
+
+                    <div className="mt-3 grid grid-cols-2 gap-3 text-sm">
+                      <MobileMetric label="Plan" value={getPlanName(company.planId)} />
+                      <MobileMetric label="MRR" value={`$${formatCop(company.mrr)}`} mono />
+                      <MobileMetric
+                        label="Usuarios"
+                        value={`${company.usage.users}/${company.usage.usersLimit ?? "∞"}`}
+                      />
+                      <MobileMetric
+                        label="Bodegas"
+                        value={`${company.usage.warehouses}/${company.usage.warehousesLimit ?? "∞"}`}
+                      />
+                    </div>
+
+                    <div className="mt-4">
+                      <div className="mb-1 flex items-center justify-between gap-2">
+                        <span className="text-xs font-medium text-muted-foreground">
+                          Transacciones
+                        </span>
+                        <span className="font-mono text-xs text-muted-foreground">
+                          {usagePercent(
+                            company.usage.transactions,
+                            company.usage.transactionsLimit,
+                          )}
+                          %
+                        </span>
+                      </div>
+                      <div className="h-2 overflow-hidden rounded-full bg-muted">
+                        <UsageBar
+                          percent={usagePercent(
+                            company.usage.transactions,
+                            company.usage.transactionsLimit,
+                          )}
+                        />
+                      </div>
+                    </div>
+
+                    <div className="mt-4 flex items-center justify-between gap-3 border-t border-border pt-3">
+                      <div className="min-w-0">
+                        <p className="truncate text-xs text-muted-foreground">
+                          {company.owner.name}
+                        </p>
+                        <p className="truncate text-xs text-muted-foreground">
+                          Próximo cobro: {company.nextBillingDate ?? "sin cobro"}
+                        </p>
+                      </div>
+                      <Button
+                        variant="ghost"
+                        size="icon"
+                        className="size-8 shrink-0 text-muted-foreground"
+                        aria-label={`Acciones para ${company.name}`}
+                      >
+                        <MoreHorizontal className="size-4" />
+                      </Button>
+                    </div>
+                  </article>
+                ))}
+              </div>
+
+              <div className="mt-4 hidden overflow-hidden rounded-lg border border-border md:block">
                 <Table>
                   <TableHeader className="bg-muted/50">
                     <TableRow>
@@ -214,14 +288,41 @@ function UsageCell({
         {!compact && <span className="text-[10px] text-muted-foreground">{percent}%</span>}
       </div>
       <div className="h-1.5 overflow-hidden rounded-full bg-muted">
-        <div
-          className={cn(
-            "h-full rounded-full",
-            percent >= 95 ? "bg-destructive" : percent >= 80 ? "bg-warning" : "bg-nuclear",
-          )}
-          style={{ width: `${percent}%` }}
-        />
+        <UsageBar percent={percent} />
       </div>
     </div>
+  );
+}
+
+function MobileMetric({
+  label,
+  value,
+  mono = false,
+}: {
+  label: string;
+  value: string;
+  mono?: boolean;
+}) {
+  return (
+    <div className="min-w-0 rounded-md bg-muted/30 p-2">
+      <p className="text-[10px] font-medium uppercase tracking-wider text-muted-foreground">
+        {label}
+      </p>
+      <p className={cn("mt-1 truncate font-semibold text-foreground", mono && "font-mono")}>
+        {value}
+      </p>
+    </div>
+  );
+}
+
+function UsageBar({ percent }: { percent: number }) {
+  return (
+    <div
+      className={cn(
+        "h-full rounded-full",
+        percent >= 95 ? "bg-destructive" : percent >= 80 ? "bg-warning" : "bg-nuclear",
+      )}
+      style={{ width: `${percent}%` }}
+    />
   );
 }
