@@ -1,4 +1,5 @@
 import { createFileRoute } from "@tanstack/react-router";
+import { usePermissions } from "@/features/auth/usePermissions";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import {
   ArrowDownToLine,
@@ -152,6 +153,7 @@ function ReceiptLineRow({
 }
 
 function ReceiptsPage() {
+  const can = usePermissions();
   const qc = useQueryClient();
   const { suppliers: storedSuppliers } = useSuppliers();
   const [selectedRec, setSelectedRec] = useState<ReceiptResponse | null>(null);
@@ -270,10 +272,12 @@ function ReceiptsPage() {
             <Filter className="mr-2 size-4" />
             <span className="hidden lg:inline">Filtrar</span>
           </Button>
-          <Button size="sm" onClick={() => openCreate()}>
-            <Plus className="mr-2 size-4" />
-            <span>Nuevo Ingreso</span>
-          </Button>
+          {can("manage", "logistics") && (
+            <Button size="sm" onClick={() => openCreate()}>
+              <Plus className="mr-2 size-4" />
+              <span>Nuevo Ingreso</span>
+            </Button>
+          )}
         </div>
       </header>
 
@@ -350,7 +354,7 @@ function ReceiptsPage() {
                     <Button variant="outline" className="w-full text-xs" size="sm" onClick={() => setSelectedRec(rec)}>
                       Ver detalle
                     </Button>
-                    {rec.status === "PENDING" && (
+                    {rec.status === "PENDING" && can("manage", "logistics") && (
                       <Button className="w-full text-xs" size="sm" variant="default" onClick={() => setSelectedRec(rec)}>
                         Aprobar
                       </Button>
@@ -417,7 +421,7 @@ function ReceiptsPage() {
                   <p className="text-xs text-muted-foreground border-l-2 border-border pl-3">{selectedRec.notes}</p>
                 )}
 
-                {selectedRec.status === "PENDING" && (
+                {selectedRec.status === "PENDING" && can("manage", "logistics") && (
                   <div className="pt-4 flex justify-end gap-2">
                     <Button variant="outline" disabled={isWorking} onClick={() => rejectMutation.mutate(selectedRec.id)}>
                       {rejectMutation.isPending ? <Loader2 className="size-4 animate-spin" /> : "Rechazar"}

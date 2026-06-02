@@ -130,3 +130,26 @@ export function createFormula(input: CreateFormulaInput): Promise<FormulaRespons
     body: JSON.stringify(input),
   });
 }
+
+export interface UpdateFormulaInput {
+  name?: string;
+  description?: string;
+  outputProductId?: string;
+  outputQty?: number;
+  ingredients?: CreateFormulaIngredientInput[];
+}
+
+export function updateFormula(id: string, input: UpdateFormulaInput): Promise<FormulaResponse> {
+  return authRequest(`/production/formulas/${id}`, {
+    method: "PATCH",
+    body: JSON.stringify(input),
+  });
+}
+
+export function deactivateFormula(id: string): Promise<FormulaResponse> {
+  return authRequest(`/production/formulas/${id}/deactivate`, { method: "POST" });
+}
+
+export function deleteFormula(id: string): Promise<void> {
+  return authRequest(`/production/formulas/${id}`, { method: "DELETE" });
+}

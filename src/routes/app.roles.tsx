@@ -1,4 +1,5 @@
 import { createFileRoute } from "@tanstack/react-router";
+import { RequirePermission } from "@/features/auth/RequirePermission";
 import { Shield, Plus, Lock, Key, Users, CheckCircle2, XCircle } from "lucide-react";
 import { Button } from "@/components/ui/button";
 
@@ -6,7 +7,11 @@ export const Route = createFileRoute("/app/roles")({
   head: () => ({
     meta: [{ title: "Roles y Permisos · Krevo" }],
   }),
-  component: RolesPage,
+  component: () => (
+    <RequirePermission action="read" subject="roles">
+      <RolesPage />
+    </RequirePermission>
+  ),
 });
 
 const mockRoles = [

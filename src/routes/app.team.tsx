@@ -1,4 +1,5 @@
 import { createFileRoute } from "@tanstack/react-router";
+import { RequirePermission } from "@/features/auth/RequirePermission";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import {
   Users2, Plus, Search, Shield, UserCog, Loader2, Settings2,
@@ -20,7 +21,11 @@ import { es } from "date-fns/locale";
 
 export const Route = createFileRoute("/app/team")({
   head: () => ({ meta: [{ title: "Equipo · Krevo" }] }),
-  component: TeamPage,
+  component: () => (
+    <RequirePermission action="read" subject="users">
+      <TeamPage />
+    </RequirePermission>
+  ),
 });
 
 function TeamPage() {
