@@ -1,10 +1,34 @@
+import { useState, type ReactNode } from "react";
 import { createFileRoute } from "@tanstack/react-router";
-import { Building2, Download, MoreHorizontal, Plus, Search } from "lucide-react";
+import {
+  Activity,
+  Building2,
+  CalendarClock,
+  CreditCard,
+  Download,
+  Mail,
+  MapPin,
+  MoreHorizontal,
+  Plus,
+  Search,
+  UserRound,
+  UsersRound,
+  Warehouse,
+  X,
+  type LucideIcon,
+} from "lucide-react";
 import { AdminTopbar } from "@/components/admin/admin-topbar";
 import { StatusBadge } from "@/components/admin/status-badge";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
+import {
+  Sheet,
+  SheetContent,
+  SheetDescription,
+  SheetHeader,
+  SheetTitle,
+} from "@/components/ui/sheet";
 import {
   Table,
   TableBody,
@@ -13,7 +37,13 @@ import {
   TableHeader,
   TableRow,
 } from "@/components/ui/table";
-import { companies, formatCop, getPlanName, usagePercent } from "@/lib/admin-mock";
+import {
+  companies,
+  formatCop,
+  getPlanName,
+  type CompanyAccount,
+  usagePercent,
+} from "@/lib/admin-mock";
 import { cn } from "@/lib/utils";
 
 export const Route = createFileRoute("/admin/empresas")({
@@ -24,6 +54,13 @@ export const Route = createFileRoute("/admin/empresas")({
 });
 
 function CompaniesPage() {
+  const [selectedCompany, setSelectedCompany] = useState<CompanyAccount | null>(null);
+  const [searchQuery, setSearchQuery] = useState("");
+  const filteredCompanies = companies.filter((company) =>
+    matchesCompanySearch(company, searchQuery),
+  );
+  const hasSearch = searchQuery.trim().length > 0;
+
   return (
     <>
       <AdminTopbar
@@ -71,172 +108,155 @@ function CompaniesPage() {
                   <Input
                     id="company-search"
                     placeholder="Buscar por empresa, NIT o admin..."
-                    className="h-10 bg-background pl-9"
+                    value={searchQuery}
+                    onChange={(event) => setSearchQuery(event.target.value)}
+                    autoComplete="off"
+                    className="h-10 bg-background pl-9 pr-9"
                   />
+                  {hasSearch && (
+                    <Button
+                      type="button"
+                      variant="ghost"
+                      size="icon"
+                      className="absolute right-1 top-1/2 size-8 -translate-y-1/2 text-muted-foreground"
+                      aria-label="Limpiar búsqueda"
+                      onClick={() => setSearchQuery("")}
+                    >
+                      <X className="size-4" />
+                    </Button>
+                  )}
                 </div>
-                <div className="grid grid-cols-2 gap-2 sm:flex sm:flex-wrap">
-                  <Button variant="outline" size="sm">
-                    <Building2 className="size-4" />
-                    <span className="truncate">Filtrar</span>
-                  </Button>
-                  <Button variant="outline" size="sm">
-                    <Download className="size-4" />
-                    <span className="truncate">Exportar</span>
-                  </Button>
+                <div className="flex flex-col gap-2 sm:flex-row sm:items-center">
+                  <p className="text-xs font-medium text-muted-foreground">
+                    {hasSearch
+                      ? `${filteredCompanies.length} de ${companies.length} empresas`
+                      : `${companies.length} empresas registradas`}
+                  </p>
+                  <div className="grid grid-cols-2 gap-2 sm:flex sm:flex-wrap">
+                    <Button variant="outline" size="sm">
+                      <Building2 className="size-4" />
+                      <span className="truncate">Filtrar</span>
+                    </Button>
+                    <Button variant="outline" size="sm">
+                      <Download className="size-4" />
+                      <span className="truncate">Exportar</span>
+                    </Button>
+                  </div>
                 </div>
               </div>
 
-              <div className="mt-4 grid gap-3 md:hidden">
-                {companies.map((company) => (
-                  <article
-                    key={company.id}
-                    className="rounded-lg border border-border bg-background/70 p-4"
-                  >
-                    <div className="flex items-start justify-between gap-3">
-                      <div className="min-w-0">
-                        <p className="truncate font-semibold text-foreground">{company.name}</p>
-                        <p className="mt-0.5 text-xs text-muted-foreground">
-                          {company.nit} · {company.region}
-                        </p>
-                      </div>
-                      <StatusBadge status={company.status} />
-                    </div>
-
-                    <div className="mt-3 grid grid-cols-2 gap-3 text-sm">
-                      <MobileMetric label="Plan" value={getPlanName(company.planId)} />
-                      <MobileMetric label="MRR" value={`$${formatCop(company.mrr)}`} mono />
-                      <MobileMetric
-                        label="Usuarios"
-                        value={`${company.usage.users}/${company.usage.usersLimit ?? "∞"}`}
-                      />
-                      <MobileMetric
-                        label="Bodegas"
-                        value={`${company.usage.warehouses}/${company.usage.warehousesLimit ?? "∞"}`}
-                      />
-                    </div>
-
-                    <div className="mt-4">
-                      <div className="mb-1 flex items-center justify-between gap-2">
-                        <span className="text-xs font-medium text-muted-foreground">
-                          Transacciones
-                        </span>
-                        <span className="font-mono text-xs text-muted-foreground">
-                          {usagePercent(
-                            company.usage.transactions,
-                            company.usage.transactionsLimit,
-                          )}
-                          %
-                        </span>
-                      </div>
-                      <div className="h-2 overflow-hidden rounded-full bg-muted">
-                        <UsageBar
-                          percent={usagePercent(
-                            company.usage.transactions,
-                            company.usage.transactionsLimit,
-                          )}
-                        />
-                      </div>
-                    </div>
-
-                    <div className="mt-4 flex items-center justify-between gap-3 border-t border-border pt-3">
-                      <div className="min-w-0">
-                        <p className="truncate text-xs text-muted-foreground">
-                          {company.owner.name}
-                        </p>
-                        <p className="truncate text-xs text-muted-foreground">
-                          Próximo cobro: {company.nextBillingDate ?? "sin cobro"}
-                        </p>
-                      </div>
-                      <Button
-                        variant="ghost"
-                        size="icon"
-                        className="size-8 shrink-0 text-muted-foreground"
-                        aria-label={`Acciones para ${company.name}`}
+              {filteredCompanies.length > 0 ? (
+                <>
+                  <div className="mt-4 grid gap-3 md:hidden">
+                    {filteredCompanies.map((company) => (
+                      <article
+                        key={company.id}
+                        className="rounded-lg border border-border bg-background/70 p-4"
                       >
-                        <MoreHorizontal className="size-4" />
-                      </Button>
-                    </div>
-                  </article>
-                ))}
-              </div>
-
-              <div className="mt-4 hidden overflow-hidden rounded-lg border border-border md:block">
-                <Table>
-                  <TableHeader className="bg-muted/50">
-                    <TableRow>
-                      <TableHead className="px-4">Empresa</TableHead>
-                      <TableHead>Plan</TableHead>
-                      <TableHead>Estado</TableHead>
-                      <TableHead>Usuarios</TableHead>
-                      <TableHead>Bodegas</TableHead>
-                      <TableHead>Transacciones</TableHead>
-                      <TableHead>Próximo cobro</TableHead>
-                      <TableHead className="text-right">MRR</TableHead>
-                      <TableHead className="w-12" />
-                    </TableRow>
-                  </TableHeader>
-                  <TableBody>
-                    {companies.map((company) => (
-                      <TableRow key={company.id} className="bg-card/40">
-                        <TableCell className="px-4 py-4">
-                          <div className="min-w-[220px]">
-                            <p className="font-semibold text-foreground">{company.name}</p>
-                            <p className="mt-0.5 text-xs text-muted-foreground">
-                              {company.nit} · {company.region}
+                        <div className="flex items-start justify-between gap-3">
+                          <div className="min-w-0">
+                            <p className="text-[10px] font-medium uppercase tracking-wider text-muted-foreground">
+                              Empresa
                             </p>
-                            <p className="mt-1 text-xs text-muted-foreground">
-                              {company.owner.name} · {company.owner.email}
+                            <p className="truncate font-semibold text-foreground">{company.name}</p>
+                            <p className="mt-0.5 truncate text-xs text-muted-foreground">
+                              {company.nit}
                             </p>
                           </div>
-                        </TableCell>
-                        <TableCell className="font-medium">{getPlanName(company.planId)}</TableCell>
-                        <TableCell>
-                          <StatusBadge status={company.status} />
-                        </TableCell>
-                        <TableCell>
-                          <UsageCell
-                            current={company.usage.users}
-                            limit={company.usage.usersLimit}
-                          />
-                        </TableCell>
-                        <TableCell>
-                          <UsageCell
-                            current={company.usage.warehouses}
-                            limit={company.usage.warehousesLimit}
-                          />
-                        </TableCell>
-                        <TableCell>
-                          <UsageCell
-                            current={company.usage.transactions}
-                            limit={company.usage.transactionsLimit}
-                            compact
-                          />
-                        </TableCell>
-                        <TableCell className="text-xs text-muted-foreground">
-                          {company.nextBillingDate ?? "Sin cobro activo"}
-                        </TableCell>
-                        <TableCell className="text-right font-mono font-semibold">
-                          ${formatCop(company.mrr)}
-                        </TableCell>
-                        <TableCell>
                           <Button
                             variant="ghost"
                             size="icon"
-                            className="size-8 text-muted-foreground"
-                            aria-label={`Acciones para ${company.name}`}
+                            className="size-8 shrink-0 text-muted-foreground"
+                            aria-label={`Ver detalles de ${company.name}`}
+                            onClick={() => setSelectedCompany(company)}
                           >
                             <MoreHorizontal className="size-4" />
                           </Button>
-                        </TableCell>
-                      </TableRow>
+                        </div>
+
+                        <div className="mt-4 grid grid-cols-1 gap-3 text-sm sm:grid-cols-3">
+                          <MobileMetric label="Plan" value={getPlanName(company.planId)} />
+                          <div className="min-w-0 rounded-md bg-muted/30 p-2">
+                            <p className="text-[10px] font-medium uppercase tracking-wider text-muted-foreground">
+                              Estado
+                            </p>
+                            <div className="mt-1">
+                              <StatusBadge status={company.status} />
+                            </div>
+                          </div>
+                          <MobileMetric
+                            label="Próximo cobro"
+                            value={company.nextBillingDate ?? "Sin cobro activo"}
+                          />
+                        </div>
+                      </article>
                     ))}
-                  </TableBody>
-                </Table>
-              </div>
+                  </div>
+
+                  <div className="mt-4 hidden overflow-hidden rounded-lg border border-border md:block">
+                    <Table>
+                      <TableHeader className="bg-muted/50">
+                        <TableRow>
+                          <TableHead className="px-4">Empresa</TableHead>
+                          <TableHead>Plan</TableHead>
+                          <TableHead>Estado</TableHead>
+                          <TableHead>Próximo cobro</TableHead>
+                          <TableHead className="w-12" />
+                        </TableRow>
+                      </TableHeader>
+                      <TableBody>
+                        {filteredCompanies.map((company) => (
+                          <TableRow key={company.id} className="bg-card/40">
+                            <TableCell className="px-4 py-4">
+                              <div className="min-w-[220px]">
+                                <p className="font-semibold text-foreground">{company.name}</p>
+                                <p className="mt-0.5 text-xs text-muted-foreground">
+                                  {company.nit}
+                                </p>
+                              </div>
+                            </TableCell>
+                            <TableCell className="font-medium">
+                              {getPlanName(company.planId)}
+                            </TableCell>
+                            <TableCell>
+                              <StatusBadge status={company.status} />
+                            </TableCell>
+                            <TableCell className="text-xs text-muted-foreground">
+                              {company.nextBillingDate ?? "Sin cobro activo"}
+                            </TableCell>
+                            <TableCell>
+                              <Button
+                                variant="ghost"
+                                size="icon"
+                                className="size-8 text-muted-foreground"
+                                aria-label={`Ver detalles de ${company.name}`}
+                                onClick={() => setSelectedCompany(company)}
+                              >
+                                <MoreHorizontal className="size-4" />
+                              </Button>
+                            </TableCell>
+                          </TableRow>
+                        ))}
+                      </TableBody>
+                    </Table>
+                  </div>
+                </>
+              ) : (
+                <EmptyCompaniesState searchQuery={searchQuery} onClear={() => setSearchQuery("")} />
+              )}
             </CardContent>
           </Card>
         </div>
       </main>
+
+      <CompanyDetailsSheet
+        company={selectedCompany}
+        onOpenChange={(open) => {
+          if (!open) {
+            setSelectedCompany(null);
+          }
+        }}
+      />
     </>
   );
 }
@@ -267,31 +287,80 @@ function SummaryTile({
   );
 }
 
-function UsageCell({
-  current,
-  limit,
-  compact = false,
+function EmptyCompaniesState({
+  searchQuery,
+  onClear,
 }: {
-  current: number;
-  limit: number | null;
-  compact?: boolean;
+  searchQuery: string;
+  onClear: () => void;
 }) {
-  const percent = usagePercent(current, limit);
-  const label = limit
-    ? `${current.toLocaleString("es-CO")} / ${limit.toLocaleString("es-CO")}`
-    : `${current.toLocaleString("es-CO")} / ilimitado`;
-
   return (
-    <div className="min-w-[120px] space-y-1.5">
-      <div className="flex items-center justify-between gap-2">
-        <span className="font-mono text-xs text-foreground">{label}</span>
-        {!compact && <span className="text-[10px] text-muted-foreground">{percent}%</span>}
+    <div className="mt-4 rounded-lg border border-dashed border-border bg-muted/20 p-8 text-center">
+      <div className="mx-auto flex size-10 items-center justify-center rounded-lg border border-border bg-background">
+        <Search className="size-4 text-muted-foreground" />
       </div>
-      <div className="h-1.5 overflow-hidden rounded-full bg-muted">
-        <UsageBar percent={percent} />
-      </div>
+      <p className="mt-4 text-sm font-semibold text-foreground">Sin resultados</p>
+      <p className="mx-auto mt-1 max-w-sm text-sm text-muted-foreground">
+        No encontramos empresas para "{searchQuery.trim()}". Prueba con otro nombre, NIT, plan,
+        estado o administrador.
+      </p>
+      <Button type="button" variant="outline" size="sm" className="mt-4" onClick={onClear}>
+        Limpiar búsqueda
+      </Button>
     </div>
   );
+}
+
+function matchesCompanySearch(company: CompanyAccount, query: string) {
+  const normalizedQuery = normalizeSearchValue(query);
+
+  if (!normalizedQuery) {
+    return true;
+  }
+
+  const searchTarget = normalizeSearchValue(
+    [
+      company.name,
+      company.nit,
+      company.owner.name,
+      company.owner.email,
+      company.region,
+      company.planId,
+      getPlanName(company.planId),
+      company.status,
+      companyStatusLabels[company.status],
+      company.nextBillingDate ?? "",
+    ].join(" "),
+  );
+  const compactTarget = compactSearchValue(searchTarget);
+
+  return normalizedQuery.split(/\s+/).every((term) => {
+    const compactTerm = compactSearchValue(term);
+
+    return (
+      searchTarget.includes(term) || (compactTerm.length > 0 && compactTarget.includes(compactTerm))
+    );
+  });
+}
+
+const companyStatusLabels: Record<CompanyAccount["status"], string> = {
+  trial: "Trial",
+  active: "Activo",
+  past_due: "En mora",
+  suspended: "Suspendido",
+  cancelled: "Cancelado",
+};
+
+function normalizeSearchValue(value: string) {
+  return value
+    .normalize("NFD")
+    .replace(/[\u0300-\u036f]/g, "")
+    .toLowerCase()
+    .trim();
+}
+
+function compactSearchValue(value: string) {
+  return value.replace(/[^a-z0-9]/g, "");
 }
 
 function MobileMetric({
@@ -315,12 +384,185 @@ function MobileMetric({
   );
 }
 
-function UsageBar({ percent }: { percent: number }) {
+function CompanyDetailsSheet({
+  company,
+  onOpenChange,
+}: {
+  company: CompanyAccount | null;
+  onOpenChange: (open: boolean) => void;
+}) {
+  return (
+    <Sheet open={Boolean(company)} onOpenChange={onOpenChange}>
+      <SheetContent className="w-full overflow-y-auto p-0 sm:max-w-xl">
+        {company && (
+          <>
+            <div className="border-b border-border p-6 pr-12">
+              <SheetHeader>
+                <div className="flex items-start gap-3 text-left">
+                  <div className="flex size-11 shrink-0 items-center justify-center rounded-lg border border-border bg-muted/40">
+                    <Building2 className="size-5 text-muted-foreground" />
+                  </div>
+                  <div className="min-w-0">
+                    <SheetTitle className="truncate">{company.name}</SheetTitle>
+                    <SheetDescription className="mt-1 truncate">
+                      {company.nit} · {company.region}
+                    </SheetDescription>
+                  </div>
+                </div>
+              </SheetHeader>
+
+              <div className="mt-5 flex flex-wrap items-center gap-2">
+                <StatusBadge status={company.status} />
+                <span className="rounded-full border border-border bg-background px-2.5 py-1 text-xs font-medium text-foreground">
+                  Plan {getPlanName(company.planId)}
+                </span>
+                <span className="rounded-full border border-border bg-background px-2.5 py-1 font-mono text-xs font-medium text-foreground">
+                  ${formatCop(company.mrr)} MRR
+                </span>
+              </div>
+            </div>
+
+            <div className="space-y-6 p-6">
+              <section className="space-y-3">
+                <SectionTitle>Información</SectionTitle>
+                <div className="grid gap-2 sm:grid-cols-2">
+                  <DetailRow icon={UserRound} label="Administrador" value={company.owner.name} />
+                  <DetailRow icon={Mail} label="Email" value={company.owner.email} />
+                  <DetailRow icon={MapPin} label="Región" value={company.region} />
+                  <DetailRow
+                    icon={CalendarClock}
+                    label="Última actividad"
+                    value={company.lastActivity}
+                  />
+                </div>
+              </section>
+
+              <section className="space-y-3">
+                <SectionTitle>Uso del plan</SectionTitle>
+                <div className="grid gap-3">
+                  <DetailUsage
+                    icon={UsersRound}
+                    label="Usuarios"
+                    current={company.usage.users}
+                    limit={company.usage.usersLimit}
+                  />
+                  <DetailUsage
+                    icon={Warehouse}
+                    label="Bodegas"
+                    current={company.usage.warehouses}
+                    limit={company.usage.warehousesLimit}
+                  />
+                  <DetailUsage
+                    icon={Activity}
+                    label="Transacciones"
+                    current={company.usage.transactions}
+                    limit={company.usage.transactionsLimit}
+                  />
+                </div>
+              </section>
+
+              <section className="space-y-3">
+                <SectionTitle>Cobro</SectionTitle>
+                <div className="grid gap-2 sm:grid-cols-2">
+                  <DetailRow
+                    icon={CalendarClock}
+                    label="Próximo cobro"
+                    value={company.nextBillingDate ?? "Sin cobro activo"}
+                  />
+                  <DetailRow
+                    icon={CreditCard}
+                    label="MRR"
+                    value={`$${formatCop(company.mrr)}`}
+                    mono
+                  />
+                </div>
+              </section>
+            </div>
+          </>
+        )}
+      </SheetContent>
+    </Sheet>
+  );
+}
+
+function SectionTitle({ children }: { children: ReactNode }) {
+  return (
+    <h2 className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">
+      {children}
+    </h2>
+  );
+}
+
+function DetailRow({
+  icon: Icon,
+  label,
+  value,
+  mono = false,
+}: {
+  icon: LucideIcon;
+  label: string;
+  value: string;
+  mono?: boolean;
+}) {
+  return (
+    <div className="min-w-0 rounded-lg border border-border bg-card p-3">
+      <div className="flex items-center gap-2 text-muted-foreground">
+        <Icon className="size-4 shrink-0" />
+        <p className="truncate text-[10px] font-medium uppercase tracking-wider">{label}</p>
+      </div>
+      <p className={cn("mt-2 truncate text-sm font-semibold text-foreground", mono && "font-mono")}>
+        {value}
+      </p>
+    </div>
+  );
+}
+
+function DetailUsage({
+  icon: Icon,
+  label,
+  current,
+  limit,
+}: {
+  icon: LucideIcon;
+  label: string;
+  current: number;
+  limit: number | null;
+}) {
+  const percent = usagePercent(current, limit);
+  const value = limit
+    ? `${current.toLocaleString("es-CO")} / ${limit.toLocaleString("es-CO")}`
+    : `${current.toLocaleString("es-CO")} / ilimitado`;
+
+  return (
+    <div className="rounded-lg border border-border bg-card p-4">
+      <div className="flex items-start justify-between gap-3">
+        <div className="flex min-w-0 items-center gap-3">
+          <div className="flex size-9 shrink-0 items-center justify-center rounded-md bg-muted/40">
+            <Icon className="size-4 text-muted-foreground" />
+          </div>
+          <div className="min-w-0">
+            <p className="font-semibold text-foreground">{label}</p>
+            <p className="mt-0.5 truncate font-mono text-xs text-muted-foreground">{value}</p>
+          </div>
+        </div>
+        <span className="shrink-0 text-xs font-medium text-muted-foreground">
+          {limit ? `${percent}%` : "Sin límite"}
+        </span>
+      </div>
+      <div className="mt-3 h-2 overflow-hidden rounded-full bg-muted">
+        <UsageBar percent={limit ? percent : 100} muted={!limit} />
+      </div>
+    </div>
+  );
+}
+
+function UsageBar({ percent, muted = false }: { percent: number; muted?: boolean }) {
   return (
     <div
       className={cn(
         "h-full rounded-full",
-        percent >= 95 ? "bg-destructive" : percent >= 80 ? "bg-warning" : "bg-nuclear",
+        muted && "bg-muted-foreground/40",
+        !muted && (percent >= 95 ? "bg-destructive" : percent >= 80 ? "bg-warning" : "bg-nuclear"),
       )}
       style={{ width: `${percent}%` }}
     />
