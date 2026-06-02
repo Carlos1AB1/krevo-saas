@@ -17,9 +17,11 @@ import { Route as ForgotPasswordRouteImport } from './routes/forgot-password'
 import { Route as FeaturesRouteImport } from './routes/features'
 import { Route as ContactRouteImport } from './routes/contact'
 import { Route as AppRouteImport } from './routes/app'
+import { Route as AdminRouteImport } from './routes/admin'
 import { Route as AboutRouteImport } from './routes/about'
 import { Route as IndexRouteImport } from './routes/index'
 import { Route as AppIndexRouteImport } from './routes/app.index'
+import { Route as AdminIndexRouteImport } from './routes/admin.index'
 import { Route as LegalTermsRouteImport } from './routes/legal.terms'
 import { Route as LegalPrivacyRouteImport } from './routes/legal.privacy'
 import { Route as AppWarehousesRouteImport } from './routes/app.warehouses'
@@ -36,6 +38,13 @@ import { Route as AppManufacturingRouteImport } from './routes/app.manufacturing
 import { Route as AppBillingRouteImport } from './routes/app.billing'
 import { Route as AppAuditRouteImport } from './routes/app.audit'
 import { Route as AppAnalyticsRouteImport } from './routes/app.analytics'
+import { Route as AdminUsuariosRouteImport } from './routes/admin.usuarios'
+import { Route as AdminSaludRouteImport } from './routes/admin.salud'
+import { Route as AdminPlanesRouteImport } from './routes/admin.planes'
+import { Route as AdminFacturacionRouteImport } from './routes/admin.facturacion'
+import { Route as AdminEmpresasRouteImport } from './routes/admin.empresas'
+import { Route as AdminConfiguracionRouteImport } from './routes/admin.configuracion'
+import { Route as AdminAuditoriaRouteImport } from './routes/admin.auditoria'
 
 const ResetPasswordRoute = ResetPasswordRouteImport.update({
   id: '/reset-password',
@@ -77,6 +86,11 @@ const AppRoute = AppRouteImport.update({
   path: '/app',
   getParentRoute: () => rootRouteImport,
 } as any)
+const AdminRoute = AdminRouteImport.update({
+  id: '/admin',
+  path: '/admin',
+  getParentRoute: () => rootRouteImport,
+} as any)
 const AboutRoute = AboutRouteImport.update({
   id: '/about',
   path: '/about',
@@ -91,6 +105,11 @@ const AppIndexRoute = AppIndexRouteImport.update({
   id: '/',
   path: '/',
   getParentRoute: () => AppRoute,
+} as any)
+const AdminIndexRoute = AdminIndexRouteImport.update({
+  id: '/',
+  path: '/',
+  getParentRoute: () => AdminRoute,
 } as any)
 const LegalTermsRoute = LegalTermsRouteImport.update({
   id: '/legal/terms',
@@ -172,10 +191,46 @@ const AppAnalyticsRoute = AppAnalyticsRouteImport.update({
   path: '/analytics',
   getParentRoute: () => AppRoute,
 } as any)
+const AdminUsuariosRoute = AdminUsuariosRouteImport.update({
+  id: '/usuarios',
+  path: '/usuarios',
+  getParentRoute: () => AdminRoute,
+} as any)
+const AdminSaludRoute = AdminSaludRouteImport.update({
+  id: '/salud',
+  path: '/salud',
+  getParentRoute: () => AdminRoute,
+} as any)
+const AdminPlanesRoute = AdminPlanesRouteImport.update({
+  id: '/planes',
+  path: '/planes',
+  getParentRoute: () => AdminRoute,
+} as any)
+const AdminFacturacionRoute = AdminFacturacionRouteImport.update({
+  id: '/facturacion',
+  path: '/facturacion',
+  getParentRoute: () => AdminRoute,
+} as any)
+const AdminEmpresasRoute = AdminEmpresasRouteImport.update({
+  id: '/empresas',
+  path: '/empresas',
+  getParentRoute: () => AdminRoute,
+} as any)
+const AdminConfiguracionRoute = AdminConfiguracionRouteImport.update({
+  id: '/configuracion',
+  path: '/configuracion',
+  getParentRoute: () => AdminRoute,
+} as any)
+const AdminAuditoriaRoute = AdminAuditoriaRouteImport.update({
+  id: '/auditoria',
+  path: '/auditoria',
+  getParentRoute: () => AdminRoute,
+} as any)
 
 export interface FileRoutesByFullPath {
   '/': typeof IndexRoute
   '/about': typeof AboutRoute
+  '/admin': typeof AdminRouteWithChildren
   '/app': typeof AppRouteWithChildren
   '/contact': typeof ContactRoute
   '/features': typeof FeaturesRoute
@@ -184,6 +239,13 @@ export interface FileRoutesByFullPath {
   '/pricing': typeof PricingRoute
   '/register': typeof RegisterRoute
   '/reset-password': typeof ResetPasswordRoute
+  '/admin/auditoria': typeof AdminAuditoriaRoute
+  '/admin/configuracion': typeof AdminConfiguracionRoute
+  '/admin/empresas': typeof AdminEmpresasRoute
+  '/admin/facturacion': typeof AdminFacturacionRoute
+  '/admin/planes': typeof AdminPlanesRoute
+  '/admin/salud': typeof AdminSaludRoute
+  '/admin/usuarios': typeof AdminUsuariosRoute
   '/app/analytics': typeof AppAnalyticsRoute
   '/app/audit': typeof AppAuditRoute
   '/app/billing': typeof AppBillingRoute
@@ -200,6 +262,7 @@ export interface FileRoutesByFullPath {
   '/app/warehouses': typeof AppWarehousesRoute
   '/legal/privacy': typeof LegalPrivacyRoute
   '/legal/terms': typeof LegalTermsRoute
+  '/admin/': typeof AdminIndexRoute
   '/app/': typeof AppIndexRoute
 }
 export interface FileRoutesByTo {
@@ -212,6 +275,13 @@ export interface FileRoutesByTo {
   '/pricing': typeof PricingRoute
   '/register': typeof RegisterRoute
   '/reset-password': typeof ResetPasswordRoute
+  '/admin/auditoria': typeof AdminAuditoriaRoute
+  '/admin/configuracion': typeof AdminConfiguracionRoute
+  '/admin/empresas': typeof AdminEmpresasRoute
+  '/admin/facturacion': typeof AdminFacturacionRoute
+  '/admin/planes': typeof AdminPlanesRoute
+  '/admin/salud': typeof AdminSaludRoute
+  '/admin/usuarios': typeof AdminUsuariosRoute
   '/app/analytics': typeof AppAnalyticsRoute
   '/app/audit': typeof AppAuditRoute
   '/app/billing': typeof AppBillingRoute
@@ -228,12 +298,14 @@ export interface FileRoutesByTo {
   '/app/warehouses': typeof AppWarehousesRoute
   '/legal/privacy': typeof LegalPrivacyRoute
   '/legal/terms': typeof LegalTermsRoute
+  '/admin': typeof AdminIndexRoute
   '/app': typeof AppIndexRoute
 }
 export interface FileRoutesById {
   __root__: typeof rootRouteImport
   '/': typeof IndexRoute
   '/about': typeof AboutRoute
+  '/admin': typeof AdminRouteWithChildren
   '/app': typeof AppRouteWithChildren
   '/contact': typeof ContactRoute
   '/features': typeof FeaturesRoute
@@ -242,6 +314,13 @@ export interface FileRoutesById {
   '/pricing': typeof PricingRoute
   '/register': typeof RegisterRoute
   '/reset-password': typeof ResetPasswordRoute
+  '/admin/auditoria': typeof AdminAuditoriaRoute
+  '/admin/configuracion': typeof AdminConfiguracionRoute
+  '/admin/empresas': typeof AdminEmpresasRoute
+  '/admin/facturacion': typeof AdminFacturacionRoute
+  '/admin/planes': typeof AdminPlanesRoute
+  '/admin/salud': typeof AdminSaludRoute
+  '/admin/usuarios': typeof AdminUsuariosRoute
   '/app/analytics': typeof AppAnalyticsRoute
   '/app/audit': typeof AppAuditRoute
   '/app/billing': typeof AppBillingRoute
@@ -258,6 +337,7 @@ export interface FileRoutesById {
   '/app/warehouses': typeof AppWarehousesRoute
   '/legal/privacy': typeof LegalPrivacyRoute
   '/legal/terms': typeof LegalTermsRoute
+  '/admin/': typeof AdminIndexRoute
   '/app/': typeof AppIndexRoute
 }
 export interface FileRouteTypes {
@@ -265,6 +345,7 @@ export interface FileRouteTypes {
   fullPaths:
     | '/'
     | '/about'
+    | '/admin'
     | '/app'
     | '/contact'
     | '/features'
@@ -273,6 +354,13 @@ export interface FileRouteTypes {
     | '/pricing'
     | '/register'
     | '/reset-password'
+    | '/admin/auditoria'
+    | '/admin/configuracion'
+    | '/admin/empresas'
+    | '/admin/facturacion'
+    | '/admin/planes'
+    | '/admin/salud'
+    | '/admin/usuarios'
     | '/app/analytics'
     | '/app/audit'
     | '/app/billing'
@@ -289,6 +377,7 @@ export interface FileRouteTypes {
     | '/app/warehouses'
     | '/legal/privacy'
     | '/legal/terms'
+    | '/admin/'
     | '/app/'
   fileRoutesByTo: FileRoutesByTo
   to:
@@ -301,6 +390,13 @@ export interface FileRouteTypes {
     | '/pricing'
     | '/register'
     | '/reset-password'
+    | '/admin/auditoria'
+    | '/admin/configuracion'
+    | '/admin/empresas'
+    | '/admin/facturacion'
+    | '/admin/planes'
+    | '/admin/salud'
+    | '/admin/usuarios'
     | '/app/analytics'
     | '/app/audit'
     | '/app/billing'
@@ -317,11 +413,13 @@ export interface FileRouteTypes {
     | '/app/warehouses'
     | '/legal/privacy'
     | '/legal/terms'
+    | '/admin'
     | '/app'
   id:
     | '__root__'
     | '/'
     | '/about'
+    | '/admin'
     | '/app'
     | '/contact'
     | '/features'
@@ -330,6 +428,13 @@ export interface FileRouteTypes {
     | '/pricing'
     | '/register'
     | '/reset-password'
+    | '/admin/auditoria'
+    | '/admin/configuracion'
+    | '/admin/empresas'
+    | '/admin/facturacion'
+    | '/admin/planes'
+    | '/admin/salud'
+    | '/admin/usuarios'
     | '/app/analytics'
     | '/app/audit'
     | '/app/billing'
@@ -346,12 +451,14 @@ export interface FileRouteTypes {
     | '/app/warehouses'
     | '/legal/privacy'
     | '/legal/terms'
+    | '/admin/'
     | '/app/'
   fileRoutesById: FileRoutesById
 }
 export interface RootRouteChildren {
   IndexRoute: typeof IndexRoute
   AboutRoute: typeof AboutRoute
+  AdminRoute: typeof AdminRouteWithChildren
   AppRoute: typeof AppRouteWithChildren
   ContactRoute: typeof ContactRoute
   FeaturesRoute: typeof FeaturesRoute
@@ -422,6 +529,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof AppRouteImport
       parentRoute: typeof rootRouteImport
     }
+    '/admin': {
+      id: '/admin'
+      path: '/admin'
+      fullPath: '/admin'
+      preLoaderRoute: typeof AdminRouteImport
+      parentRoute: typeof rootRouteImport
+    }
     '/about': {
       id: '/about'
       path: '/about'
@@ -442,6 +556,13 @@ declare module '@tanstack/react-router' {
       fullPath: '/app/'
       preLoaderRoute: typeof AppIndexRouteImport
       parentRoute: typeof AppRoute
+    }
+    '/admin/': {
+      id: '/admin/'
+      path: '/'
+      fullPath: '/admin/'
+      preLoaderRoute: typeof AdminIndexRouteImport
+      parentRoute: typeof AdminRoute
     }
     '/legal/terms': {
       id: '/legal/terms'
@@ -555,8 +676,81 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof AppAnalyticsRouteImport
       parentRoute: typeof AppRoute
     }
+    '/admin/usuarios': {
+      id: '/admin/usuarios'
+      path: '/usuarios'
+      fullPath: '/admin/usuarios'
+      preLoaderRoute: typeof AdminUsuariosRouteImport
+      parentRoute: typeof AdminRoute
+    }
+    '/admin/salud': {
+      id: '/admin/salud'
+      path: '/salud'
+      fullPath: '/admin/salud'
+      preLoaderRoute: typeof AdminSaludRouteImport
+      parentRoute: typeof AdminRoute
+    }
+    '/admin/planes': {
+      id: '/admin/planes'
+      path: '/planes'
+      fullPath: '/admin/planes'
+      preLoaderRoute: typeof AdminPlanesRouteImport
+      parentRoute: typeof AdminRoute
+    }
+    '/admin/facturacion': {
+      id: '/admin/facturacion'
+      path: '/facturacion'
+      fullPath: '/admin/facturacion'
+      preLoaderRoute: typeof AdminFacturacionRouteImport
+      parentRoute: typeof AdminRoute
+    }
+    '/admin/empresas': {
+      id: '/admin/empresas'
+      path: '/empresas'
+      fullPath: '/admin/empresas'
+      preLoaderRoute: typeof AdminEmpresasRouteImport
+      parentRoute: typeof AdminRoute
+    }
+    '/admin/configuracion': {
+      id: '/admin/configuracion'
+      path: '/configuracion'
+      fullPath: '/admin/configuracion'
+      preLoaderRoute: typeof AdminConfiguracionRouteImport
+      parentRoute: typeof AdminRoute
+    }
+    '/admin/auditoria': {
+      id: '/admin/auditoria'
+      path: '/auditoria'
+      fullPath: '/admin/auditoria'
+      preLoaderRoute: typeof AdminAuditoriaRouteImport
+      parentRoute: typeof AdminRoute
+    }
   }
 }
+
+interface AdminRouteChildren {
+  AdminAuditoriaRoute: typeof AdminAuditoriaRoute
+  AdminConfiguracionRoute: typeof AdminConfiguracionRoute
+  AdminEmpresasRoute: typeof AdminEmpresasRoute
+  AdminFacturacionRoute: typeof AdminFacturacionRoute
+  AdminPlanesRoute: typeof AdminPlanesRoute
+  AdminSaludRoute: typeof AdminSaludRoute
+  AdminUsuariosRoute: typeof AdminUsuariosRoute
+  AdminIndexRoute: typeof AdminIndexRoute
+}
+
+const AdminRouteChildren: AdminRouteChildren = {
+  AdminAuditoriaRoute: AdminAuditoriaRoute,
+  AdminConfiguracionRoute: AdminConfiguracionRoute,
+  AdminEmpresasRoute: AdminEmpresasRoute,
+  AdminFacturacionRoute: AdminFacturacionRoute,
+  AdminPlanesRoute: AdminPlanesRoute,
+  AdminSaludRoute: AdminSaludRoute,
+  AdminUsuariosRoute: AdminUsuariosRoute,
+  AdminIndexRoute: AdminIndexRoute,
+}
+
+const AdminRouteWithChildren = AdminRoute._addFileChildren(AdminRouteChildren)
 
 interface AppRouteChildren {
   AppAnalyticsRoute: typeof AppAnalyticsRoute
@@ -599,6 +793,7 @@ const AppRouteWithChildren = AppRoute._addFileChildren(AppRouteChildren)
 const rootRouteChildren: RootRouteChildren = {
   IndexRoute: IndexRoute,
   AboutRoute: AboutRoute,
+  AdminRoute: AdminRouteWithChildren,
   AppRoute: AppRouteWithChildren,
   ContactRoute: ContactRoute,
   FeaturesRoute: FeaturesRoute,
