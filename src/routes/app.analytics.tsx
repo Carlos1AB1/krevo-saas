@@ -19,7 +19,7 @@ import {
   Factory,
   Truck,
 } from "lucide-react";
-import { startOfMonth, parseISO, isAfter } from "date-fns";
+import { currentMonthRange, isWithinRange } from "@/lib/date-range";
 import { RequirePermission } from "@/features/auth/RequirePermission";
 import { KpiCard } from "@/components/nuclear-ui/kpi-card";
 import { ChartContainer, ChartTooltip, ChartTooltipContent } from "@/components/ui/chart";
@@ -53,7 +53,7 @@ interface ParetoItem {
 }
 
 function AnalyticsPage() {
-  const monthStart = startOfMonth(new Date());
+  const monthRange = useMemo(() => currentMonthRange(), []);
 
   const { data: productsData, isLoading: loadingProducts } = useQuery({
     queryKey: ["inventory", "products", { limit: 100 }],
@@ -66,8 +66,9 @@ function AnalyticsPage() {
   });
 
   const { data: movementsData } = useQuery({
-    queryKey: ["inventory", "movements", { limit: 200, from: monthStart.toISOString() }],
-    queryFn: () => getMovements({ limit: 200, from: monthStart.toISOString() }),
+    queryKey: ["inventory", "movements", { limit: 200, from: monthRange.from, to: monthRange.to }],
+    queryFn: () =>
+      getMovements({ limit: 200, from: monthRange.from, to: monthRange.to }),
   });
 
   const { data: receiptsData } = useQuery({
@@ -108,20 +109,27 @@ function AnalyticsPage() {
   const receiptsThisMonth = useMemo(
     () =>
       (receiptsData?.data ?? []).filter((r) =>
-        isAfter(parseISO(r.createdAt), monthStart),
+        isWithinRange(r.createdAt, monthRange.start, monthRange.end),
       ).length,
-    [receiptsData, monthStart],
+    [receiptsData, monthRange],
   );
 
   const dispatchesThisMonth = useMemo(
     () =>
       (dispatchesData?.data ?? []).filter((d) =>
-        isAfter(parseISO(d.createdAt), monthStart),
+        isWithinRange(d.createdAt, monthRange.start, monthRange.end),
       ).length,
-    [dispatchesData, monthStart],
+    [dispatchesData, monthRange],
   );
 
-  const completedOrders = completedOrdersData?.total ?? 0;
+  const completedOrders = useMemo(
+    () =>
+      (completedOrdersData?.data ?? []).filter((o) => {
+        const ref = o.completedAt ?? o.createdAt;
+        return isWithinRange(ref, monthRange.start, monthRange.end);
+      }).length,
+    [completedOrdersData, monthRange],
+  );
 
   const paretoItems: ParetoItem[] = useMemo(() => {
     const sorted = [...products]
