@@ -18,7 +18,7 @@ export function NuclearLogo({ className, imgClassName, withWordmark = false }: N
       <img
         src="/logo.png"
         alt="Krevo Logo"
-        className={cn("size-20 shrink-0 object-contain", imgClassName)}
+        className={cn("shrink-0 object-contain", imgClassName ?? "size-20")}
       />
       {withWordmark ? (
         <span className="font-display text-xl font-bold tracking-tight text-current">Krevo</span>

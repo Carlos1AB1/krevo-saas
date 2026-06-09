@@ -161,15 +161,22 @@ export function AppSidebar({ mobileOpen, onMobileClose }: AppSidebarProps) {
           collapsed ? "w-[72px]" : "w-[260px]",
         )}
       >
-        <div className="flex h-16 items-center justify-between border-b border-sidebar-border px-4">
-          <Link to="/app" className="flex items-center overflow-hidden">
-            <NuclearLogo withWordmark={!collapsed} imgClassName="size-9" className="gap-2" />
-          </Link>
+        <div
+          className={cn(
+            "flex h-16 items-center border-b border-sidebar-border px-4",
+            collapsed ? "justify-center" : "justify-between",
+          )}
+        >
+          {!collapsed && (
+            <Link to="/app" className="flex min-w-0 items-center overflow-hidden">
+              <NuclearLogo withWordmark imgClassName="size-9" className="gap-2" />
+            </Link>
+          )}
           <button
             type="button"
             aria-label={collapsed ? "Expandir" : "Colapsar"}
             onClick={() => setCollapsed((v) => !v)}
-            className="grid size-7 place-items-center rounded-md text-muted-foreground transition-colors hover:bg-sidebar-accent hover:text-sidebar-accent-foreground"
+            className="grid size-7 shrink-0 place-items-center rounded-md text-muted-foreground transition-colors hover:bg-sidebar-accent hover:text-sidebar-accent-foreground"
           >
             <ChevronLeft className={cn("size-4 transition-transform", collapsed && "rotate-180")} />
           </button>
