@@ -163,7 +163,7 @@ export function AppSidebar({ mobileOpen, onMobileClose }: AppSidebarProps) {
       >
         <div className="flex h-16 items-center justify-between border-b border-sidebar-border px-4">
           <Link to="/app" className="flex items-center overflow-hidden">
-            <NuclearLogo withWordmark={!collapsed} />
+            <NuclearLogo withWordmark={!collapsed} imgClassName="size-9" className="gap-2" />
           </Link>
           <button
             type="button"
@@ -207,7 +207,7 @@ export function AppSidebar({ mobileOpen, onMobileClose }: AppSidebarProps) {
           </SheetHeader>
           <div className="flex h-16 shrink-0 items-center border-b border-sidebar-border px-4">
             <Link to="/app" onClick={onMobileClose} className="flex items-center">
-              <NuclearLogo withWordmark />
+              <NuclearLogo withWordmark imgClassName="size-9" className="gap-2" />
             </Link>
           </div>
 

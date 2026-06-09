@@ -31,7 +31,7 @@ function AppLayout() {
             >
               <Menu className="size-5" />
             </button>
-            <NuclearLogo withWordmark />
+            <NuclearLogo withWordmark imgClassName="size-9" className="gap-2" />
           </div>
 
           <Outlet />
