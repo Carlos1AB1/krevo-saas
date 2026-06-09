@@ -23,6 +23,7 @@ import { Label } from "@/components/ui/label";
 import {
   getAuditLogs,
   exportAuditLogs,
+  AUDIT_ACTION_OPTIONS,
   AUDIT_MODULE_OPTIONS,
   type AuditChangeField,
   type AuditLogResponse,
@@ -32,6 +33,7 @@ import {
 import { format, parseISO } from "date-fns";
 import { es } from "date-fns/locale";
 import { cn } from "@/lib/utils";
+import { isValidDateRange, toQueryFromDate, toQueryToDate } from "@/lib/date-range";
 
 export const Route = createFileRoute("/app/audit")({
   head: () => ({ meta: [{ title: "Auditoría · Krevo" }] }),
@@ -206,28 +208,43 @@ function AuditEventCard({ log }: { log: AuditLogResponse }) {
 function AuditPage() {
   const [page, setPage] = useState(1);
   const [moduleFilter, setModuleFilter] = useState<AuditModule | "">("");
+  const [actionFilter, setActionFilter] = useState("");
   const [severityFilter, setSeverityFilter] = useState<AuditSeverity | "">("");
   const [from, setFrom] = useState("");
   const [to, setTo] = useState("");
   const [exporting, setExporting] = useState<"xlsx" | "pdf" | null>(null);
 
-  const hasFilters = Boolean(from || to || severityFilter || moduleFilter);
+  const dateRangeValid = isValidDateRange(from, to);
+  const queryFrom = toQueryFromDate(from);
+  const queryTo = toQueryToDate(to);
+
+  const hasFilters = Boolean(from || to || severityFilter || moduleFilter || actionFilter);
 
   const { data, isLoading, isError } = useQuery({
     queryKey: [
       "audit",
       "logs",
-      { page, limit: 15, module: moduleFilter, severity: severityFilter, from, to },
+      {
+        page,
+        limit: 15,
+        module: moduleFilter,
+        action: actionFilter,
+        severity: severityFilter,
+        from,
+        to,
+      },
     ],
     queryFn: () =>
       getAuditLogs({
         page,
         limit: 15,
         module: moduleFilter || undefined,
+        action: actionFilter.trim() || undefined,
         severity: severityFilter || undefined,
-        from: from || undefined,
-        to: to ? `${to}T23:59:59.000Z` : undefined,
+        from: queryFrom,
+        to: queryTo,
       }),
+    enabled: dateRangeValid,
     placeholderData: (prev) => prev,
   });
 
@@ -241,9 +258,10 @@ function AuditPage() {
       const blob = await exportAuditLogs({
         format,
         module: moduleFilter || undefined,
+        action: actionFilter.trim() || undefined,
         severity: severityFilter || undefined,
-        from: from || undefined,
-        to: to ? `${to}T23:59:59.000Z` : undefined,
+        from: queryFrom,
+        to: queryTo,
       });
       const ext = format === "xlsx" ? "xlsx" : "pdf";
       const url = URL.createObjectURL(blob);
@@ -276,7 +294,27 @@ function AuditPage() {
       <div className="flex-1 overflow-auto p-4 sm:p-6 bg-muted/20">
         <div className="mx-auto max-w-4xl space-y-4">
           <div className="rounded-xl border border-border bg-card p-3 sm:p-4 space-y-3">
-            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3">
+            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-5 gap-3">
+              <div className="space-y-0.5 min-w-0">
+                <Label className="text-[10px] font-semibold uppercase text-muted-foreground">Acción</Label>
+                <Input
+                  list="audit-action-presets"
+                  value={actionFilter}
+                  onChange={(e) => {
+                    setActionFilter(e.target.value);
+                    setPage(1);
+                  }}
+                  placeholder="ej. inventory.product.updated"
+                  className="h-9 w-full font-mono text-xs"
+                />
+                <datalist id="audit-action-presets">
+                  {AUDIT_ACTION_OPTIONS.map((a) => (
+                    <option key={a.value} value={a.value}>
+                      {a.label}
+                    </option>
+                  ))}
+                </datalist>
+              </div>
               <div className="space-y-0.5 min-w-0">
                 <Label className="text-[10px] font-semibold uppercase text-muted-foreground">Módulo</Label>
                 <select
@@ -338,6 +376,12 @@ function AuditPage() {
               </div>
             </div>
 
+            {!dateRangeValid && (
+              <p className="text-xs text-destructive" role="alert">
+                La fecha «Desde» no puede ser posterior a «Hasta».
+              </p>
+            )}
+
             <div className="flex flex-col gap-2 sm:flex-row sm:flex-wrap sm:items-center sm:justify-between">
               {hasFilters ? (
                 <Button
@@ -349,6 +393,7 @@ function AuditPage() {
                     setTo("");
                     setSeverityFilter("");
                     setModuleFilter("");
+                    setActionFilter("");
                     setPage(1);
                   }}
                 >

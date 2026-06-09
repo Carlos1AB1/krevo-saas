@@ -12,6 +12,16 @@ export type AuditModule =
   | "roles"
   | "auth";
 
+export const AUDIT_ACTION_OPTIONS: { value: string; label: string }[] = [
+  { value: "auth.login.succeeded", label: "Login exitoso" },
+  { value: "auth.login.failed", label: "Login fallido" },
+  { value: "inventory.product.updated", label: "Producto actualizado" },
+  { value: "inventory.category.deleted", label: "Categoría eliminada" },
+  { value: "logistics.receipt.approved", label: "Recepción aprobada" },
+  { value: "logistics.receipt.rejected", label: "Recepción rechazada" },
+  { value: "organization.updated", label: "Organización actualizada" },
+];
+
 export const AUDIT_MODULE_OPTIONS: { value: AuditModule; label: string }[] = [
   { value: "inventory", label: "Inventario" },
   { value: "logistics", label: "Logística" },
