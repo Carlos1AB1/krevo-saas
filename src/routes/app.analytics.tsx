@@ -38,8 +38,8 @@ export const Route = createFileRoute("/app/analytics")({
 });
 
 const chartConfig = {
-  stock: { label: "Stock", color: "hsl(var(--color-nuclear, 24 95% 53%))" },
-  cumulative: { label: "Acumulado %", color: "hsl(var(--destructive))" },
+  stock: { label: "Stock", color: "var(--nuclear)" },
+  cumulative: { label: "Acumulado %", color: "var(--destructive)" },
   receipts: { label: "Recepciones", color: "hsl(142 76% 36%)" },
   dispatches: { label: "Despachos", color: "hsl(217 91% 60%)" },
 };
@@ -66,9 +66,9 @@ function AnalyticsPage() {
   });
 
   const { data: movementsData } = useQuery({
-    queryKey: ["inventory", "movements", { limit: 200, from: monthRange.from, to: monthRange.to }],
+    queryKey: ["inventory", "movements", { limit: 100, from: monthRange.from, to: monthRange.to }],
     queryFn: () =>
-      getMovements({ limit: 200, from: monthRange.from, to: monthRange.to }),
+      getMovements({ limit: 100, from: monthRange.from, to: monthRange.to }),
   });
 
   const { data: receiptsData } = useQuery({
@@ -203,7 +203,7 @@ function AnalyticsPage() {
                   label="Órdenes completadas"
                   value={completedOrders}
                   icon={Factory}
-                  hint="GET /production/orders?status=COMPLETED"
+                  hint="Órdenes de producción finalizadas este mes"
                 />
                 <KpiCard
                   label="Recepciones del mes"

@@ -1,7 +1,9 @@
 import { createFileRoute } from "@tanstack/react-router";
+import { useQuery } from "@tanstack/react-query";
 import { CreditCard, Sparkles, User, Building2, Shield } from "lucide-react";
 import { RequirePermission } from "@/features/auth/RequirePermission";
 import { useAuth } from "@/features/auth/AuthProvider";
+import { getOrganization } from "@/features/organizations/organizations.api";
 import { Badge } from "@/components/ui/badge";
 import { KpiCard } from "@/components/nuclear-ui/kpi-card";
 
@@ -18,6 +20,15 @@ export const Route = createFileRoute("/app/billing")({
 
 function BillingPage() {
   const { user } = useAuth();
+  const orgId = user?.organizationId ?? "";
+
+  const { data: organization } = useQuery({
+    queryKey: ["organizations", orgId],
+    queryFn: () => getOrganization(orgId),
+    enabled: Boolean(orgId),
+  });
+
+  const orgName = organization?.name ?? user?.organizationName ?? "—";
 
   return (
     <div className="flex flex-col h-full bg-muted/20">
@@ -54,7 +65,7 @@ function BillingPage() {
                 <p className="text-xs font-medium uppercase tracking-wider text-muted-foreground">Organización</p>
                 <Building2 className="size-4 text-muted-foreground" />
               </div>
-              <p className="mt-3 text-lg font-semibold truncate">{user?.organizationName ?? "—"}</p>
+              <p className="mt-3 text-lg font-semibold truncate">{orgName}</p>
               <p className="mt-1 text-xs text-muted-foreground truncate">ID: {user?.organizationId ?? "—"}</p>
             </div>
             <div className="rounded-xl border border-border bg-card p-5 shadow-sm">
