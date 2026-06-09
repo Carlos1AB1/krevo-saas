@@ -12,11 +12,18 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Checkbox } from "@/components/ui/checkbox";
+import { login } from "@/lib/auth";
+import { ApiError } from "@/lib/api";
 
 const loginSchema = z.object({
   email: z.string().trim().min(1, "Ingresa tu email").email("Formato de email inválido").max(255),
   password: z.string().min(1, "Ingresa tu contraseña").max(72),
   remember: z.boolean().optional(),
+});
+
+const loginSearchSchema = z.object({
+  forbidden: z.string().optional(),
+  redirect: z.string().optional(),
 });
 
 type LoginValues = z.infer<typeof loginSchema>;
@@ -32,12 +39,15 @@ export const Route = createFileRoute("/login")({
       },
     ],
   }),
+  validateSearch: loginSearchSchema,
   component: LoginPage,
 });
 
 function LoginPage() {
   const navigate = useNavigate();
   const [showPw, setShowPw] = useState(false);
+  const [authError, setAuthError] = useState<string | null>(null);
+  const search = Route.useSearch();
   const {
     register,
     handleSubmit,
@@ -53,11 +63,35 @@ function LoginPage() {
   });
 
   const onSubmit = async (values: LoginValues) => {
-    await new Promise((r) => setTimeout(r, 900));
-    toast.success("Sesión iniciada", {
-      description: `Bienvenido de vuelta, ${values.email.split("@")[0]}.`,
-    });
-    navigate({ to: "/app" });
+    setAuthError(null);
+
+    try {
+      const user = await login({
+        email: values.email,
+        password: values.password,
+      });
+
+      if (!user.isPlatformAdmin) {
+        setAuthError("Tu cuenta no tiene acceso a la consola SuperAdmin.");
+        return;
+      }
+
+      toast.success("Sesión iniciada", {
+        description: `Bienvenido de vuelta, ${user.name}.`,
+      });
+
+      navigate({
+        to: search.redirect && search.redirect.startsWith("/") ? search.redirect : "/admin",
+      });
+    } catch (error) {
+      const message =
+        error instanceof ApiError ? error.message : "No fue posible iniciar sesión con el backend.";
+
+      setAuthError(message);
+      toast.error("Error al iniciar sesión", {
+        description: message,
+      });
+    }
   };
 
   return (
@@ -81,6 +115,12 @@ function LoginPage() {
         </p>
 
         <div className="mt-8">
+          {(search.forbidden === "1" || authError) && (
+            <div className="mb-4 rounded-lg border border-destructive/20 bg-destructive/5 px-4 py-3 text-sm text-destructive">
+              {authError ?? "Tu cuenta no tiene permisos para entrar al módulo SuperAdmin."}
+            </div>
+          )}
+
           <SsoButtons mode="login" />
           <OrSeparator />
 
