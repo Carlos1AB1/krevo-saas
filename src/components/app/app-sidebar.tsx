@@ -22,7 +22,7 @@ import { cn } from "@/lib/utils";
 import { NuclearLogo } from "@/components/nuclear-ui/nuclear-logo";
 import { useAuth } from "@/features/auth/AuthProvider";
 import { can } from "@/features/auth/permissions";
-import { Sheet, SheetContent } from "@/components/ui/sheet";
+import { Sheet, SheetContent, SheetHeader, SheetTitle, SheetDescription } from "@/components/ui/sheet";
 
 type NavItem = { to: string; label: string; icon: typeof LayoutDashboard; badge?: string };
 type NavGroup = { label: string; items: NavItem[] };
@@ -161,19 +161,24 @@ export function AppSidebar({ mobileOpen, onMobileClose }: AppSidebarProps) {
           collapsed ? "w-[72px]" : "w-[260px]",
         )}
       >
-        <div className="flex h-16 items-center justify-between border-b border-sidebar-border px-4">
-          <Link to="/app" className="flex items-center overflow-hidden">
-            <NuclearLogo withWordmark={!collapsed} />
+        <div
+          className={cn(
+            "flex h-16 items-center border-b border-sidebar-border px-4",
+            collapsed ? "justify-center px-2" : "justify-start",
+          )}
+        >
+          <Link to="/app" className="flex min-w-0 items-center overflow-hidden">
+            <NuclearLogo withWordmark={!collapsed} imgClassName="size-9" className="gap-2" />
           </Link>
-          <button
-            type="button"
-            aria-label={collapsed ? "Expandir" : "Colapsar"}
-            onClick={() => setCollapsed((v) => !v)}
-            className="grid size-7 place-items-center rounded-md text-muted-foreground transition-colors hover:bg-sidebar-accent hover:text-sidebar-accent-foreground"
-          >
-            <ChevronLeft className={cn("size-4 transition-transform", collapsed && "rotate-180")} />
-          </button>
         </div>
+        <button
+          type="button"
+          aria-label={collapsed ? "Expandir" : "Colapsar"}
+          onClick={() => setCollapsed((v) => !v)}
+          className="absolute right-0 top-5 z-20 grid size-6 translate-x-1/2 place-items-center rounded-full border border-sidebar-border bg-sidebar text-muted-foreground shadow-sm transition-colors hover:bg-sidebar-accent hover:text-sidebar-accent-foreground"
+        >
+          <ChevronLeft className={cn("size-3.5 transition-transform", collapsed && "rotate-180")} />
+        </button>
 
         <nav className="flex-1 overflow-y-auto px-3 py-4">
           <NavItems groups={groups} pathname={pathname} collapsed={collapsed} />
@@ -201,9 +206,13 @@ export function AppSidebar({ mobileOpen, onMobileClose }: AppSidebarProps) {
           side="left"
           className="flex w-[280px] flex-col p-0 bg-sidebar text-sidebar-foreground [&>button]:hidden"
         >
+          <SheetHeader className="sr-only">
+            <SheetTitle>Menú de navegación</SheetTitle>
+            <SheetDescription>Accesos a los módulos de la aplicación</SheetDescription>
+          </SheetHeader>
           <div className="flex h-16 shrink-0 items-center border-b border-sidebar-border px-4">
             <Link to="/app" onClick={onMobileClose} className="flex items-center">
-              <NuclearLogo withWordmark />
+              <NuclearLogo withWordmark imgClassName="size-9" className="gap-2" />
             </Link>
           </div>
 
