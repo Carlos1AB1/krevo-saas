@@ -1,8 +1,5 @@
 import { getAccessToken } from "@/lib/session";
 
-<<<<<<< HEAD
-const API_BASE_URL = (import.meta.env.VITE_API_URL as string | undefined)?.trim() || "/api/v1";
-=======
 type ApiFetchOptions = Omit<RequestInit, "body"> & {
   body?: unknown;
 };
@@ -31,7 +28,6 @@ export function apiUrl(path: string): string {
   const normalizedPath = path.startsWith("/") ? path : `/${path}`;
   return `${API_BASE_URL}${normalizedPath}`;
 }
->>>>>>> f698c07b86644b79163902570e94252aebca3537
 
 export class ApiError extends Error {
   data?: unknown;
