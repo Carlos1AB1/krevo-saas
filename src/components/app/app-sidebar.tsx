@@ -22,7 +22,7 @@ import { cn } from "@/lib/utils";
 import { NuclearLogo } from "@/components/nuclear-ui/nuclear-logo";
 import { useAuth } from "@/features/auth/AuthProvider";
 import { can } from "@/features/auth/permissions";
-import { Sheet, SheetContent } from "@/components/ui/sheet";
+import { Sheet, SheetContent, SheetHeader, SheetTitle, SheetDescription } from "@/components/ui/sheet";
 
 type NavItem = { to: string; label: string; icon: typeof LayoutDashboard; badge?: string };
 type NavGroup = { label: string; items: NavItem[] };
@@ -201,6 +201,10 @@ export function AppSidebar({ mobileOpen, onMobileClose }: AppSidebarProps) {
           side="left"
           className="flex w-[280px] flex-col p-0 bg-sidebar text-sidebar-foreground [&>button]:hidden"
         >
+          <SheetHeader className="sr-only">
+            <SheetTitle>Menú de navegación</SheetTitle>
+            <SheetDescription>Accesos a los módulos de la aplicación</SheetDescription>
+          </SheetHeader>
           <div className="flex h-16 shrink-0 items-center border-b border-sidebar-border px-4">
             <Link to="/app" onClick={onMobileClose} className="flex items-center">
               <NuclearLogo withWordmark />
