@@ -1,9 +1,27 @@
 import { ApiError, apiRequest } from "@/lib/api";
 import { refreshSession } from "./auth.api";
-import { clearTokens, getAccessToken, saveTokens } from "./auth.storage";
+import {
+  clearTokens,
+  getAccessToken,
+  getRefreshToken,
+  isAccessTokenExpired,
+  saveTokens,
+} from "./auth.storage";
 
 export async function authRequest<T>(path: string, options: RequestInit = {}): Promise<T> {
-  const accessToken = getAccessToken();
+  let accessToken = getAccessToken();
+
+  // Refresco proactivo: si el token ya expiró, lo renovamos antes de la
+  // petición para evitar un 401 esperado en la consola.
+  if (accessToken && isAccessTokenExpired() && getRefreshToken()) {
+    try {
+      const refreshed = await refreshSession();
+      saveTokens(refreshed.accessToken, refreshed.refreshToken);
+      accessToken = refreshed.accessToken;
+    } catch {
+      // Si el refresh falla aquí, dejamos que la petición original maneje el 401.
+    }
+  }
 
   try {
     return await apiRequest<T>(path, {

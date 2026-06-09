@@ -1,7 +1,7 @@
 import { useEffect, useState } from "react";
 import { ApiError } from "@/lib/api";
 import { getMe, login, logout, refreshSession, register, type RegisterInput } from "./auth.api";
-import { clearTokens, getAccessToken, getRefreshToken, saveTokens } from "./auth.storage";
+import { clearTokens, getAccessToken, getRefreshToken, isAccessTokenExpired, saveTokens } from "./auth.storage";
 import type { AuthUser } from "./auth.types";
 
 interface AuthSession {
@@ -30,9 +30,20 @@ export function useAuthSession(): AuthSession {
     }
 
     try {
-      const currentUser = await getMe(accessToken);
+      // Si el token ya expiró, refrescamos antes de llamar a /auth/me para no
+      // disparar un 401 esperado que ensucia la consola.
+      let tokenToUse = accessToken;
+      if (isAccessTokenExpired() && getRefreshToken()) {
+        const refreshed = await refreshSession();
+        saveTokens(refreshed.accessToken, refreshed.refreshToken);
+        tokenToUse = refreshed.accessToken;
+      }
+
+      const currentUser = await getMe(tokenToUse);
       setUser(currentUser);
     } catch {
+      // Fallback: el token pudo invalidarse en el servidor (logout remoto,
+      // rotación). Intentamos un refresh más antes de cerrar sesión.
       try {
         const refreshed = await refreshSession();
         saveTokens(refreshed.accessToken, refreshed.refreshToken);
