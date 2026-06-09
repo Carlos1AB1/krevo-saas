@@ -1,7 +1,6 @@
 import { getAccessToken } from "@/lib/session";
 
-const API_BASE_URL =
-  (import.meta.env.VITE_API_URL as string | undefined)?.trim() || "http://localhost:3100";
+const API_BASE_URL = (import.meta.env.VITE_API_URL as string | undefined)?.trim() || "/api/v1";
 
 export class ApiError extends Error {
   data?: unknown;

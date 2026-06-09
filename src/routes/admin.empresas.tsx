@@ -1,4 +1,5 @@
 import { useState, type ReactNode } from "react";
+import { useQuery } from "@tanstack/react-query";
 import { createFileRoute } from "@tanstack/react-router";
 import {
   Activity,
@@ -22,6 +23,7 @@ import { StatusBadge } from "@/components/admin/status-badge";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
+import { Skeleton } from "@/components/ui/skeleton";
 import {
   Sheet,
   SheetContent,
@@ -37,13 +39,8 @@ import {
   TableHeader,
   TableRow,
 } from "@/components/ui/table";
-import {
-  companies,
-  formatCop,
-  getPlanName,
-  type CompanyAccount,
-  usagePercent,
-} from "@/lib/admin-mock";
+import { adminApi, type AdminCompany } from "@/lib/admin-api";
+import { formatCop, usagePercent } from "@/lib/admin-mock";
 import { cn } from "@/lib/utils";
 
 export const Route = createFileRoute("/admin/empresas")({
@@ -54,8 +51,13 @@ export const Route = createFileRoute("/admin/empresas")({
 });
 
 function CompaniesPage() {
-  const [selectedCompany, setSelectedCompany] = useState<CompanyAccount | null>(null);
+  const [selectedCompany, setSelectedCompany] = useState<AdminCompany | null>(null);
   const [searchQuery, setSearchQuery] = useState("");
+  const companiesQuery = useQuery({
+    queryFn: () => adminApi.getCompanies(),
+    queryKey: ["admin-companies"],
+  });
+  const companies = companiesQuery.data ?? [];
   const filteredCompanies = companies.filter((company) =>
     matchesCompanySearch(company, searchQuery),
   );
@@ -145,7 +147,11 @@ function CompaniesPage() {
                 </div>
               </div>
 
-              {filteredCompanies.length > 0 ? (
+              {companiesQuery.isLoading ? (
+                <CompaniesLoadingState />
+              ) : companiesQuery.isError ? (
+                <CompaniesErrorState onRetry={() => companiesQuery.refetch()} />
+              ) : filteredCompanies.length > 0 ? (
                 <>
                   <div className="mt-4 grid gap-3 md:hidden">
                     {filteredCompanies.map((company) => (
@@ -175,7 +181,7 @@ function CompaniesPage() {
                         </div>
 
                         <div className="mt-4 grid grid-cols-1 gap-3 text-sm sm:grid-cols-3">
-                          <MobileMetric label="Plan" value={getPlanName(company.planId)} />
+                          <MobileMetric label="Plan" value={company.planName} />
                           <div className="min-w-0 rounded-md bg-muted/30 p-2">
                             <p className="text-[10px] font-medium uppercase tracking-wider text-muted-foreground">
                               Estado
@@ -215,9 +221,7 @@ function CompaniesPage() {
                                 </p>
                               </div>
                             </TableCell>
-                            <TableCell className="font-medium">
-                              {getPlanName(company.planId)}
-                            </TableCell>
+                            <TableCell className="font-medium">{company.planName}</TableCell>
                             <TableCell>
                               <StatusBadge status={company.status} />
                             </TableCell>
@@ -242,7 +246,11 @@ function CompaniesPage() {
                   </div>
                 </>
               ) : (
-                <EmptyCompaniesState searchQuery={searchQuery} onClear={() => setSearchQuery("")} />
+                <EmptyCompaniesState
+                  hasCompanies={companies.length > 0}
+                  searchQuery={searchQuery}
+                  onClear={() => setSearchQuery("")}
+                />
               )}
             </CardContent>
           </Card>
@@ -288,9 +296,11 @@ function SummaryTile({
 }
 
 function EmptyCompaniesState({
+  hasCompanies,
   searchQuery,
   onClear,
 }: {
+  hasCompanies: boolean;
   searchQuery: string;
   onClear: () => void;
 }) {
@@ -299,19 +309,24 @@ function EmptyCompaniesState({
       <div className="mx-auto flex size-10 items-center justify-center rounded-lg border border-border bg-background">
         <Search className="size-4 text-muted-foreground" />
       </div>
-      <p className="mt-4 text-sm font-semibold text-foreground">Sin resultados</p>
-      <p className="mx-auto mt-1 max-w-sm text-sm text-muted-foreground">
-        No encontramos empresas para "{searchQuery.trim()}". Prueba con otro nombre, NIT, plan,
-        estado o administrador.
+      <p className="mt-4 text-sm font-semibold text-foreground">
+        {hasCompanies ? "Sin resultados" : "Sin empresas"}
       </p>
-      <Button type="button" variant="outline" size="sm" className="mt-4" onClick={onClear}>
-        Limpiar búsqueda
-      </Button>
+      <p className="mx-auto mt-1 max-w-sm text-sm text-muted-foreground">
+        {hasCompanies
+          ? `No encontramos empresas para "${searchQuery.trim()}". Prueba con otro nombre, NIT, plan, estado o administrador.`
+          : "El backend no devolvió empresas para mostrar en esta vista."}
+      </p>
+      {hasCompanies ? (
+        <Button type="button" variant="outline" size="sm" className="mt-4" onClick={onClear}>
+          Limpiar búsqueda
+        </Button>
+      ) : null}
     </div>
   );
 }
 
-function matchesCompanySearch(company: CompanyAccount, query: string) {
+function matchesCompanySearch(company: AdminCompany, query: string) {
   const normalizedQuery = normalizeSearchValue(query);
 
   if (!normalizedQuery) {
@@ -326,7 +341,7 @@ function matchesCompanySearch(company: CompanyAccount, query: string) {
       company.owner.email,
       company.region,
       company.planId,
-      getPlanName(company.planId),
+      company.planName,
       company.status,
       companyStatusLabels[company.status],
       company.nextBillingDate ?? "",
@@ -343,7 +358,7 @@ function matchesCompanySearch(company: CompanyAccount, query: string) {
   });
 }
 
-const companyStatusLabels: Record<CompanyAccount["status"], string> = {
+const companyStatusLabels: Record<AdminCompany["status"], string> = {
   trial: "Trial",
   active: "Activo",
   past_due: "En mora",
@@ -388,7 +403,7 @@ function CompanyDetailsSheet({
   company,
   onOpenChange,
 }: {
-  company: CompanyAccount | null;
+  company: AdminCompany | null;
   onOpenChange: (open: boolean) => void;
 }) {
   return (
@@ -414,7 +429,7 @@ function CompanyDetailsSheet({
               <div className="mt-5 flex flex-wrap items-center gap-2">
                 <StatusBadge status={company.status} />
                 <span className="rounded-full border border-border bg-background px-2.5 py-1 text-xs font-medium text-foreground">
-                  Plan {getPlanName(company.planId)}
+                  Plan {company.planName}
                 </span>
                 <span className="rounded-full border border-border bg-background px-2.5 py-1 font-mono text-xs font-medium text-foreground">
                   ${formatCop(company.mrr)} MRR
@@ -482,6 +497,34 @@ function CompanyDetailsSheet({
         )}
       </SheetContent>
     </Sheet>
+  );
+}
+
+function CompaniesLoadingState() {
+  return (
+    <div className="mt-4 grid gap-3">
+      {Array.from({ length: 4 }).map((_, index) => (
+        <div key={index} className="rounded-lg border border-border bg-background/70 p-4">
+          <Skeleton className="h-4 w-28" />
+          <Skeleton className="mt-2 h-6 w-48" />
+          <Skeleton className="mt-4 h-12 w-full" />
+        </div>
+      ))}
+    </div>
+  );
+}
+
+function CompaniesErrorState({ onRetry }: { onRetry: () => void }) {
+  return (
+    <div className="mt-4 rounded-lg border border-destructive/20 bg-destructive/5 p-6">
+      <p className="font-semibold text-foreground">No se pudo cargar la lista de empresas</p>
+      <p className="mt-1 text-sm text-muted-foreground">
+        Esta vista ya depende del backend. Revisa sesión, permisos o disponibilidad del servicio.
+      </p>
+      <Button className="mt-4" onClick={onRetry}>
+        Reintentar
+      </Button>
+    </div>
   );
 }
 

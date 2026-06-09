@@ -1,4 +1,5 @@
 import { useEffect, useState, type ReactNode } from "react";
+import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { createFileRoute } from "@tanstack/react-router";
 import {
   Check,
@@ -24,6 +25,7 @@ import {
 } from "@/components/ui/dialog";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
+import { Skeleton } from "@/components/ui/skeleton";
 import {
   Select,
   SelectContent,
@@ -32,7 +34,8 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 import { Checkbox } from "@/components/ui/checkbox";
-import { formatCop, saasPlans, type SaaSPlan } from "@/lib/admin-mock";
+import { adminApi, type AdminPlan as BackendAdminPlan } from "@/lib/admin-api";
+import { formatCop } from "@/lib/admin-mock";
 import { cn } from "@/lib/utils";
 
 export const Route = createFileRoute("/admin/planes")({
@@ -46,7 +49,7 @@ type PlanStatus = "active" | "draft" | "legacy";
 
 type PlanFormState = {
   enabledModules: string[];
-  id: SaaSPlan["id"] | `custom_${string}`;
+  id: string;
   limits: {
     transactions: string;
     users: string;
@@ -60,11 +63,7 @@ type PlanFormState = {
   tenantCount: number;
 };
 
-type AdminPlan = SaaSPlan & {
-  notes: string;
-  recommended: boolean;
-  status: PlanStatus;
-};
+type AdminPlan = BackendAdminPlan;
 
 const availableModules = [
   "Kárdex",
@@ -79,22 +78,28 @@ const availableModules = [
   "Onboarding asistido",
 ];
 
-const initialPlans: AdminPlan[] = saasPlans.map((plan) => ({
-  ...plan,
-  notes:
-    plan.id === "basic"
-      ? "Plan de entrada para operación liviana y onboarding rápido."
-      : plan.id === "pro"
-        ? "Plan comercial principal para crecimiento y operación multi-bodega."
-        : "Oferta consultiva para cuentas con negociación y alcance extendido.",
-  recommended: plan.id === "pro",
-  status: plan.id === "enterprise" ? "draft" : "active",
-}));
-
 function PlansPage() {
-  const [plans, setPlans] = useState(initialPlans);
+  const queryClient = useQueryClient();
   const [editingPlanId, setEditingPlanId] = useState<AdminPlan["id"] | null>(null);
   const [isCreateOpen, setIsCreateOpen] = useState(false);
+  const plansQuery = useQuery({
+    queryFn: () => adminApi.getPlans(),
+    queryKey: ["admin-plans"],
+  });
+  const plans = plansQuery.data ?? [];
+  const createPlanMutation = useMutation({
+    mutationFn: (payload: Partial<AdminPlan>) => adminApi.createPlan(payload),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["admin-plans"] });
+    },
+  });
+  const updatePlanMutation = useMutation({
+    mutationFn: ({ id, payload }: { id: string; payload: Partial<AdminPlan> }) =>
+      adminApi.updatePlan(id, payload),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["admin-plans"] });
+    },
+  });
 
   const editingPlan = plans.find((plan) => plan.id === editingPlanId) ?? null;
   const activePlans = plans.filter((plan) => plan.status === "active").length;
@@ -135,142 +140,150 @@ function PlansPage() {
             />
           </section>
 
-          <section className="grid gap-5 xl:grid-cols-[minmax(0,1.4fr)_minmax(320px,0.9fr)]">
-            <div className="grid gap-5 lg:grid-cols-2">
-              {plans.map((plan) => {
-                const statusTone = getStatusTone(plan.status);
+          {plansQuery.isLoading ? (
+            <PlansLoadingState />
+          ) : plansQuery.isError ? (
+            <PlansErrorState onRetry={() => plansQuery.refetch()} />
+          ) : !plans.length ? (
+            <PlansEmptyState />
+          ) : (
+            <section className="grid gap-5 xl:grid-cols-[minmax(0,1.4fr)_minmax(320px,0.9fr)]">
+              <div className="grid gap-5 lg:grid-cols-2">
+                {plans.map((plan) => {
+                  const statusTone = getStatusTone(plan.status);
 
-                return (
-                  <Card
-                    key={plan.id}
-                    className={cn(
-                      "border-border shadow-[var(--shadow-soft)]",
-                      plan.recommended && "border-nuclear/35 bg-nuclear/5",
-                    )}
-                  >
-                    <CardHeader className="space-y-4">
-                      <div className="flex items-start justify-between gap-3">
-                        <div className="space-y-2">
-                          <div className="flex flex-wrap items-center gap-2">
-                            <CardTitle>{plan.name}</CardTitle>
-                            {plan.recommended && (
-                              <span className="rounded-full bg-nuclear px-2.5 py-1 text-[10px] font-semibold uppercase tracking-wider text-nuclear-foreground">
-                                Recomendado
+                  return (
+                    <Card
+                      key={plan.id}
+                      className={cn(
+                        "border-border shadow-[var(--shadow-soft)]",
+                        plan.recommended && "border-nuclear/35 bg-nuclear/5",
+                      )}
+                    >
+                      <CardHeader className="space-y-4">
+                        <div className="flex items-start justify-between gap-3">
+                          <div className="space-y-2">
+                            <div className="flex flex-wrap items-center gap-2">
+                              <CardTitle>{plan.name}</CardTitle>
+                              {plan.recommended && (
+                                <span className="rounded-full bg-nuclear px-2.5 py-1 text-[10px] font-semibold uppercase tracking-wider text-nuclear-foreground">
+                                  Recomendado
+                                </span>
+                              )}
+                            </div>
+                            <div className="flex flex-wrap items-center gap-2">
+                              <StatusBadge status={statusTone} />
+                              <span className="text-xs text-muted-foreground">
+                                {plan.tenantCount} empresas usando este plan
                               </span>
-                            )}
+                            </div>
                           </div>
-                          <div className="flex flex-wrap items-center gap-2">
-                            <StatusBadge status={statusTone} />
-                            <span className="text-xs text-muted-foreground">
-                              {plan.tenantCount} empresas usando este plan
-                            </span>
-                          </div>
+                          <span className="grid size-9 place-items-center rounded-lg border border-border bg-background text-nuclear">
+                            <SlidersHorizontal className="size-4" />
+                          </span>
                         </div>
-                        <span className="grid size-9 place-items-center rounded-lg border border-border bg-background text-nuclear">
-                          <SlidersHorizontal className="size-4" />
-                        </span>
-                      </div>
 
-                      <div className="rounded-xl border border-border bg-background/80 p-4">
-                        <p className="font-display text-3xl font-semibold tracking-tight text-foreground">
-                          {plan.price ? `$${formatCop(plan.price)}` : "A medida"}
-                        </p>
-                        <p className="mt-1 text-xs text-muted-foreground">COP / {plan.period}</p>
-                        <p className="mt-3 text-sm text-muted-foreground">{plan.notes}</p>
-                      </div>
-                    </CardHeader>
-
-                    <CardContent className="space-y-5">
-                      <div className="grid gap-2 rounded-lg border border-border bg-muted/30 p-3 text-sm">
-                        <Limit label="Usuarios" value={plan.limits.users} />
-                        <Limit label="Bodegas" value={plan.limits.warehouses} />
-                        <Limit label="Transacciones" value={plan.limits.transactions} />
-                      </div>
-
-                      <div>
-                        <p className="mb-3 text-xs font-semibold uppercase tracking-wider text-muted-foreground">
-                          Módulos incluidos
-                        </p>
-                        <ul className="grid gap-2 text-sm sm:grid-cols-2">
-                          {plan.enabledModules.map((module) => (
-                            <li
-                              key={module}
-                              className="flex items-start gap-2 rounded-md bg-muted/30 p-2"
-                            >
-                              <Check className="mt-0.5 size-4 shrink-0 text-success" />
-                              <span>{module}</span>
-                            </li>
-                          ))}
-                        </ul>
-                      </div>
-
-                      <div className="grid gap-3 rounded-lg border border-border bg-background/80 p-4 text-sm sm:grid-cols-2">
-                        <ImpactMetric
-                          label="Impacto actual"
-                          value={`${plan.tenantCount} empresas`}
-                          helper="Cuentas que heredan este empaque base"
-                        />
-                        <ImpactMetric
-                          label="Tipo comercial"
-                          value={plan.price ? "Self-serve" : "Negociado"}
-                          helper="Segmentación usada en ventas"
-                        />
-                      </div>
-
-                      <Button
-                        variant="outline"
-                        className="w-full"
-                        onClick={() => setEditingPlanId(plan.id)}
-                      >
-                        Editar plan
-                      </Button>
-                    </CardContent>
-                  </Card>
-                );
-              })}
-            </div>
-
-            <Card className="h-fit shadow-[var(--shadow-soft)]">
-              <CardHeader>
-                <CardTitle>Comparativo rápido</CardTitle>
-              </CardHeader>
-              <CardContent className="space-y-4">
-                <div className="overflow-hidden rounded-lg border border-border">
-                  <table className="w-full text-sm">
-                    <thead className="bg-muted/50 text-left">
-                      <tr>
-                        <th className="px-3 py-2 font-medium text-muted-foreground">Plan</th>
-                        <th className="px-3 py-2 font-medium text-muted-foreground">Precio</th>
-                        <th className="px-3 py-2 font-medium text-muted-foreground">Empresas</th>
-                      </tr>
-                    </thead>
-                    <tbody>
-                      {plans.map((plan) => (
-                        <tr key={plan.id} className="border-t border-border">
-                          <td className="px-3 py-3 font-medium text-foreground">{plan.name}</td>
-                          <td className="px-3 py-3 text-muted-foreground">
+                        <div className="rounded-xl border border-border bg-background/80 p-4">
+                          <p className="font-display text-3xl font-semibold tracking-tight text-foreground">
                             {plan.price ? `$${formatCop(plan.price)}` : "A medida"}
-                          </td>
-                          <td className="px-3 py-3 text-muted-foreground">{plan.tenantCount}</td>
-                        </tr>
-                      ))}
-                    </tbody>
-                  </table>
-                </div>
+                          </p>
+                          <p className="mt-1 text-xs text-muted-foreground">COP / {plan.period}</p>
+                          <p className="mt-3 text-sm text-muted-foreground">{plan.notes}</p>
+                        </div>
+                      </CardHeader>
 
-                <div className="rounded-lg border border-dashed border-border bg-muted/20 p-4">
-                  <p className="text-sm font-semibold text-foreground">
-                    Qué debería controlar esta vista
-                  </p>
-                  <ul className="mt-3 space-y-2 text-sm text-muted-foreground">
-                    <li>Precio, periodo y visibilidad comercial del catálogo.</li>
-                    <li>Límites operativos que afectan onboarding y expansión.</li>
-                    <li>Impacto por cantidad de empresas antes de tocar un plan activo.</li>
-                  </ul>
-                </div>
-              </CardContent>
-            </Card>
-          </section>
+                      <CardContent className="space-y-5">
+                        <div className="grid gap-2 rounded-lg border border-border bg-muted/30 p-3 text-sm">
+                          <Limit label="Usuarios" value={plan.limits.users} />
+                          <Limit label="Bodegas" value={plan.limits.warehouses} />
+                          <Limit label="Transacciones" value={plan.limits.transactions} />
+                        </div>
+
+                        <div>
+                          <p className="mb-3 text-xs font-semibold uppercase tracking-wider text-muted-foreground">
+                            Módulos incluidos
+                          </p>
+                          <ul className="grid gap-2 text-sm sm:grid-cols-2">
+                            {plan.enabledModules.map((module) => (
+                              <li
+                                key={module}
+                                className="flex items-start gap-2 rounded-md bg-muted/30 p-2"
+                              >
+                                <Check className="mt-0.5 size-4 shrink-0 text-success" />
+                                <span>{module}</span>
+                              </li>
+                            ))}
+                          </ul>
+                        </div>
+
+                        <div className="grid gap-3 rounded-lg border border-border bg-background/80 p-4 text-sm sm:grid-cols-2">
+                          <ImpactMetric
+                            label="Impacto actual"
+                            value={`${plan.tenantCount} empresas`}
+                            helper="Cuentas que heredan este empaque base"
+                          />
+                          <ImpactMetric
+                            label="Tipo comercial"
+                            value={plan.price ? "Self-serve" : "Negociado"}
+                            helper="Segmentación usada en ventas"
+                          />
+                        </div>
+
+                        <Button
+                          variant="outline"
+                          className="w-full"
+                          onClick={() => setEditingPlanId(plan.id)}
+                        >
+                          Editar plan
+                        </Button>
+                      </CardContent>
+                    </Card>
+                  );
+                })}
+              </div>
+
+              <Card className="h-fit shadow-[var(--shadow-soft)]">
+                <CardHeader>
+                  <CardTitle>Comparativo rápido</CardTitle>
+                </CardHeader>
+                <CardContent className="space-y-4">
+                  <div className="overflow-hidden rounded-lg border border-border">
+                    <table className="w-full text-sm">
+                      <thead className="bg-muted/50 text-left">
+                        <tr>
+                          <th className="px-3 py-2 font-medium text-muted-foreground">Plan</th>
+                          <th className="px-3 py-2 font-medium text-muted-foreground">Precio</th>
+                          <th className="px-3 py-2 font-medium text-muted-foreground">Empresas</th>
+                        </tr>
+                      </thead>
+                      <tbody>
+                        {plans.map((plan) => (
+                          <tr key={plan.id} className="border-t border-border">
+                            <td className="px-3 py-3 font-medium text-foreground">{plan.name}</td>
+                            <td className="px-3 py-3 text-muted-foreground">
+                              {plan.price ? `$${formatCop(plan.price)}` : "A medida"}
+                            </td>
+                            <td className="px-3 py-3 text-muted-foreground">{plan.tenantCount}</td>
+                          </tr>
+                        ))}
+                      </tbody>
+                    </table>
+                  </div>
+
+                  <div className="rounded-lg border border-dashed border-border bg-muted/20 p-4">
+                    <p className="text-sm font-semibold text-foreground">
+                      Qué debería controlar esta vista
+                    </p>
+                    <ul className="mt-3 space-y-2 text-sm text-muted-foreground">
+                      <li>Precio, periodo y visibilidad comercial del catálogo.</li>
+                      <li>Límites operativos que afectan onboarding y expansión.</li>
+                      <li>Impacto por cantidad de empresas antes de tocar un plan activo.</li>
+                    </ul>
+                  </div>
+                </CardContent>
+              </Card>
+            </section>
+          )}
         </div>
       </main>
 
@@ -279,8 +292,9 @@ function PlansPage() {
         open={isCreateOpen}
         plan={null}
         onOpenChange={setIsCreateOpen}
-        onSave={(nextPlan) => {
-          setPlans((current) => [nextPlan, ...current]);
+        saving={createPlanMutation.isPending}
+        onSave={async (nextPlan) => {
+          await createPlanMutation.mutateAsync(nextPlan);
           setIsCreateOpen(false);
         }}
       />
@@ -289,13 +303,17 @@ function PlansPage() {
         mode="edit"
         open={Boolean(editingPlan)}
         plan={editingPlan}
+        saving={updatePlanMutation.isPending}
         onOpenChange={(open) => {
           if (!open) {
             setEditingPlanId(null);
           }
         }}
-        onSave={(nextPlan) => {
-          setPlans((current) => current.map((plan) => (plan.id === nextPlan.id ? nextPlan : plan)));
+        onSave={async (nextPlan) => {
+          await updatePlanMutation.mutateAsync({
+            id: nextPlan.id,
+            payload: nextPlan,
+          });
           setEditingPlanId(null);
         }}
       />
@@ -309,12 +327,14 @@ function PlanDialog({
   onSave,
   open,
   plan,
+  saving,
 }: {
   mode: "create" | "edit";
   onOpenChange: (open: boolean) => void;
-  onSave: (plan: AdminPlan) => void;
+  onSave: (plan: AdminPlan) => Promise<void>;
   open: boolean;
   plan: AdminPlan | null;
+  saving: boolean;
 }) {
   const [draft, setDraft] = useState<PlanFormState>(() => buildDraft(mode, plan));
 
@@ -528,6 +548,7 @@ function PlanDialog({
         <DialogFooter>
           <Button
             variant="outline"
+            disabled={saving}
             onClick={() => {
               onOpenChange(false);
               resetDraft(mode, plan);
@@ -536,13 +557,14 @@ function PlanDialog({
             Cancelar
           </Button>
           <Button
-            onClick={() =>
-              onSave({
+            disabled={saving}
+            onClick={async () =>
+              await onSave({
                 enabledModules: draft.enabledModules,
                 id:
                   mode === "edit" && plan
                     ? plan.id
-                    : (`custom_${draft.name.toLowerCase().replace(/\s+/g, "_")}` as AdminPlan["id"]),
+                    : `custom_${draft.name.toLowerCase().replace(/\s+/g, "_")}`,
                 limits: {
                   transactions: parseLimitValue(draft.limits.transactions),
                   users: parseLimitValue(draft.limits.users),
@@ -561,7 +583,7 @@ function PlanDialog({
               })
             }
           >
-            {mode === "create" ? "Crear plan" : "Guardar cambios"}
+            {saving ? "Guardando..." : mode === "create" ? "Crear plan" : "Guardar cambios"}
           </Button>
         </DialogFooter>
       </DialogContent>
@@ -681,4 +703,46 @@ function parseLimitValue(value: string) {
 function parsePriceValue(value: string) {
   const numeric = Number.parseInt(value.replace(/\D/g, ""), 10);
   return Number.isNaN(numeric) ? null : numeric;
+}
+
+function PlansLoadingState() {
+  return (
+    <section className="grid gap-5 xl:grid-cols-[minmax(0,1.4fr)_minmax(320px,0.9fr)]">
+      <div className="grid gap-5 lg:grid-cols-2">
+        {Array.from({ length: 3 }).map((_, index) => (
+          <Skeleton key={index} className="h-[520px] w-full rounded-xl" />
+        ))}
+      </div>
+      <Skeleton className="h-[320px] w-full rounded-xl" />
+    </section>
+  );
+}
+
+function PlansErrorState({ onRetry }: { onRetry: () => void }) {
+  return (
+    <Card className="shadow-[var(--shadow-soft)]">
+      <CardContent className="p-6">
+        <p className="font-semibold text-foreground">No se pudo cargar el catálogo de planes</p>
+        <p className="mt-1 text-sm text-muted-foreground">
+          Esta vista ya depende del backend para listar y administrar planes.
+        </p>
+        <Button className="mt-4" onClick={onRetry}>
+          Reintentar
+        </Button>
+      </CardContent>
+    </Card>
+  );
+}
+
+function PlansEmptyState() {
+  return (
+    <Card className="shadow-[var(--shadow-soft)]">
+      <CardContent className="p-6">
+        <p className="font-semibold text-foreground">No hay planes</p>
+        <p className="mt-1 text-sm text-muted-foreground">
+          El backend no devolvió planes para esta consola.
+        </p>
+      </CardContent>
+    </Card>
+  );
 }
