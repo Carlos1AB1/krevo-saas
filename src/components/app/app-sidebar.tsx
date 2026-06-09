@@ -164,23 +164,21 @@ export function AppSidebar({ mobileOpen, onMobileClose }: AppSidebarProps) {
         <div
           className={cn(
             "flex h-16 items-center border-b border-sidebar-border px-4",
-            collapsed ? "justify-center" : "justify-between",
+            collapsed ? "justify-center px-2" : "justify-start",
           )}
         >
-          {!collapsed && (
-            <Link to="/app" className="flex min-w-0 items-center overflow-hidden">
-              <NuclearLogo withWordmark imgClassName="size-9" className="gap-2" />
-            </Link>
-          )}
-          <button
-            type="button"
-            aria-label={collapsed ? "Expandir" : "Colapsar"}
-            onClick={() => setCollapsed((v) => !v)}
-            className="grid size-7 shrink-0 place-items-center rounded-md text-muted-foreground transition-colors hover:bg-sidebar-accent hover:text-sidebar-accent-foreground"
-          >
-            <ChevronLeft className={cn("size-4 transition-transform", collapsed && "rotate-180")} />
-          </button>
+          <Link to="/app" className="flex min-w-0 items-center overflow-hidden">
+            <NuclearLogo withWordmark={!collapsed} imgClassName="size-9" className="gap-2" />
+          </Link>
         </div>
+        <button
+          type="button"
+          aria-label={collapsed ? "Expandir" : "Colapsar"}
+          onClick={() => setCollapsed((v) => !v)}
+          className="absolute right-0 top-5 z-20 grid size-6 translate-x-1/2 place-items-center rounded-full border border-sidebar-border bg-sidebar text-muted-foreground shadow-sm transition-colors hover:bg-sidebar-accent hover:text-sidebar-accent-foreground"
+        >
+          <ChevronLeft className={cn("size-3.5 transition-transform", collapsed && "rotate-180")} />
+        </button>
 
         <nav className="flex-1 overflow-y-auto px-3 py-4">
           <NavItems groups={groups} pathname={pathname} collapsed={collapsed} />
