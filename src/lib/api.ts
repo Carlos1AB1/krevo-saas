@@ -1,4 +1,12 @@
-const API_URL = import.meta.env.VITE_API_URL;
+const API_URL =
+  import.meta.env.VITE_API_URL ??
+  (import.meta.env.DEV ? "http://localhost:3100/api/v1" : undefined);
+
+if (!API_URL) {
+  throw new Error(
+    "VITE_API_URL no está definida. Crea un archivo .env en la raíz del frontend con VITE_API_URL=http://localhost:3100/api/v1 y reinicia el dev server.",
+  );
+}
 
 export interface ApiErrorResponse {
   statusCode: number;

@@ -164,8 +164,12 @@ function getFriendlyError(error: unknown): string {
     return raw || "Ocurrió un error inesperado. Intenta de nuevo.";
   }
 
-  if (error instanceof TypeError && error.message.includes("fetch"))
-    return "Sin conexión con el servidor. Verifica tu red e intenta de nuevo.";
+  if (error instanceof TypeError && error.message.includes("fetch")) {
+    if (!import.meta.env.VITE_API_URL) {
+      return "No se configuró VITE_API_URL. Copia .env.example a .env y reinicia el servidor de desarrollo.";
+    }
+    return "Sin conexión con el servidor. Verifica que el backend esté corriendo en http://localhost:3100 e intenta de nuevo.";
+  }
 
   return "Ocurrió un error inesperado. Intenta de nuevo.";
 }
