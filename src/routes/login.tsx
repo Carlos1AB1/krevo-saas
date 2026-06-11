@@ -20,6 +20,11 @@ const loginSchema = z.object({
   remember: z.boolean().optional(),
 });
 
+const loginSearchSchema = z.object({
+  forbidden: z.string().optional(),
+  redirect: z.string().optional(),
+});
+
 type LoginValues = z.infer<typeof loginSchema>;
 
 export const Route = createFileRoute("/login")({
@@ -33,6 +38,7 @@ export const Route = createFileRoute("/login")({
       },
     ],
   }),
+  validateSearch: loginSearchSchema,
   component: LoginPage,
 });
 
@@ -40,6 +46,8 @@ function LoginPage() {
   const navigate = useNavigate();
   const { loginUser, isLoading, error, clearError } = useAuth();
   const [showPw, setShowPw] = useState(false);
+  const [authError, setAuthError] = useState<string | null>(null);
+  const search = Route.useSearch();
   const {
     register,
     handleSubmit,
@@ -55,13 +63,17 @@ function LoginPage() {
   });
 
   const onSubmit = async (values: LoginValues) => {
+    setAuthError(null);
+
     const success = await loginUser(values.email, values.password);
 
     if (success) {
       toast.success("Sesión iniciada", {
         description: `Bienvenido de vuelta, ${values.email.split("@")[0]}.`,
       });
-      navigate({ to: "/app" });
+      navigate({
+        to: search.redirect && search.redirect.startsWith("/") ? search.redirect : "/app",
+      });
     }
   };
 
@@ -88,6 +100,12 @@ function LoginPage() {
         </p>
 
         <div className="mt-8">
+          {(search.forbidden === "1" || authError) && (
+            <div className="mb-4 rounded-lg border border-destructive/20 bg-destructive/5 px-4 py-3 text-sm text-destructive">
+              {authError ?? "Tu cuenta no tiene permisos para entrar al módulo SuperAdmin."}
+            </div>
+          )}
+
           <SsoButtons mode="login" />
           <OrSeparator />
 

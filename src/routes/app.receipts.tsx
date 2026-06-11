@@ -151,7 +151,6 @@ function ReceiptLineRow({
     </div>
   );
 }
-
 function ReceiptsPage() {
   const can = usePermissions();
   const qc = useQueryClient();
@@ -523,4 +522,3 @@ function ReceiptsPage() {
     </div>
   );
 }
-
