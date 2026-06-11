@@ -1,17 +1,19 @@
 import { createFileRoute } from "@tanstack/react-router";
+import { usePermissions } from "@/features/auth/usePermissions";
+import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import {
   ArrowDownToLine,
   Plus,
   Search,
   Filter,
-  ScanLine,
   Clock,
   CheckCircle2,
+  XCircle,
+  Loader2,
   Box,
-  ShieldCheck,
-  Truck,
-  MoveRight,
+  Trash2,
 } from "lucide-react";
+import { toast } from "sonner";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -22,44 +24,238 @@ import {
   SheetDescription,
   SheetHeader,
   SheetTitle,
+  SheetFooter,
 } from "@/components/ui/sheet";
+import {
+  getReceipts,
+  createReceipt,
+  approveReceipt,
+  rejectReceipt,
+  type ReceiptResponse,
+} from "@/features/logistics/logistics.api";
+import { getProducts, getLots } from "@/features/inventory/inventory.api";
+import { useSuppliers } from "@/features/suppliers/useSuppliers";
+import { format, parseISO } from "date-fns";
+import { es } from "date-fns/locale";
 
 export const Route = createFileRoute("/app/receipts")({
-  head: () => ({
-    meta: [{ title: "Recepciones · Krevo" }],
-  }),
+  head: () => ({ meta: [{ title: "Recepciones · Krevo" }] }),
   component: ReceiptsPage,
 });
 
-const mockReceipts = [
-  {
-    id: "REC-2901",
-    supplier: "Lácteos del Quindío S.A.",
-    expectedAt: "Hoy 14:00",
-    status: "pending",
-    items: 45,
-    type: "Estándar",
-  },
-  {
-    id: "REC-2900",
-    supplier: "Ingenio Providencia",
-    expectedAt: "Hoy 09:30",
-    status: "checking",
-    items: 120,
-    type: "Urgente",
-  },
-  {
-    id: "REC-2899",
-    supplier: "Empaques Artesanales Eje",
-    expectedAt: "Ayer",
-    status: "completed",
-    items: 12,
-    type: "Estándar",
-  },
-];
+function statusIcon(status: ReceiptResponse["status"]) {
+  if (status === "PENDING") return <Clock className="size-4 text-warning" />;
+  if (status === "APPROVED") return <CheckCircle2 className="size-4 text-success" />;
+  return <XCircle className="size-4 text-destructive" />;
+}
 
+function statusLabel(status: ReceiptResponse["status"]) {
+  if (status === "PENDING") return "Pendiente";
+  if (status === "APPROVED") return "Aprobado";
+  return "Rechazado";
+}
+
+interface LineState {
+  _key: string;
+  productId: string;
+  lotId: string;
+  quantity: number;
+  unitCost: string;
+}
+
+function makeEmptyLine(): LineState {
+  return { _key: Math.random().toString(36).slice(2), productId: "", lotId: "", quantity: 1, unitCost: "" };
+}
+
+// Sub-component so each line can independently fetch its own lots
+function ReceiptLineRow({
+  line,
+  idx,
+  products,
+  showRemove,
+  onUpdate,
+  onRemove,
+}: {
+  line: LineState;
+  idx: number;
+  products: { id: string; name: string; sku: string }[];
+  showRemove: boolean;
+  onUpdate: (key: string, patch: Partial<LineState>) => void;
+  onRemove: (key: string) => void;
+}) {
+  const { data: lotsData } = useQuery({
+    queryKey: ["inventory", "lots", { productId: line.productId, status: "ACTIVE", limit: 100 }],
+    queryFn: () => getLots({ productId: line.productId, status: "ACTIVE", limit: 100 }),
+    enabled: !!line.productId,
+  });
+  const lots = lotsData?.data ?? [];
+
+  return (
+    <div className="rounded-lg border border-border bg-muted/10 p-3 space-y-3">
+      <div className="flex items-center justify-between">
+        <span className="text-xs font-medium text-muted-foreground">Línea {idx + 1}</span>
+        {showRemove && (
+          <button type="button" onClick={() => onRemove(line._key)} className="text-muted-foreground hover:text-destructive">
+            <Trash2 className="size-3.5" />
+          </button>
+        )}
+      </div>
+      <div className="grid grid-cols-2 gap-3">
+        <div className="col-span-2 space-y-1">
+          <Label className="text-xs">Producto</Label>
+          <select
+            value={line.productId}
+            onChange={(e) => onUpdate(line._key, { productId: e.target.value, lotId: "" })}
+            className="flex h-9 w-full rounded-md border border-input bg-background px-3 text-sm shadow-sm focus:outline-none focus:ring-1 focus:ring-ring"
+          >
+            <option value="">— Seleccionar producto —</option>
+            {products.map((p) => (
+              <option key={p.id} value={p.id}>{p.name} ({p.sku})</option>
+            ))}
+          </select>
+        </div>
+        {line.productId && (
+          <div className="col-span-2 space-y-1">
+            <Label className="text-xs">Lote existente (opcional)</Label>
+            <select
+              value={line.lotId}
+              onChange={(e) => onUpdate(line._key, { lotId: e.target.value })}
+              className="flex h-9 w-full rounded-md border border-input bg-background px-3 text-sm shadow-sm focus:outline-none focus:ring-1 focus:ring-ring"
+            >
+              <option value="">— Sin lote asignado —</option>
+              {lots.map((l) => (
+                <option key={l.id} value={l.id}>
+                  {l.lotNumber} · stock: {l.quantity.toLocaleString("es-CO")}
+                  {l.expirationDate ? ` · vence ${new Date(l.expirationDate).toLocaleDateString("es-CO")}` : ""}
+                </option>
+              ))}
+            </select>
+            <p className="text-[11px] text-muted-foreground">Si seleccionas un lote existente, la cantidad se sumará a ese lote al aprobar.</p>
+          </div>
+        )}
+        <div className="space-y-1">
+          <Label className="text-xs">Cantidad</Label>
+          <Input
+            type="number" min={0.001} step={0.001} value={line.quantity}
+            onChange={(e) => onUpdate(line._key, { quantity: Number(e.target.value) })}
+          />
+        </div>
+        <div className="space-y-1">
+          <Label className="text-xs">Costo unitario (opcional)</Label>
+          <Input
+            type="number" min={0} placeholder="0" value={line.unitCost}
+            onChange={(e) => onUpdate(line._key, { unitCost: e.target.value })}
+          />
+        </div>
+      </div>
+    </div>
+  );
+}
 function ReceiptsPage() {
-  const [selectedRec, setSelectedRec] = useState<(typeof mockReceipts)[0] | null>(null);
+  const can = usePermissions();
+  const qc = useQueryClient();
+  const { suppliers: storedSuppliers } = useSuppliers();
+  const [selectedRec, setSelectedRec] = useState<ReceiptResponse | null>(null);
+  const [q, setQ] = useState("");
+  const [createOpen, setCreateOpen] = useState(false);
+  const [supplier, setSupplier] = useState("");
+  const [notes, setNotes] = useState("");
+  const [lines, setLines] = useState<LineState[]>([makeEmptyLine()]);
+
+  const { data, isLoading, isError } = useQuery({
+    queryKey: ["logistics", "receipts", { limit: 50 }],
+    queryFn: () => getReceipts({ limit: 50 }),
+  });
+
+  const { data: productsData } = useQuery({
+    queryKey: ["inventory", "products", { limit: 100 }],
+    queryFn: () => getProducts({ limit: 100 }),
+  });
+  const products = productsData?.data ?? [];
+
+  const receipts = data?.data ?? [];
+
+  const filtered = receipts.filter((r) => {
+    const ql = q.toLowerCase();
+    if (!ql) return true;
+    return (
+      (r.supplier ?? "").toLowerCase().includes(ql) ||
+      r.id.toLowerCase().includes(ql) ||
+      r.status.toLowerCase().includes(ql)
+    );
+  });
+
+  const approveMutation = useMutation({
+    mutationFn: approveReceipt,
+    onSuccess: () => {
+      toast.success("Recepción aprobada — lotes actualizados en inventario");
+      setSelectedRec(null);
+      qc.invalidateQueries({ queryKey: ["logistics", "receipts"] });
+      qc.invalidateQueries({ queryKey: ["inventory"] });
+    },
+    onError: (e: Error) => toast.error(e.message),
+  });
+
+  const rejectMutation = useMutation({
+    mutationFn: (id: string) => rejectReceipt(id),
+    onSuccess: () => {
+      toast.success("Recepción rechazada");
+      setSelectedRec(null);
+      qc.invalidateQueries({ queryKey: ["logistics", "receipts"] });
+    },
+    onError: (e: Error) => toast.error(e.message),
+  });
+
+  const createMutation = useMutation({
+    mutationFn: createReceipt,
+    onSuccess: () => {
+      toast.success("Recepción creada correctamente");
+      setCreateOpen(false);
+      resetCreateForm();
+      qc.invalidateQueries({ queryKey: ["logistics", "receipts"] });
+    },
+    onError: (e: Error) => toast.error(e.message),
+  });
+
+  const isWorking = approveMutation.isPending || rejectMutation.isPending;
+
+  function resetCreateForm() {
+    setSupplier("");
+    setNotes("");
+    setLines([makeEmptyLine()]);
+  }
+
+  function openCreate(initialSupplier?: string) {
+    resetCreateForm();
+    if (initialSupplier) setSupplier(initialSupplier);
+    setCreateOpen(true);
+  }
+
+  function handleSubmitCreate() {
+    const validLines = lines.filter((l) => l.productId && l.quantity > 0);
+    if (validLines.length === 0) {
+      toast.error("Agrega al menos una línea de producto");
+      return;
+    }
+    createMutation.mutate({
+      supplier: supplier || undefined,
+      notes: notes || undefined,
+      lines: validLines.map((l) => ({
+        productId: l.productId,
+        lotId: l.lotId || undefined,
+        quantity: l.quantity,
+        unitCost: l.unitCost ? Number(l.unitCost) : undefined,
+      })),
+    });
+  }
+
+  function updateLine(key: string, patch: Partial<LineState>) {
+    setLines((prev) => prev.map((l) => (l._key === key ? { ...l, ...patch } : l)));
+  }
+
+  function removeLine(key: string) {
+    setLines((prev) => (prev.length > 1 ? prev.filter((l) => l._key !== key) : prev));
+  }
 
   return (
     <div className="flex flex-col h-full">
@@ -67,7 +263,7 @@ function ReceiptsPage() {
         <div className="mr-auto">
           <h1 className="text-xl font-semibold tracking-tight">Recepciones (Inbound)</h1>
           <p className="text-xs text-muted-foreground hidden sm:block">
-            Muelle de entrada, ASN, QA y Cross-Docking.
+            Ingreso de materias primas, QA y registro en Kárdex.
           </p>
         </div>
         <div className="flex items-center gap-2">
@@ -75,10 +271,12 @@ function ReceiptsPage() {
             <Filter className="mr-2 size-4" />
             <span className="hidden lg:inline">Filtrar</span>
           </Button>
-          <Button size="sm">
-            <Plus className="mr-2 size-4" />
-            <span>Nuevo Ingreso</span>
-          </Button>
+          {can("manage", "logistics") && (
+            <Button size="sm" onClick={() => openCreate()}>
+              <Plus className="mr-2 size-4" />
+              <span>Nuevo Ingreso</span>
+            </Button>
+          )}
         </div>
       </header>
 
@@ -86,193 +284,239 @@ function ReceiptsPage() {
         <div className="mx-auto max-w-5xl space-y-6">
           <div className="flex gap-2">
             <div className="relative flex-1">
-              <Label htmlFor="search-receipts" className="sr-only">
-                Buscar ASN, proveedor o REC
-              </Label>
               <Search className="absolute left-3 top-1/2 size-4 -translate-y-1/2 text-muted-foreground" />
               <Input
-                id="search-receipts"
-                placeholder="Buscar ASN, proveedor o REC-..."
+                value={q}
+                onChange={(e) => setQ(e.target.value)}
+                placeholder="Buscar por proveedor, ID o estado…"
                 className="pl-9 bg-card shadow-sm h-10 w-full"
               />
             </div>
-            <Button
-              variant="nuclear"
-              className="shrink-0 h-10 w-10 p-0 sm:w-auto sm:px-4 shadow-sm"
-            >
-              <ScanLine className="size-4 sm:mr-2" />
-              <span className="hidden sm:inline">Escanear ASN</span>
-            </Button>
           </div>
 
-          <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
-            {mockReceipts.map((rec) => (
-              <div
-                key={rec.id}
-                className="relative flex flex-col rounded-xl border border-border bg-card p-4 transition-all hover:border-nuclear/50 hover:shadow-sm"
-              >
-                <div className="mb-3 flex items-start justify-between">
-                  <div>
-                    <span className="inline-flex items-center rounded-md bg-muted px-2 py-1 text-xs font-medium text-muted-foreground">
-                      {rec.id}
-                    </span>
-                    <h2 className="mt-2 text-base font-semibold text-foreground">{rec.supplier}</h2>
-                  </div>
-                  {rec.status === "pending" && <Clock className="size-4 text-warning" />}
-                  {rec.status === "checking" && (
-                    <ArrowDownToLine className="size-4 text-info animate-pulse" />
-                  )}
-                  {rec.status === "completed" && <CheckCircle2 className="size-4 text-success" />}
-                </div>
+          {isLoading && (
+            <div className="flex items-center justify-center py-12 text-muted-foreground">
+              <Loader2 className="mr-2 size-5 animate-spin" /> Cargando recepciones…
+            </div>
+          )}
 
-                <div className="mt-auto flex items-center justify-between text-sm">
-                  <div className="flex flex-col">
-                    <span className="text-xs text-muted-foreground">Esperado</span>
-                    <span className="font-medium">{rec.expectedAt}</span>
-                  </div>
-                  <div className="flex flex-col text-right">
-                    <span className="text-xs text-muted-foreground">Planilla</span>
-                    <span className="font-medium">{rec.items} estibas</span>
-                  </div>
-                </div>
+          {isError && (
+            <div className="rounded-xl border border-destructive/30 bg-destructive/10 p-4 text-sm text-destructive">
+              No fue posible cargar las recepciones. Verifica que el servidor esté activo.
+            </div>
+          )}
 
-                <div className="mt-4 flex gap-2">
-                  <Button
-                    variant="outline"
-                    className="w-full text-xs"
-                    size="sm"
-                    onClick={() => setSelectedRec(rec)}
-                  >
-                    Pre-Recepción
-                  </Button>
-                  {rec.status !== "completed" && (
-                    <Button
-                      className="w-full text-xs"
-                      size="sm"
-                      variant={rec.status === "checking" ? "secondary" : "default"}
-                      onClick={() => setSelectedRec(rec)}
-                    >
-                      {rec.status === "checking" ? "Verificar" : "Iniciar"}
+          {!isLoading && !isError && filtered.length === 0 && (
+            <div className="rounded-xl border border-dashed border-border bg-card p-12 text-center text-sm text-muted-foreground">
+              No hay recepciones registradas.
+            </div>
+          )}
+
+          {!isLoading && !isError && (
+            <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
+              {filtered.map((rec) => (
+                <div
+                  key={rec.id}
+                  className="relative flex flex-col rounded-xl border border-border bg-card p-4 transition-all hover:border-nuclear/50 hover:shadow-sm"
+                >
+                  <div className="mb-3 flex items-start justify-between">
+                    <div>
+                      <span className="inline-flex items-center rounded-md bg-muted px-2 py-1 text-xs font-medium text-muted-foreground font-mono">
+                        {rec.id.slice(0, 8).toUpperCase()}
+                      </span>
+                      <h2 className="mt-2 text-base font-semibold text-foreground">
+                        {rec.supplier ?? "Proveedor no especificado"}
+                      </h2>
+                      <p className="text-xs text-muted-foreground mt-0.5">
+                        {statusLabel(rec.status)} · {rec.lines.length} línea(s)
+                      </p>
+                    </div>
+                    {statusIcon(rec.status)}
+                  </div>
+
+                  <div className="mt-auto flex items-center justify-between text-sm">
+                    <div className="flex flex-col">
+                      <span className="text-xs text-muted-foreground">Creado</span>
+                      <span className="font-medium text-xs">
+                        {format(parseISO(rec.createdAt), "dd MMM yyyy", { locale: es })}
+                      </span>
+                    </div>
+                    <div className="flex flex-col text-right">
+                      <span className="text-xs text-muted-foreground">Por</span>
+                      <span className="font-medium text-xs">
+                        {rec.createdBy.firstName} {rec.createdBy.lastName}
+                      </span>
+                    </div>
+                  </div>
+
+                  <div className="mt-4 flex gap-2">
+                    <Button variant="outline" className="w-full text-xs" size="sm" onClick={() => setSelectedRec(rec)}>
+                      Ver detalle
                     </Button>
-                  )}
-                </div>
-                {rec.type === "Urgente" && (
-                  <div className="absolute top-0 right-0 -mt-2 -mr-2 flex h-5 items-center rounded-full bg-destructive px-2 text-[10px] font-bold uppercase text-destructive-foreground shadow-sm">
-                    Cross-Docking Previsto
+                    {rec.status === "PENDING" && can("manage", "logistics") && (
+                      <Button className="w-full text-xs" size="sm" variant="default" onClick={() => setSelectedRec(rec)}>
+                        Aprobar
+                      </Button>
+                    )}
                   </div>
-                )}
-              </div>
-            ))}
-          </div>
+                </div>
+              ))}
+            </div>
+          )}
         </div>
       </div>
 
+      {/* Detail Sheet */}
       <Sheet open={!!selectedRec} onOpenChange={(v) => !v && setSelectedRec(null)}>
         <SheetContent className="w-full sm:max-w-xl overflow-y-auto">
           {selectedRec && (
             <>
               <SheetHeader>
-                <p className="font-mono text-xs text-muted-foreground">{selectedRec.id}</p>
-                <SheetTitle className="font-display text-xl">{selectedRec.supplier}</SheetTitle>
+                <p className="font-mono text-xs text-muted-foreground">{selectedRec.id.slice(0, 8).toUpperCase()}</p>
+                <SheetTitle className="font-display text-xl">
+                  {selectedRec.supplier ?? "Sin proveedor"}
+                </SheetTitle>
                 <SheetDescription>
-                  Detalles de la recepción, inspección de calidad (QA) y reglas de guardado
-                  (Put-away).
+                  Estado: {statusLabel(selectedRec.status)} · {selectedRec.lines.length} línea(s) de producto
                 </SheetDescription>
               </SheetHeader>
 
               <div className="mt-6 space-y-6">
-                {/* Cross Dock Alert */}
-                {selectedRec.type === "Urgente" && (
-                  <div className="rounded-lg border border-warning/50 bg-warning/10 p-4 border-l-4 border-l-warning">
-                    <div className="flex items-center gap-2 text-warning font-semibold text-sm mb-1">
-                      <MoveRight className="size-4" /> Alerta de Cross-Docking
-                    </div>
-                    <p className="text-xs text-warning/90">
-                      Parte de esta mercancía (20 unidades) está requerida para el Despacho SHP-1050
-                      de la tarde. Enviar directo a Muelle de Salida sin almacenar.
-                    </p>
-                  </div>
-                )}
-
                 <div className="space-y-3">
                   <h4 className="text-sm font-semibold flex items-center gap-2">
-                    <ShieldCheck className="size-4" /> Criterios de Aceptación (QA)
-                  </h4>
-                  <div className="rounded-lg border border-border bg-card overflow-hidden">
-                    <div className="p-3 border-b border-border flex justify-between items-center bg-muted/30">
-                      <span className="text-sm font-medium">Validación de Temperatura</span>
-                      <span className="text-xs px-2 py-0.5 rounded bg-surface-2">
-                        Req: 2°C a 6°C
-                      </span>
-                    </div>
-                    <div className="p-3 grid grid-cols-[1fr_auto] gap-2 items-center">
-                      <Label htmlFor="qa-temp" className="sr-only">
-                        T° de Lectura
-                      </Label>
-                      <Input
-                        id="qa-temp"
-                        placeholder="T° de Lectura"
-                        type="number"
-                        className="h-8 text-sm"
-                        required
-                      />
-                      <Button size="sm" variant="outline">
-                        Validar Rango
-                      </Button>
-                    </div>
-                  </div>
-                </div>
-
-                <div className="space-y-3">
-                  <h4 className="text-sm font-semibold flex items-center gap-2">
-                    <Box className="size-4" /> Put-away Sugerido (Algoritmo)
+                    <Box className="size-4" /> Líneas de Recepción
                   </h4>
                   <div className="rounded-lg border border-border overflow-hidden text-sm">
                     <table className="w-full text-left">
                       <thead className="bg-muted text-muted-foreground text-xs font-medium">
                         <tr>
-                          <th className="px-3 py-2">Ítem / Lote</th>
-                          <th className="px-3 py-2 text-right">Cant</th>
-                          <th className="px-3 py-2 text-right">Zona Sugerida</th>
+                          <th className="px-3 py-2">Producto / Lote</th>
+                          <th className="px-3 py-2 text-right">Cant.</th>
+                          <th className="px-3 py-2 text-right">Costo/u</th>
                         </tr>
                       </thead>
                       <tbody className="divide-y divide-border">
-                        <tr>
-                          <td className="px-3 py-2">
-                            <span className="block font-medium">Leche Entera 1L</span>
-                            <span className="text-[10px] text-muted-foreground">Lote: 24391</span>
-                          </td>
-                          <td className="px-3 py-2 text-right font-mono">100</td>
-                          <td className="px-3 py-2 text-right">
-                            <span className="bg-surface-2 px-2 py-1 rounded font-mono text-xs font-bold text-nuclear">
-                              R-A-03
-                            </span>
-                          </td>
-                        </tr>
-                        <tr>
-                          <td className="px-3 py-2">
-                            <span className="block font-medium">Queso Campesino</span>
-                            <span className="text-[10px] text-muted-foreground">Lote: 24391</span>
-                          </td>
-                          <td className="px-3 py-2 text-right font-mono">20</td>
-                          <td className="px-3 py-2 text-right">
-                            <span className="bg-surface-2 px-2 py-1 rounded font-mono text-xs font-bold text-nuclear">
-                              R-B-01
-                            </span>
-                          </td>
-                        </tr>
+                        {selectedRec.lines.map((line) => (
+                          <tr key={line.id}>
+                            <td className="px-3 py-2">
+                              <span className="block font-medium">{line.productName}</span>
+                              <span className="text-[10px] text-muted-foreground font-mono">{line.productSku}</span>
+                              {line.lotNumber && (
+                                <span className="text-[10px] text-muted-foreground block">Lote: {line.lotNumber}</span>
+                              )}
+                            </td>
+                            <td className="px-3 py-2 text-right font-mono">{line.quantity}</td>
+                            <td className="px-3 py-2 text-right font-mono text-xs">
+                              {line.unitCost ? `$${line.unitCost.toLocaleString("es-CO")}` : "—"}
+                            </td>
+                          </tr>
+                        ))}
                       </tbody>
                     </table>
                   </div>
                 </div>
 
-                <div className="pt-4 flex justify-end gap-2">
-                  <Button variant="ghost">Reportar Novedad</Button>
-                  <Button variant="nuclear">Registrar Ingreso WMS</Button>
-                </div>
+                {selectedRec.notes && (
+                  <p className="text-xs text-muted-foreground border-l-2 border-border pl-3">{selectedRec.notes}</p>
+                )}
+
+                {selectedRec.status === "PENDING" && can("manage", "logistics") && (
+                  <div className="pt-4 flex justify-end gap-2">
+                    <Button variant="outline" disabled={isWorking} onClick={() => rejectMutation.mutate(selectedRec.id)}>
+                      {rejectMutation.isPending ? <Loader2 className="size-4 animate-spin" /> : "Rechazar"}
+                    </Button>
+                    <Button variant="nuclear" disabled={isWorking} onClick={() => approveMutation.mutate(selectedRec.id)}>
+                      {approveMutation.isPending ? (
+                        <><Loader2 className="mr-2 size-4 animate-spin" /> Aprobando…</>
+                      ) : (
+                        <><ArrowDownToLine className="mr-2 size-4" /> Aprobar Ingreso</>
+                      )}
+                    </Button>
+                  </div>
+                )}
               </div>
             </>
           )}
+        </SheetContent>
+      </Sheet>
+
+      {/* Create Receipt Sheet */}
+      <Sheet open={createOpen} onOpenChange={(v) => { if (!v) { setCreateOpen(false); resetCreateForm(); } }}>
+        <SheetContent className="w-full sm:max-w-lg overflow-y-auto">
+          <SheetHeader>
+            <SheetTitle>Nuevo Ingreso</SheetTitle>
+            <SheetDescription>Registra una recepción de materias primas o insumos.</SheetDescription>
+          </SheetHeader>
+
+          <div className="mt-6 space-y-5">
+            <div className="space-y-1.5">
+              <Label>Proveedor</Label>
+              {storedSuppliers.length > 0 ? (
+                <select
+                  value={supplier}
+                  onChange={(e) => setSupplier(e.target.value)}
+                  className="flex h-9 w-full rounded-md border border-input bg-background px-3 text-sm shadow-sm focus:outline-none focus:ring-1 focus:ring-ring"
+                >
+                  <option value="">— Seleccionar proveedor —</option>
+                  {storedSuppliers.map((s) => (
+                    <option key={s} value={s}>{s}</option>
+                  ))}
+                </select>
+              ) : (
+                <div className="rounded-md border border-dashed border-border bg-muted/20 px-3 py-2 text-xs text-muted-foreground">
+                  Sin proveedores registrados —{" "}
+                  <a href="/app/suppliers" className="underline text-nuclear">ve a Proveedores</a> para agregar.
+                </div>
+              )}
+            </div>
+
+            <div className="space-y-1.5">
+              <Label>Notas (opcional)</Label>
+              <Input
+                value={notes}
+                onChange={(e) => setNotes(e.target.value)}
+                placeholder="Observaciones de la recepción"
+              />
+            </div>
+
+            <div className="space-y-3">
+              <div className="flex items-center justify-between">
+                <Label>Líneas de producto</Label>
+                <Button type="button" variant="outline" size="sm" onClick={() => setLines((p) => [...p, makeEmptyLine()])}>
+                  <Plus className="size-3.5 mr-1" /> Agregar línea
+                </Button>
+              </div>
+
+              <div className="space-y-3">
+                {lines.map((line, idx) => (
+                  <ReceiptLineRow
+                    key={line._key}
+                    line={line}
+                    idx={idx}
+                    products={products}
+                    showRemove={lines.length > 1}
+                    onUpdate={updateLine}
+                    onRemove={removeLine}
+                  />
+                ))}
+              </div>
+            </div>
+          </div>
+
+          <SheetFooter className="mt-6">
+            <Button variant="outline" onClick={() => { setCreateOpen(false); resetCreateForm(); }}>
+              Cancelar
+            </Button>
+            <Button
+              variant="nuclear"
+              disabled={createMutation.isPending}
+              onClick={handleSubmitCreate}
+            >
+              {createMutation.isPending
+                ? <><Loader2 className="mr-2 size-4 animate-spin" /> Creando…</>
+                : <><ArrowDownToLine className="mr-2 size-4" /> Registrar Ingreso</>}
+            </Button>
+          </SheetFooter>
         </SheetContent>
       </Sheet>
     </div>

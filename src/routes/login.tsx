@@ -5,15 +5,14 @@ import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { z } from "zod";
 import { toast } from "sonner";
-import { ArrowLeft, Eye, EyeOff, Loader2, LogIn } from "lucide-react";
+import { AlertCircle, ArrowLeft, Eye, EyeOff, Loader2, LogIn } from "lucide-react";
 import { AuthShell } from "@/components/auth/auth-shell";
 import { OrSeparator, SsoButtons } from "@/components/auth/sso-buttons";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Checkbox } from "@/components/ui/checkbox";
-import { login } from "@/lib/auth";
-import { ApiError } from "@/lib/api";
+import { useAuth } from "@/features/auth/AuthProvider";
 
 const loginSchema = z.object({
   email: z.string().trim().min(1, "Ingresa tu email").email("Formato de email inválido").max(255),
@@ -45,6 +44,7 @@ export const Route = createFileRoute("/login")({
 
 function LoginPage() {
   const navigate = useNavigate();
+  const { loginUser, isLoading, error, clearError } = useAuth();
   const [showPw, setShowPw] = useState(false);
   const [authError, setAuthError] = useState<string | null>(null);
   const search = Route.useSearch();
@@ -55,8 +55,8 @@ function LoginPage() {
   } = useForm<LoginValues>({
     resolver: zodResolver(loginSchema),
     defaultValues: {
-      email: "demo@krevo.com",
-      password: "password123",
+      email: "superadmin@cedi.local",
+      password: "Admin1234!",
       remember: true,
     },
     mode: "onBlur",
@@ -65,34 +65,19 @@ function LoginPage() {
   const onSubmit = async (values: LoginValues) => {
     setAuthError(null);
 
-    try {
-      const user = await login({
-        email: values.email,
-        password: values.password,
-      });
+    const success = await loginUser(values.email, values.password);
 
-      if (!user.isPlatformAdmin) {
-        setAuthError("Tu cuenta no tiene acceso a la consola SuperAdmin.");
-        return;
-      }
-
+    if (success) {
       toast.success("Sesión iniciada", {
-        description: `Bienvenido de vuelta, ${user.name}.`,
+        description: `Bienvenido de vuelta, ${values.email.split("@")[0]}.`,
       });
-
       navigate({
-        to: search.redirect && search.redirect.startsWith("/") ? search.redirect : "/admin",
-      });
-    } catch (error) {
-      const message =
-        error instanceof ApiError ? error.message : "No fue posible iniciar sesión con el backend.";
-
-      setAuthError(message);
-      toast.error("Error al iniciar sesión", {
-        description: message,
+        to: search.redirect && search.redirect.startsWith("/") ? search.redirect : "/app",
       });
     }
   };
+
+  const isAuthenticating = isSubmitting || isLoading;
 
   return (
     <AuthShell side="reactor">
@@ -133,7 +118,7 @@ function LoginPage() {
                 autoComplete="email"
                 placeholder="tu@empresa.com"
                 aria-invalid={!!errors.email}
-                {...register("email")}
+                {...register("email", { onChange: () => error && clearError() })}
               />
               {errors.email ? (
                 <p className="text-xs text-destructive" role="alert">
@@ -160,7 +145,7 @@ function LoginPage() {
                   placeholder="••••••••"
                   aria-invalid={!!errors.password}
                   className="pr-10"
-                  {...register("password")}
+                  {...register("password", { onChange: () => error && clearError() })}
                 />
                 <button
                   type="button"
@@ -178,6 +163,19 @@ function LoginPage() {
               ) : null}
             </div>
 
+            {error ? (
+              <motion.div
+                role="alert"
+                initial={{ opacity: 0, y: -6, scale: 0.98 }}
+                animate={{ opacity: 1, y: 0, scale: 1 }}
+                transition={{ duration: 0.2 }}
+                className="flex items-start gap-2.5 rounded-lg border border-destructive/40 bg-destructive/10 px-3 py-2.5 text-sm text-destructive"
+              >
+                <AlertCircle className="mt-0.5 size-4 shrink-0" />
+                <span>{error}</span>
+              </motion.div>
+            ) : null}
+
             <label className="flex cursor-pointer select-none items-center gap-2 text-sm text-muted-foreground">
               <Checkbox defaultChecked />
               <span>Mantener mi sesión iniciada en este equipo</span>
@@ -188,9 +186,9 @@ function LoginPage() {
               variant="nuclear"
               size="lg"
               className="w-full"
-              disabled={isSubmitting}
+              disabled={isAuthenticating}
             >
-              {isSubmitting ? (
+              {isAuthenticating ? (
                 <>
                   <Loader2 className="size-4 animate-spin" /> Iniciando…
                 </>

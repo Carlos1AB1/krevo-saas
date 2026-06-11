@@ -1,5 +1,6 @@
 import { useEffect, useState } from "react";
 import { Link, useNavigate } from "@tanstack/react-router";
+import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { toast } from "sonner";
 import {
   Search,
@@ -11,6 +12,9 @@ import {
   Settings,
   HelpCircle,
   Command as CmdIcon,
+  Check,
+  Loader2,
+  PlusCircle,
 } from "lucide-react";
 import {
   CommandDialog,
@@ -32,12 +36,10 @@ import {
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 import { LiveBadge } from "@/components/nuclear-ui/live-badge";
 import { Avatar, AvatarFallback } from "@/components/ui/avatar";
-
-const tenants = [
-  { id: "t1", name: "Distribuidora Andina", role: "Owner" },
-  { id: "t2", name: "FarmaLogística SAS", role: "Admin" },
-  { id: "t3", name: "Supermercados Norte", role: "Operador" },
-];
+import { useAuth } from "@/features/auth/AuthProvider";
+import { getAccessToken, saveTokens } from "@/features/auth/auth.storage";
+import { switchOrganization } from "@/features/auth/auth.api";
+import { getOrganizations } from "@/features/organizations/organizations.api";
 
 const notifications = [
   { id: 1, title: "Lote L-2031 vence en 7 días", level: "warning", time: "Hace 4 min" },
@@ -51,14 +53,49 @@ interface AppTopbarProps {
 
 export function AppTopbar({ breadcrumb = [] }: AppTopbarProps) {
   const navigate = useNavigate();
+  const qc = useQueryClient();
+  const { user, logoutUser, reloadSession } = useAuth();
   const [cmdOpen, setCmdOpen] = useState(false);
-  const [tenant, setTenant] = useState(tenants[0]);
+  const [switching, setSwitching] = useState(false);
 
-  const handleLogout = () => {
-    toast.success("Sesión cerrada", {
-      description: "Has cerrado tu sesión de forma segura.",
-    });
-    navigate({ to: "/login" });
+  const canSeeAllOrgs = user?.permissions.includes("manage:organizations") ?? false;
+
+  const { data: orgs = [] } = useQuery({
+    queryKey: ["organizations"],
+    queryFn: getOrganizations,
+    enabled: canSeeAllOrgs,
+    staleTime: 60_000,
+  });
+
+  const handleLogout = async () => {
+    try {
+      await logoutUser();
+    } finally {
+      toast.success("Sesión cerrada", {
+        description: "Has cerrado tu sesión de forma segura.",
+      });
+      navigate({ to: "/login" });
+    }
+  };
+
+  const handleSwitchOrg = async (orgId: string) => {
+    if (orgId === user?.organizationId || switching) return;
+    setSwitching(true);
+    try {
+      const accessToken = getAccessToken();
+      if (!accessToken) throw new Error("No token");
+      const tokens = await switchOrganization(accessToken, orgId);
+      saveTokens(tokens.accessToken, tokens.refreshToken);
+      await reloadSession();
+      await qc.invalidateQueries();
+      toast.success("Organización cambiada", {
+        description: `Ahora estás en ${orgs.find((o) => o.id === orgId)?.name ?? orgId}.`,
+      });
+    } catch {
+      toast.error("No fue posible cambiar de organización.");
+    } finally {
+      setSwitching(false);
+    }
   };
 
   useEffect(() => {
@@ -72,6 +109,8 @@ export function AppTopbar({ breadcrumb = [] }: AppTopbarProps) {
     return () => window.removeEventListener("keydown", onKey);
   }, []);
 
+  const currentOrgName = user?.organizationName ?? "Organización";
+
   return (
     <>
       <header className="sticky top-0 z-40 flex h-16 items-center gap-3 border-b border-border bg-background/80 px-4 backdrop-blur-xl lg:px-6">
@@ -79,33 +118,63 @@ export function AppTopbar({ breadcrumb = [] }: AppTopbarProps) {
         <DropdownMenu>
           <DropdownMenuTrigger className="group flex items-center gap-2 rounded-md border border-border bg-card px-2.5 py-1.5 text-sm font-medium text-foreground transition-colors hover:bg-accent">
             <span className="grid size-6 place-items-center rounded bg-nuclear/10 text-nuclear">
-              <Building2 className="size-3.5" />
+              {switching ? (
+                <Loader2 className="size-3.5 animate-spin" />
+              ) : (
+                <Building2 className="size-3.5" />
+              )}
             </span>
-            <span className="max-w-[180px] truncate">{tenant.name}</span>
+            <span className="max-w-[180px] truncate">{currentOrgName}</span>
             <ChevronDown className="size-3.5 text-muted-foreground" />
           </DropdownMenuTrigger>
           <DropdownMenuContent align="start" className="w-64">
-            <DropdownMenuLabel className="text-[10px] uppercase tracking-wider text-muted-foreground">
-              Cambiar de organización
-            </DropdownMenuLabel>
-            {tenants.map((t) => (
-              <DropdownMenuItem
-                key={t.id}
-                onClick={() => setTenant(t)}
-                className="flex items-start gap-2"
-              >
-                <Building2 className="mt-0.5 size-4 text-muted-foreground" />
-                <div className="flex-1">
-                  <p className="text-sm font-medium">{t.name}</p>
-                  <p className="text-xs text-muted-foreground">{t.role}</p>
+            {canSeeAllOrgs ? (
+              <>
+                <DropdownMenuLabel className="text-[10px] uppercase tracking-wider text-muted-foreground">
+                  Cambiar de organización
+                </DropdownMenuLabel>
+                {orgs.map((org) => {
+                  const isActive = org.id === user?.organizationId;
+                  return (
+                    <DropdownMenuItem
+                      key={org.id}
+                      onClick={() => handleSwitchOrg(org.id)}
+                      disabled={isActive || switching}
+                      className="flex items-start gap-2"
+                    >
+                      <Building2 className="mt-0.5 size-4 shrink-0 text-muted-foreground" />
+                      <div className="flex-1 min-w-0">
+                        <p className="truncate text-sm font-medium">{org.name}</p>
+                        <p className="text-xs text-muted-foreground font-mono">{org.slug}</p>
+                      </div>
+                      {isActive && (
+                        <Check className="size-3.5 shrink-0 text-nuclear" />
+                      )}
+                    </DropdownMenuItem>
+                  );
+                })}
+                <DropdownMenuSeparator />
+              </>
+            ) : (
+              <>
+                <DropdownMenuLabel className="text-[10px] uppercase tracking-wider text-muted-foreground">
+                  Organización activa
+                </DropdownMenuLabel>
+                <div className="flex items-center gap-2 px-2 py-1.5 text-sm">
+                  <Building2 className="size-4 text-muted-foreground" />
+                  <span className="font-medium truncate">{currentOrgName}</span>
+                  <Check className="ml-auto size-3.5 text-nuclear" />
                 </div>
-                {tenant.id === t.id && (
-                  <span className="text-[10px] font-semibold text-nuclear">Activa</span>
-                )}
-              </DropdownMenuItem>
-            ))}
-            <DropdownMenuSeparator />
-            <DropdownMenuItem className="text-sm">+ Crear organización</DropdownMenuItem>
+                <DropdownMenuSeparator />
+              </>
+            )}
+            <DropdownMenuItem
+              className="flex items-center gap-2 text-sm"
+              onClick={() => navigate({ to: "/register" })}
+            >
+              <PlusCircle className="size-4 text-muted-foreground" />
+              Crear organización
+            </DropdownMenuItem>
           </DropdownMenuContent>
         </DropdownMenu>
 
@@ -193,15 +262,20 @@ export function AppTopbar({ breadcrumb = [] }: AppTopbarProps) {
           <DropdownMenuTrigger className="flex items-center gap-2 rounded-md border border-border bg-card pl-1 pr-2 py-1 transition-colors hover:bg-accent">
             <Avatar className="size-7">
               <AvatarFallback className="bg-nuclear/15 text-xs font-semibold text-nuclear">
-                CG
+                {getUserInitials(user)}
               </AvatarFallback>
             </Avatar>
             <ChevronDown className="size-3.5 text-muted-foreground" />
           </DropdownMenuTrigger>
           <DropdownMenuContent align="end" className="w-56">
             <div className="px-2 py-1.5">
-              <p className="text-sm font-medium">Carlos Gómez</p>
-              <p className="text-xs text-muted-foreground">carlos@andina.co</p>
+              <p className="text-sm font-medium">
+                {user ? `${user.firstName} ${user.lastName}` : "Usuario"}
+              </p>
+              <p className="text-xs text-muted-foreground">{user?.email ?? "Sin sesión"}</p>
+              <p className="mt-0.5 text-[10px] text-muted-foreground/70 font-mono truncate">
+                {currentOrgName}
+              </p>
             </div>
             <DropdownMenuSeparator />
             <DropdownMenuItem>
@@ -254,4 +328,11 @@ export function AppTopbar({ breadcrumb = [] }: AppTopbarProps) {
       </CommandDialog>
     </>
   );
+}
+
+function getUserInitials(user: ReturnType<typeof useAuth>["user"]): string {
+  if (!user) return "U";
+  const firstInitial = user.firstName.trim().charAt(0);
+  const lastInitial = user.lastName.trim().charAt(0);
+  return `${firstInitial}${lastInitial}`.toUpperCase() || user.email.charAt(0).toUpperCase();
 }

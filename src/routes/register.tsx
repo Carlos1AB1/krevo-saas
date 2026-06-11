@@ -5,7 +5,7 @@ import { Controller, useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { z } from "zod";
 import { toast } from "sonner";
-import { ArrowLeft, ArrowRight, Check, Eye, EyeOff, Loader2, Rocket } from "lucide-react";
+import { AlertCircle, ArrowLeft, ArrowRight, Check, Eye, EyeOff, Loader2, Rocket } from "lucide-react";
 import { AuthShell } from "@/components/auth/auth-shell";
 import { OrSeparator, SsoButtons } from "@/components/auth/sso-buttons";
 import { PasswordStrength, scorePassword } from "@/components/auth/password-strength";
@@ -21,6 +21,7 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 import { cn } from "@/lib/utils";
+import { useAuth } from "@/features/auth/AuthProvider";
 
 const registerSchema = z
   .object({
@@ -71,6 +72,7 @@ export const Route = createFileRoute("/register")({
 
 function RegisterPage() {
   const navigate = useNavigate();
+  const { registerUser, isLoading: authLoading, error: authError, clearError } = useAuth();
   const [step, setStep] = useState<0 | 1 | 2>(0);
   const [showPw, setShowPw] = useState(false);
 
@@ -108,11 +110,24 @@ function RegisterPage() {
   };
 
   const onSubmit = async (data: RegisterValues) => {
-    await new Promise((r) => setTimeout(r, 1100));
-    toast.success("¡Workspace creado!", {
-      description: `Bienvenido a Nuclear, ${data.fullName.split(" ")[0]}.`,
+    const parts = data.fullName.trim().split(/\s+/);
+    const firstName = parts[0];
+    const lastName = parts.slice(1).join(" ") || "-";
+
+    const success = await registerUser({
+      firstName,
+      lastName,
+      email: data.email,
+      password: data.password,
+      orgName: data.org,
     });
-    navigate({ to: "/login" });
+
+    if (success) {
+      toast.success("¡Workspace creado!", {
+        description: `Bienvenido a Krevo, ${firstName}. Tu organización está lista.`,
+      });
+      navigate({ to: "/app" });
+    }
   };
 
   return (
@@ -309,6 +324,18 @@ function RegisterPage() {
             ) : null}
           </AnimatePresence>
 
+          {authError && step === 2 ? (
+            <motion.div
+              role="alert"
+              initial={{ opacity: 0, y: -6 }}
+              animate={{ opacity: 1, y: 0 }}
+              className="flex items-start gap-2.5 rounded-lg border border-destructive/40 bg-destructive/10 px-3 py-2.5 text-sm text-destructive"
+            >
+              <AlertCircle className="mt-0.5 size-4 shrink-0" />
+              <span>{authError}</span>
+            </motion.div>
+          ) : null}
+
           <div className="flex items-center justify-between gap-3 pt-2">
             {step > 0 ? (
               <Button
@@ -340,11 +367,11 @@ function RegisterPage() {
                 variant="plasma"
                 size="lg"
                 className="gap-2"
-                disabled={isSubmitting}
+                disabled={isSubmitting || authLoading}
               >
-                {isSubmitting ? (
+                {isSubmitting || authLoading ? (
                   <>
-                    <Loader2 className="size-4 animate-spin" /> Encendiendo reactor…
+                    <Loader2 className="size-4 animate-spin" /> Creando workspace…
                   </>
                 ) : (
                   <>

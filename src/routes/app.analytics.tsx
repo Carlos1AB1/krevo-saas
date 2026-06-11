@@ -1,381 +1,361 @@
 import { createFileRoute } from "@tanstack/react-router";
+import { useQuery } from "@tanstack/react-query";
+import { useMemo } from "react";
+import {
+  Bar,
+  CartesianGrid,
+  ComposedChart,
+  Line,
+  XAxis,
+  YAxis,
+} from "recharts";
 import {
   BarChart3,
   TrendingUp,
   AlertTriangle,
-  Download,
+  Package,
+  Loader2,
+  ArrowDownToLine,
+  Factory,
+  Truck,
 } from "lucide-react";
-import { Button } from "@/components/ui/button";
+import { currentMonthRange, isWithinRange } from "@/lib/date-range";
+import { RequirePermission } from "@/features/auth/RequirePermission";
 import { KpiCard } from "@/components/nuclear-ui/kpi-card";
+import { ChartContainer, ChartTooltip, ChartTooltipContent } from "@/components/ui/chart";
 import { cn } from "@/lib/utils";
+import { getProducts, getLots, getMovements } from "@/features/inventory/inventory.api";
+import { getReceipts, getDispatches } from "@/features/logistics/logistics.api";
+import { getOrders } from "@/features/production/production.api";
 
 export const Route = createFileRoute("/app/analytics")({
-  head: () => ({
-    meta: [{ title: "Analítica · Krevo" }],
-  }),
-  component: AnalyticsPage,
+  head: () => ({ meta: [{ title: "Analítica · Krevo" }] }),
+  component: () => (
+    <RequirePermission action="read" subject="inventory">
+      <AnalyticsPage />
+    </RequirePermission>
+  ),
 });
 
-const mockPareto = [
-  {
-    sku: "CQ-ARE-125",
-    name: "Arequipe Sabor a Café x 125g",
-    value: 45000000,
-    percentage: 35,
-    cumulative: 35,
-    abc: "A",
-  },
-  {
-    sku: "CQ-GAL-100",
-    name: "Galletas con Sabor a Café x 100g",
-    value: 30000000,
-    percentage: 25,
-    cumulative: 60,
-    abc: "A",
-  },
-  {
-    sku: "CQ-CUY-ART",
-    name: "Cuyabrito Café con Coco 250g",
-    value: 15000000,
-    percentage: 12,
-    cumulative: 72,
-    abc: "A",
-  },
-  {
-    sku: "CQ-ARE-500",
-    name: "Arequipe Sabor a Café x 500g",
-    value: 10000000,
-    percentage: 8,
-    cumulative: 80,
-    abc: "A",
-  },
-  {
-    sku: "CQ-BON-CAF",
-    name: "Bombones de Café x 20 und",
-    value: 8000000,
-    percentage: 6,
-    cumulative: 86,
-    abc: "B",
-  },
-  {
-    sku: "CQ-CAF-GNO",
-    name: "Café Tostado en Grano x 500g",
-    value: 6000000,
-    percentage: 5,
-    cumulative: 91,
-    abc: "B",
-  },
-  {
-    sku: "CQ-ARE-250",
-    name: "Arequipe Sabor a Café x 250g",
-    value: 5000000,
-    percentage: 4,
-    cumulative: 95,
-    abc: "B",
-  },
-  {
-    sku: "CQ-ANC-001",
-    name: "Ancheta Puntos de Venta",
-    value: 3000000,
-    percentage: 3,
-    cumulative: 98,
-    abc: "C",
-  },
-];
+const chartConfig = {
+  stock: { label: "Stock", color: "var(--nuclear)" },
+  cumulative: { label: "Acumulado %", color: "var(--destructive)" },
+  receipts: { label: "Recepciones", color: "hsl(142 76% 36%)" },
+  dispatches: { label: "Despachos", color: "hsl(217 91% 60%)" },
+};
 
-function ParetoChart() {
-  const chartHeight = 210;
-  const paddingLeft = 45;
-  const paddingRight = 65;
-  const paddingTop = 25;
-
-  const totalItems = mockPareto.length;
-  const maxVal = mockPareto[0].value;
-
-  return (
-    <div className="rounded-xl border border-border bg-card shadow-sm p-5 space-y-4">
-      <div>
-        <h2 className="font-semibold text-base text-foreground flex items-center gap-2">
-          <BarChart3 className="size-4 text-nuclear" /> Curva de Pareto (Análisis ABC 80/20)
-        </h2>
-        <p className="text-xs text-muted-foreground mt-1">
-          Visualización de la acumulación del valor del inventario. El 80% del valor total reside en los primeros 4 artículos (Zona A).
-        </p>
-      </div>
-
-      <div className="relative w-full overflow-hidden">
-        <svg viewBox="0 0 800 280" className="w-full h-auto select-none overflow-visible">
-          <defs>
-            <linearGradient id="bar-gradient" x1="0" y1="0" x2="0" y2="1">
-              <stop offset="0%" stopColor="var(--color-nuclear, #f97316)" stopOpacity="0.85" />
-              <stop offset="100%" stopColor="var(--color-nuclear, #f97316)" stopOpacity="0.05" />
-            </linearGradient>
-            <linearGradient id="line-gradient" x1="0" y1="0" x2="1" y2="0">
-              <stop offset="0%" stopColor="#ef4444" />
-              <stop offset="100%" stopColor="var(--color-nuclear, #f97316)" />
-            </linearGradient>
-            <filter id="shadow-glow" x="-20%" y="-20%" width="140%" height="140%">
-              <feGaussianBlur stdDeviation="3" result="blur" />
-              <feComposite in="SourceGraphic" in2="blur" operator="over" />
-            </filter>
-          </defs>
-
-          {/* Grid lines */}
-          {[0, 20, 40, 60, 80, 100].map((percent, idx) => {
-            const y = paddingTop + ((100 - percent) / 100) * (chartHeight - paddingTop);
-            return (
-              <g key={idx}>
-                <line
-                  x1={paddingLeft}
-                  y1={y}
-                  x2={800 - paddingRight}
-                  y2={y}
-                  stroke="currentColor"
-                  strokeOpacity="0.07"
-                  strokeWidth="1"
-                  strokeDasharray={percent === 80 ? "0" : "4 4"}
-                />
-                <text
-                  x={paddingLeft - 10}
-                  y={y + 4}
-                  className="fill-muted-foreground text-[10px] font-mono text-right"
-                  textAnchor="end"
-                >
-                  {percent}%
-                </text>
-              </g>
-            );
-          })}
-
-          {/* Pareto 80% Threshold Line */}
-          {(() => {
-            const y80 = paddingTop + ((100 - 80) / 100) * (chartHeight - paddingTop);
-            return (
-              <g>
-                <line
-                  x1={paddingLeft}
-                  y1={y80}
-                  x2={800 - paddingRight}
-                  y2={y80}
-                  stroke="#ef4444"
-                  strokeWidth="1.5"
-                  strokeDasharray="6 3"
-                />
-                <text
-                  x={800 - paddingRight + 8}
-                  y={y80 + 3.5}
-                  className="fill-destructive text-[10px] font-bold"
-                  textAnchor="start"
-                >
-                  Umbral 80% (Ley de Pareto)
-                </text>
-              </g>
-            );
-          })()}
-
-          {/* Render columns and point connectors */}
-          {(() => {
-            const chartWidth = 800 - paddingLeft - paddingRight;
-            const barWidth = (chartWidth / totalItems) * 0.45;
-            const gap = (chartWidth / totalItems) * 0.55;
-
-            const points = mockPareto.map((item, idx) => {
-              const x = paddingLeft + idx * (barWidth + gap) + (barWidth / 2) + (gap / 2);
-              const barHeight = (item.value / maxVal) * (chartHeight - paddingTop);
-              const barY = chartHeight - barHeight;
-              const lineY = paddingTop + ((100 - item.cumulative) / 100) * (chartHeight - paddingTop);
-              return { x, barY, barHeight, lineY, barX: x - barWidth / 2, ...item };
-            });
-
-            const pathData = points
-              .map((p, idx) => `${idx === 0 ? "M" : "L"} ${p.x} ${p.lineY}`)
-              .join(" ");
-
-            return (
-              <>
-                {/* Bars */}
-                {points.map((p, idx) => (
-                  <g key={idx} className="group/bar cursor-pointer">
-                    <rect
-                      x={p.barX}
-                      y={p.barY}
-                      width={barWidth}
-                      height={p.barHeight}
-                      fill="url(#bar-gradient)"
-                      rx="3"
-                      className="transition-all duration-300 group-hover/bar:fill-nuclear"
-                    />
-                    <text
-                      x={p.x}
-                      y={p.barY - 6}
-                      className="fill-foreground text-[9px] font-bold font-mono opacity-0 group-hover/bar:opacity-100 transition-opacity duration-300"
-                      textAnchor="middle"
-                    >
-                      ${(p.value / 1000000).toFixed(1)}M
-                    </text>
-                    <text
-                      x={p.x}
-                      y={chartHeight + 15}
-                      className="fill-foreground text-[10px] font-semibold"
-                      textAnchor="middle"
-                    >
-                      {p.sku.replace("CQ-", "")}
-                    </text>
-                    <text
-                      x={p.x}
-                      y={chartHeight + 28}
-                      className={cn(
-                        "text-[9px] font-bold font-mono",
-                        p.abc === "A" ? "fill-nuclear" : p.abc === "B" ? "fill-warning" : "fill-muted-foreground"
-                      )}
-                      textAnchor="middle"
-                    >
-                      Zona {p.abc}
-                    </text>
-                  </g>
-                ))}
-
-                {/* Cumulative Percentage Line */}
-                <path
-                  d={pathData}
-                  fill="none"
-                  stroke="url(#line-gradient)"
-                  strokeWidth="3"
-                  filter="url(#shadow-glow)"
-                  className="stroke-nuclear"
-                />
-
-                {/* Interactive Points on Line */}
-                {points.map((p, idx) => (
-                  <g key={`point-${idx}`} className="group/pt cursor-pointer">
-                    <circle
-                      cx={p.x}
-                      cy={p.lineY}
-                      r="5"
-                      className="fill-background stroke-nuclear stroke-[3] group-hover/pt:r-7 transition-all duration-300"
-                    />
-                    <text
-                      x={p.x}
-                      y={p.lineY - 11}
-                      className="fill-foreground text-[10px] font-extrabold font-mono opacity-100 group-hover/pt:text-nuclear"
-                      textAnchor="middle"
-                    >
-                      {p.cumulative}%
-                    </text>
-                  </g>
-                ))}
-              </>
-            );
-          })()}
-        </svg>
-      </div>
-    </div>
-  );
+interface ParetoItem {
+  sku: string;
+  name: string;
+  stock: number;
+  cumulative: number;
+  abc: string;
 }
 
 function AnalyticsPage() {
+  const monthRange = useMemo(() => currentMonthRange(), []);
+
+  const { data: productsData, isLoading: loadingProducts } = useQuery({
+    queryKey: ["inventory", "products", { limit: 100 }],
+    queryFn: () => getProducts({ limit: 100 }),
+  });
+
+  const { data: lotsData } = useQuery({
+    queryKey: ["inventory", "lots", { limit: 100, status: "ACTIVE" }],
+    queryFn: () => getLots({ limit: 100, status: "ACTIVE" }),
+  });
+
+  const { data: movementsData } = useQuery({
+    queryKey: ["inventory", "movements", { limit: 100, from: monthRange.from, to: monthRange.to }],
+    queryFn: () =>
+      getMovements({ limit: 100, from: monthRange.from, to: monthRange.to }),
+  });
+
+  const { data: receiptsData } = useQuery({
+    queryKey: ["logistics", "receipts", { limit: 100 }],
+    queryFn: () => getReceipts({ limit: 100 }),
+  });
+
+  const { data: dispatchesData } = useQuery({
+    queryKey: ["logistics", "dispatches", { limit: 100 }],
+    queryFn: () => getDispatches({ limit: 100 }),
+  });
+
+  const { data: completedOrdersData } = useQuery({
+    queryKey: ["production", "orders", { status: "COMPLETED", limit: 100 }],
+    queryFn: () => getOrders({ status: "COMPLETED", limit: 100 }),
+  });
+
+  const products = productsData?.data ?? [];
+  const lots = lotsData?.data ?? [];
+
+  const stockByProduct = useMemo(() => {
+    const map = new Map<string, number>();
+    lots.forEach((l) => {
+      map.set(l.productId, (map.get(l.productId) ?? 0) + l.quantity);
+    });
+    return map;
+  }, [lots]);
+
+  const lowStockProducts = useMemo(
+    () =>
+      products.filter((p) => {
+        const stock = stockByProduct.get(p.id) ?? 0;
+        return p.isActive && stock < p.minStock;
+      }),
+    [products, stockByProduct],
+  );
+
+  const receiptsThisMonth = useMemo(
+    () =>
+      (receiptsData?.data ?? []).filter((r) =>
+        isWithinRange(r.createdAt, monthRange.start, monthRange.end),
+      ).length,
+    [receiptsData, monthRange],
+  );
+
+  const dispatchesThisMonth = useMemo(
+    () =>
+      (dispatchesData?.data ?? []).filter((d) =>
+        isWithinRange(d.createdAt, monthRange.start, monthRange.end),
+      ).length,
+    [dispatchesData, monthRange],
+  );
+
+  const completedOrders = useMemo(
+    () =>
+      (completedOrdersData?.data ?? []).filter((o) => {
+        const ref = o.completedAt ?? o.createdAt;
+        return isWithinRange(ref, monthRange.start, monthRange.end);
+      }).length,
+    [completedOrdersData, monthRange],
+  );
+
+  const paretoItems: ParetoItem[] = useMemo(() => {
+    const sorted = [...products]
+      .filter((p) => p.isActive)
+      .sort(
+        (a, b) =>
+          (stockByProduct.get(b.id) ?? 0) - (stockByProduct.get(a.id) ?? 0),
+      )
+      .slice(0, 8);
+
+    const totalStock = sorted.reduce(
+      (s, p) => s + (stockByProduct.get(p.id) ?? 0),
+      0,
+    );
+    let cumulative = 0;
+
+    return sorted.map((p) => {
+      const stock = stockByProduct.get(p.id) ?? 0;
+      const pct = totalStock > 0 ? Math.round((stock / totalStock) * 100) : 0;
+      cumulative += pct;
+      return {
+        sku: p.sku,
+        name: p.name,
+        stock,
+        cumulative: Math.min(cumulative, 100),
+        abc: p.abcClass,
+      };
+    });
+  }, [products, stockByProduct]);
+
+  const activityChart = useMemo(() => {
+    const receiptMovements =
+      movementsData?.data.filter((m) => m.type === "RECEIPT").length ?? 0;
+    const dispatchMovements =
+      movementsData?.data.filter((m) => m.type === "DISPATCH").length ?? 0;
+
+    return [
+      { label: "Recepciones", receipts: receiptsThisMonth, movements: receiptMovements },
+      { label: "Despachos", dispatches: dispatchesThisMonth, movements: dispatchMovements },
+      {
+        label: "Producción",
+        receipts: completedOrders,
+        dispatches: 0,
+      },
+    ];
+  }, [movementsData, receiptsThisMonth, dispatchesThisMonth, completedOrders]);
+
   return (
     <div className="flex flex-col h-full">
       <header className="sticky top-0 z-10 flex h-16 items-center gap-4 border-b border-border bg-background px-4 sm:px-6">
         <div className="mr-auto">
-          <h1 className="text-xl font-semibold tracking-tight text-foreground">Analítica ABC/Pareto</h1>
+          <h1 className="text-xl font-semibold tracking-tight text-foreground">
+            Analítica operativa
+          </h1>
           <p className="text-xs text-muted-foreground hidden sm:block">
-            Inteligencia logística y reportes de rotación.
+            Inventario, logística y producción · datos en tiempo real
           </p>
-        </div>
-        <div className="flex items-center gap-2">
-          <Button variant="outline" size="sm">
-            <Download className="mr-2 size-4" />
-            <span>Exportar CSV</span>
-          </Button>
         </div>
       </header>
 
       <div className="flex-1 overflow-auto p-4 sm:p-6 bg-muted/20">
         <div className="mx-auto max-w-5xl space-y-6">
-          <div className="grid grid-cols-1 gap-4 sm:grid-cols-3">
-            <KpiCard
-              label="Valor Inventario Clase A"
-              value={100}
-              prefix="$"
-              suffix="M COP"
-              delta={12.5}
-              icon={TrendingUp}
-              hint="80% del valor total (20% de SKUs)"
-            />
-            <KpiCard
-              label="Mermas (Últ. Mes)"
-              value={1.2}
-              prefix="$"
-              suffix="M COP"
-              delta={-4.1}
-              icon={AlertTriangle}
-              hint="Principalmente productos perecederos"
-            />
-            <KpiCard
-              label="Rotación Promedio"
-              value={14}
-              suffix=" Días"
-              delta={2}
-              icon={BarChart3}
-              hint="Mejora de 2 días frente al mes anterior"
-            />
-          </div>
-
-          {/* Pareto Chart Section */}
-          <ParetoChart />
-
-          <div className="rounded-xl border border-border bg-card shadow-sm">
-            <div className="border-b border-border p-4 sm:p-5">
-              <h2 className="text-base font-semibold leading-none tracking-tight text-foreground">Análisis ABC</h2>
-              <p className="mt-1 text-sm text-muted-foreground">
-                Distribución de valor de inventario clasificado por rotación (Pareto).
-              </p>
+          {loadingProducts ? (
+            <div className="flex items-center justify-center py-16 text-muted-foreground">
+              <Loader2 className="mr-2 size-5 animate-spin" /> Calculando analítica…
             </div>
-
-            <div className="p-0">
-              <div className="overflow-x-auto">
-                <table className="w-full text-sm text-left">
-                  <thead className="bg-muted/50 text-muted-foreground uppercase text-[10px] font-semibold border-b border-border">
-                    <tr>
-                      <th className="px-4 py-3">SKU</th>
-                      <th className="px-4 py-3">Producto</th>
-                      <th className="px-4 py-3 text-right">Valor Movido</th>
-                      <th className="px-4 py-3 text-right">% Acumulado</th>
-                      <th className="px-4 py-3 text-center">Clasificación</th>
-                    </tr>
-                  </thead>
-                  <tbody className="divide-y divide-border/50">
-                    {mockPareto.map((item) => (
-                      <tr key={item.sku} className="hover:bg-muted/30 transition-colors">
-                        <td className="px-4 py-3 font-mono text-xs">{item.sku}</td>
-                        <td className="px-4 py-3 font-medium">{item.name}</td>
-                        <td className="px-4 py-3 text-right">${item.value.toLocaleString()}</td>
-                        <td className="px-4 py-3 text-right">
-                          <div className="flex items-center justify-end gap-2">
-                            <span>{item.cumulative}%</span>
-                            <div className="w-16 h-1.5 bg-muted rounded-full overflow-hidden hidden sm:block">
-                              <div
-                                className="h-full bg-nuclear"
-                                style={{ width: `${item.cumulative}%` }}
-                              />
-                            </div>
-                          </div>
-                        </td>
-                        <td className="px-4 py-3 text-center">
-                          <span
-                            className={`inline-flex items-center rounded-md px-2 py-0.5 text-[10px] font-bold font-mono ${item.abc === "A" ? "bg-nuclear/10 text-nuclear" : item.abc === "B" ? "bg-warning/10 text-warning" : "bg-muted text-muted-foreground"}`}
-                          >
-                            {item.abc}
-                          </span>
-                        </td>
-                      </tr>
-                    ))}
-                  </tbody>
-                </table>
+          ) : (
+            <>
+              <div className="grid grid-cols-2 gap-4 lg:grid-cols-4">
+                <KpiCard
+                  label="Órdenes completadas"
+                  value={completedOrders}
+                  icon={Factory}
+                  hint="Órdenes de producción finalizadas este mes"
+                />
+                <KpiCard
+                  label="Recepciones del mes"
+                  value={receiptsThisMonth}
+                  icon={ArrowDownToLine}
+                  hint={`${(receiptsData?.data ?? []).filter((r) => r.status === "PENDING").length} pendientes de aprobar`}
+                />
+                <KpiCard
+                  label="Despachos del mes"
+                  value={dispatchesThisMonth}
+                  icon={Truck}
+                  hint="Documentos logísticos creados en el mes"
+                />
+                <KpiCard
+                  label="Stock bajo"
+                  value={lowStockProducts.length}
+                  icon={AlertTriangle}
+                  hint={
+                    lowStockProducts.length > 0
+                      ? lowStockProducts
+                          .slice(0, 2)
+                          .map((p) => p.sku)
+                          .join(", ")
+                      : "Todos los SKUs sobre mínimo"
+                  }
+                />
               </div>
-            </div>
-          </div>
+
+              {lowStockProducts.length > 0 && (
+                <div className="rounded-xl border border-warning/40 bg-warning/5 p-4 flex items-start gap-3">
+                  <AlertTriangle className="size-5 text-warning shrink-0 mt-0.5" />
+                  <div>
+                    <p className="font-semibold text-sm text-warning">
+                      {lowStockProducts.length} producto(s) bajo stock mínimo
+                    </p>
+                    <p className="text-xs text-muted-foreground mt-0.5">
+                      {lowStockProducts
+                        .map(
+                          (p) =>
+                            `${p.sku}: ${(stockByProduct.get(p.id) ?? 0).toLocaleString("es-CO")} / mín ${p.minStock}`,
+                        )
+                        .join(" · ")}
+                    </p>
+                  </div>
+                </div>
+              )}
+
+              <div className="grid gap-6 lg:grid-cols-2">
+                <div className="rounded-xl border border-border bg-card shadow-sm p-5">
+                  <h2 className="font-semibold text-base flex items-center gap-2 mb-1">
+                    <TrendingUp className="size-4 text-nuclear" /> Actividad del mes
+                  </h2>
+                  <p className="text-xs text-muted-foreground mb-4">
+                    Recepciones, despachos y órdenes completadas
+                  </p>
+                  <ChartContainer config={chartConfig} className="h-[220px] w-full aspect-auto">
+                    <ComposedChart data={activityChart} margin={{ top: 8, right: 8, left: 0, bottom: 0 }}>
+                      <CartesianGrid strokeDasharray="3 3" vertical={false} />
+                      <XAxis dataKey="label" tickLine={false} axisLine={false} />
+                      <YAxis tickLine={false} axisLine={false} width={32} />
+                      <ChartTooltip content={<ChartTooltipContent />} />
+                      <Bar dataKey="receipts" fill="var(--color-receipts)" radius={[4, 4, 0, 0]} name="Recepciones" />
+                      <Bar dataKey="dispatches" fill="var(--color-dispatches)" radius={[4, 4, 0, 0]} name="Despachos" />
+                    </ComposedChart>
+                  </ChartContainer>
+                </div>
+
+                {paretoItems.length > 0 && (
+                  <div className="rounded-xl border border-border bg-card shadow-sm p-5">
+                    <h2 className="font-semibold text-base flex items-center gap-2 mb-1">
+                      <BarChart3 className="size-4 text-nuclear" /> Pareto ABC · stock
+                    </h2>
+                    <p className="text-xs text-muted-foreground mb-4">
+                      Top productos por volumen en inventario
+                    </p>
+                    <ChartContainer config={chartConfig} className="h-[220px] w-full aspect-auto">
+                      <ComposedChart data={paretoItems} margin={{ top: 8, right: 8, left: 0, bottom: 0 }}>
+                        <CartesianGrid strokeDasharray="3 3" vertical={false} />
+                        <XAxis dataKey="sku" tickLine={false} axisLine={false} />
+                        <YAxis yAxisId="left" tickLine={false} axisLine={false} width={40} />
+                        <YAxis yAxisId="right" orientation="right" domain={[0, 100]} tickLine={false} axisLine={false} width={32} />
+                        <ChartTooltip content={<ChartTooltipContent />} />
+                        <Bar yAxisId="left" dataKey="stock" fill="var(--color-stock)" radius={[4, 4, 0, 0]} name="Stock" />
+                        <Line yAxisId="right" type="monotone" dataKey="cumulative" stroke="var(--color-cumulative)" strokeWidth={2} dot={{ r: 3 }} name="Acumulado %" />
+                      </ComposedChart>
+                    </ChartContainer>
+                  </div>
+                )}
+              </div>
+
+              <div className="rounded-xl border border-border bg-card shadow-sm">
+                <div className="border-b border-border p-4">
+                  <h2 className="text-base font-semibold flex items-center gap-2">
+                    <Package className="size-4 text-nuclear" /> Catálogo · análisis ABC
+                  </h2>
+                </div>
+                <div className="overflow-x-auto">
+                  <table className="w-full text-sm text-left">
+                    <thead className="bg-muted/50 text-muted-foreground uppercase text-[10px] font-semibold border-b border-border">
+                      <tr>
+                        <th className="px-4 py-3">SKU</th>
+                        <th className="px-4 py-3">Producto</th>
+                        <th className="px-4 py-3 text-right">Stock</th>
+                        <th className="px-4 py-3 text-right">Mínimo</th>
+                        <th className="px-4 py-3 text-center">Clase</th>
+                      </tr>
+                    </thead>
+                    <tbody className="divide-y divide-border/50">
+                      {products.length === 0 ? (
+                        <tr>
+                          <td colSpan={5} className="px-4 py-12 text-center text-sm text-muted-foreground">
+                            Sin productos. Ejecuta el seed del backend para datos demo.
+                          </td>
+                        </tr>
+                      ) : (
+                        products.map((p) => {
+                          const stock = stockByProduct.get(p.id) ?? 0;
+                          const isLow = stock < p.minStock;
+                          return (
+                            <tr key={p.id} className="hover:bg-muted/30 transition-colors">
+                              <td className="px-4 py-3 font-mono text-xs text-muted-foreground">{p.sku}</td>
+                              <td className="px-4 py-3 font-medium">{p.name}</td>
+                              <td className={cn("px-4 py-3 text-right font-mono", isLow && "text-warning font-semibold")}>
+                                {stock.toLocaleString("es-CO")}
+                              </td>
+                              <td className="px-4 py-3 text-right font-mono text-muted-foreground">
+                                {p.minStock.toLocaleString("es-CO")}
+                              </td>
+                              <td className="px-4 py-3 text-center">
+                                <span
+                                  className={cn(
+                                    "inline-flex items-center rounded-md px-2 py-0.5 text-[10px] font-bold font-mono",
+                                    p.abcClass === "A"
+                                      ? "bg-nuclear/10 text-nuclear"
+                                      : p.abcClass === "B"
+                                        ? "bg-warning/10 text-warning"
+                                        : "bg-muted text-muted-foreground",
+                                  )}
+                                >
+                                  {p.abcClass}
+                                </span>
+                              </td>
+                            </tr>
+                          );
+                        })
+                      )}
+                    </tbody>
+                  </table>
+                </div>
+              </div>
+            </>
+          )}
         </div>
       </div>
     </div>
