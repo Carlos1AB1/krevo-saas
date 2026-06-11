@@ -1,3 +1,9 @@
+import {
+  clearSessionStorage,
+  getStoredTokens,
+  setStoredTokens,
+} from "@/lib/session";
+
 const ACCESS_TOKEN_KEY = "accessToken";
 const REFRESH_TOKEN_KEY = "refreshToken";
 
@@ -12,6 +18,7 @@ export function saveTokens(accessToken: string, refreshToken: string): void {
 
   localStorage.setItem(ACCESS_TOKEN_KEY, accessToken);
   localStorage.setItem(REFRESH_TOKEN_KEY, refreshToken);
+  setStoredTokens({ accessToken, refreshToken });
 }
 
 export function getAccessToken(): string | null {
@@ -19,7 +26,7 @@ export function getAccessToken(): string | null {
     return null;
   }
 
-  return localStorage.getItem(ACCESS_TOKEN_KEY);
+  return localStorage.getItem(ACCESS_TOKEN_KEY) ?? getStoredTokens()?.accessToken ?? null;
 }
 
 export function getRefreshToken(): string | null {
@@ -27,7 +34,7 @@ export function getRefreshToken(): string | null {
     return null;
   }
 
-  return localStorage.getItem(REFRESH_TOKEN_KEY);
+  return localStorage.getItem(REFRESH_TOKEN_KEY) ?? getStoredTokens()?.refreshToken ?? null;
 }
 
 export function clearTokens(): void {
@@ -37,6 +44,7 @@ export function clearTokens(): void {
 
   localStorage.removeItem(ACCESS_TOKEN_KEY);
   localStorage.removeItem(REFRESH_TOKEN_KEY);
+  clearSessionStorage();
 }
 
 /**

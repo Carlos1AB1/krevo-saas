@@ -1,5 +1,6 @@
 import { useEffect, useState } from "react";
 import { ApiError } from "@/lib/api";
+import { setStoredUser } from "@/lib/session";
 import { getMe, login, logout, refreshSession, register, type RegisterInput } from "./auth.api";
 import { clearTokens, getAccessToken, getRefreshToken, isAccessTokenExpired, saveTokens } from "./auth.storage";
 import type { AuthUser } from "./auth.types";
@@ -8,7 +9,7 @@ interface AuthSession {
   user: AuthUser | null;
   isLoading: boolean;
   error: string | null;
-  loginUser: (email: string, password: string) => Promise<boolean>;
+  loginUser: (email: string, password: string) => Promise<AuthUser | null>;
   registerUser: (input: RegisterInput) => Promise<boolean>;
   logoutUser: () => Promise<void>;
   reloadSession: () => Promise<void>;
@@ -41,6 +42,7 @@ export function useAuthSession(): AuthSession {
 
       const currentUser = await getMe(tokenToUse);
       setUser(currentUser);
+      syncLibSessionUser(currentUser);
     } catch {
       // Fallback: el token pudo invalidarse en el servidor (logout remoto,
       // rotación). Intentamos un refresh más antes de cerrar sesión.
@@ -49,6 +51,7 @@ export function useAuthSession(): AuthSession {
         saveTokens(refreshed.accessToken, refreshed.refreshToken);
         const refreshedUser = await getMe(refreshed.accessToken);
         setUser(refreshedUser);
+        syncLibSessionUser(refreshedUser);
       } catch {
         clearTokens();
         setUser(null);
@@ -58,7 +61,7 @@ export function useAuthSession(): AuthSession {
     }
   }
 
-  async function loginUser(email: string, password: string): Promise<boolean> {
+  async function loginUser(email: string, password: string): Promise<AuthUser | null> {
     setIsLoading(true);
     setError(null);
 
@@ -69,14 +72,15 @@ export function useAuthSession(): AuthSession {
 
       const currentUser = await getMe(response.accessToken);
       setUser(currentUser);
+      syncLibSessionUser(currentUser);
 
-      return true;
+      return currentUser;
     } catch (error) {
       clearTokens();
       setUser(null);
       setError(getFriendlyError(error));
 
-      return false;
+      return null;
     } finally {
       setIsLoading(false);
     }
@@ -110,6 +114,7 @@ export function useAuthSession(): AuthSession {
       saveTokens(tokens.accessToken, tokens.refreshToken);
       const newUser = await getMe(tokens.accessToken);
       setUser(newUser);
+      syncLibSessionUser(newUser);
       return true;
     } catch (err) {
       clearTokens();
@@ -131,6 +136,15 @@ export function useAuthSession(): AuthSession {
     reloadSession,
     clearError: () => setError(null),
   };
+}
+
+function syncLibSessionUser(user: AuthUser): void {
+  setStoredUser({
+    email: user.email,
+    id: user.id,
+    isPlatformAdmin: user.isPlatformAdmin === true,
+    name: [user.firstName, user.lastName].filter(Boolean).join(" ") || user.email,
+  });
 }
 
 const BACKEND_ERROR_MAP: Record<string, string> = {

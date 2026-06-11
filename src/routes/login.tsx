@@ -65,14 +65,19 @@ function LoginPage() {
   const onSubmit = async (values: LoginValues) => {
     setAuthError(null);
 
-    const success = await loginUser(values.email, values.password);
+    const user = await loginUser(values.email, values.password);
 
-    if (success) {
+    if (user) {
       toast.success("Sesión iniciada", {
         description: `Bienvenido de vuelta, ${values.email.split("@")[0]}.`,
       });
       navigate({
-        to: search.redirect && search.redirect.startsWith("/") ? search.redirect : "/app",
+        to:
+          search.redirect && search.redirect.startsWith("/")
+            ? search.redirect
+            : user.isPlatformAdmin
+              ? "/admin"
+              : "/app",
       });
     }
   };
