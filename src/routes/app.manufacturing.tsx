@@ -58,10 +58,12 @@ import {
   startOrder,
   completeOrder,
   cancelOrder,
+  adjustPicking,
   type ProductionOrderResponse,
   type FormulaResponse,
+  type AdjustPickingInput,
 } from "@/features/production/production.api";
-import { getProducts } from "@/features/inventory/inventory.api";
+import { getProducts, getLots } from "@/features/inventory/inventory.api";
 
 export const Route = createFileRoute("/app/manufacturing")({
   component: ManufacturingPage,
@@ -110,6 +112,13 @@ function ManufacturingPage() {
   // Delete confirmation state
   const [deleteTarget, setDeleteTarget] = useState<FormulaResponse | null>(null);
 
+  // Adjust picking state
+  const [adjustTarget, setAdjustTarget] = useState<ProductionOrderResponse | null>(null);
+  const [selectedAdjProductId, setSelectedAdjProductId] = useState("");
+  const [selectedAdjLotId, setSelectedAdjLotId] = useState("");
+  const [adjustQty, setAdjustQty] = useState(0);
+  const [adjustReason, setAdjustReason] = useState("");
+
   const { data: ordersData, isLoading: loadingOrders } = useQuery({
     queryKey: ["production", "orders", { limit: 100 }],
     queryFn: () => getOrders({ limit: 100 }),
@@ -155,6 +164,34 @@ function ManufacturingPage() {
     onSuccess: () => { toast.success("Orden cancelada"); invalidateOrders(); },
     onError: (e: Error) => toast.error(e.message),
   });
+
+  const adjustMutation = useMutation({
+    mutationFn: ({ id, input }: { id: string; input: AdjustPickingInput }) => adjustPicking(id, input),
+    onSuccess: () => {
+      toast.success("Picking ajustado — inventario actualizado");
+      setAdjustTarget(null);
+      invalidateOrders();
+      qc.invalidateQueries({ queryKey: ["inventory"] });
+    },
+    onError: (e: Error) => toast.error(e.message),
+  });
+
+  const orderFormula = formulas.find((f) => f.id === adjustTarget?.formulaId);
+  const formulaIngredients = orderFormula?.ingredients ?? [];
+
+  const { data: adjustLotsData } = useQuery({
+    queryKey: ["inventory", "lots", { productId: selectedAdjProductId, status: "ACTIVE" }],
+    queryFn: () => getLots({ productId: selectedAdjProductId, status: "ACTIVE", limit: 50 }),
+    enabled: !!selectedAdjProductId,
+  });
+  const adjustLots = adjustLotsData?.data ?? [];
+
+  function resetAdjustForm() {
+    setSelectedAdjProductId("");
+    setSelectedAdjLotId("");
+    setAdjustQty(0);
+    setAdjustReason("");
+  }
 
   // Formula mutations
   const createFormulaMutation = useMutation({
@@ -325,6 +362,7 @@ function ManufacturingPage() {
                             onStart={() => startMutation.mutate(order.id)}
                             onComplete={() => { setCompleteTarget(order); setActualQty(order.plannedQty); }}
                             onCancel={() => cancelMutation.mutate(order.id)}
+                            onAdjust={() => { setAdjustTarget(order); resetAdjustForm(); }}
                             isWorking={startMutation.isPending || cancelMutation.isPending || completeMutation.isPending}
                             canManage={can("manage", "production")}
                           />
@@ -583,6 +621,106 @@ function ManufacturingPage() {
         </SheetContent>
       </Sheet>
 
+      {/* Adjust Picking Sheet */}
+      <Sheet open={!!adjustTarget} onOpenChange={(v) => { if (!v) { setAdjustTarget(null); resetAdjustForm(); } }}>
+        <SheetContent className="w-full sm:max-w-md overflow-y-auto">
+          <SheetHeader>
+            <SheetTitle>Ajustar Picking</SheetTitle>
+            <SheetDescription>
+              {adjustTarget?.orderNumber} — Modifica manualmente el consumo de insumos
+            </SheetDescription>
+          </SheetHeader>
+          <div className="mt-6 space-y-5">
+            <div className="space-y-1.5">
+              <Label>Insumo a ajustar</Label>
+              <select
+                value={selectedAdjProductId}
+                onChange={(e) => { setSelectedAdjProductId(e.target.value); setSelectedAdjLotId(""); }}
+                className="flex h-9 w-full rounded-md border border-input bg-background px-3 text-sm shadow-sm focus:outline-none focus:ring-1 focus:ring-ring"
+              >
+                <option value="">— Seleccionar insumo —</option>
+                {formulaIngredients.map((ing) => (
+                  <option key={ing.id} value={ing.productId}>{ing.productName} ({ing.productSku})</option>
+                ))}
+              </select>
+            </div>
+
+            <div className="space-y-1.5">
+              <Label>Lote a ajustar</Label>
+              <select
+                value={selectedAdjLotId}
+                onChange={(e) => setSelectedAdjLotId(e.target.value)}
+                disabled={!selectedAdjProductId}
+                className="flex h-9 w-full rounded-md border border-input bg-background px-3 text-sm shadow-sm focus:outline-none focus:ring-1 focus:ring-ring disabled:opacity-50"
+              >
+                <option value="">— Seleccionar lote —</option>
+                {adjustLots.map((lot) => (
+                  <option key={lot.id} value={lot.id}>
+                    {lot.lotNumber} ({lot.quantity} disp.)
+                  </option>
+                ))}
+              </select>
+            </div>
+
+            <div className="space-y-1.5">
+              <Label>Cantidad de ajuste</Label>
+              <Input
+                type="number" value={adjustQty}
+                onChange={(e) => setAdjustQty(Number(e.target.value))}
+                placeholder="Positivo = consumir más, Negativo = devolver a stock"
+              />
+              <p className="text-xs text-muted-foreground">
+                Valor positivo consume más inventario; valor negativo devuelve a stock.
+              </p>
+            </div>
+
+            <div className="space-y-1.5">
+              <Label>Motivo del ajuste (trazabilidad)</Label>
+              <textarea
+                value={adjustReason}
+                onChange={(e) => setAdjustReason(e.target.value)}
+                rows={3}
+                className="flex w-full rounded-md border border-input bg-background px-3 py-2 text-sm shadow-sm focus:outline-none focus:ring-1 focus:ring-ring placeholder:text-muted-foreground resize-none"
+                placeholder="Ej: Se gastó menos material del previsto por optimización"
+              />
+            </div>
+
+            {adjustTarget && formulaIngredients.length === 0 && (
+              <div className="rounded-lg border border-warning/30 bg-warning/5 p-3 text-xs text-muted-foreground">
+                No se encontraron ingredientes en la fórmula de esta orden.
+              </div>
+            )}
+          </div>
+          <SheetFooter className="mt-6">
+            <Button variant="outline" onClick={() => { setAdjustTarget(null); resetAdjustForm(); }}>
+              Cancelar
+            </Button>
+            <Button
+              variant="nuclear"
+              disabled={!selectedAdjProductId || !selectedAdjLotId || adjustQty === 0 || !adjustReason.trim() || adjustMutation.isPending}
+              onClick={() => {
+                if (!adjustTarget) return;
+                adjustMutation.mutate({
+                  id: adjustTarget.id,
+                  input: {
+                    productId: selectedAdjProductId,
+                    lotId: selectedAdjLotId,
+                    quantityAdjusted: adjustQty,
+                    reason: adjustReason.trim(),
+                  },
+                });
+              }}
+            >
+              {adjustMutation.isPending ? (
+                <><Loader2 className="mr-2 size-4 animate-spin" /> Ajustando…</>
+              ) : (
+                "Confirmar Ajuste"
+              )}
+            </Button>
+          </SheetFooter>
+        </SheetContent>
+      </Sheet>
+
       {/* Delete Confirmation Dialog */}
       <AlertDialog open={!!deleteTarget} onOpenChange={(v) => { if (!v) setDeleteTarget(null); }}>
         <AlertDialogContent>
@@ -676,12 +814,13 @@ function FormulaCard({
 }
 
 function OrderCard({
-  order, onStart, onComplete, onCancel, isWorking, canManage,
+  order, onStart, onComplete, onCancel, onAdjust, isWorking, canManage,
 }: {
   order: ProductionOrderResponse;
   onStart: () => void;
   onComplete: () => void;
   onCancel: () => void;
+  onAdjust: () => void;
   isWorking: boolean;
   canManage: boolean;
 }) {
@@ -724,9 +863,14 @@ function OrderCard({
               </Button>
             )}
             {order.status === "IN_PROGRESS" && (
-              <Button variant="nuclear" size="sm" className="h-7 text-xs gap-1" onClick={onComplete} disabled={isWorking}>
-                <Package className="size-3" /> Completar
-              </Button>
+              <>
+                <Button variant="outline" size="sm" className="h-7 text-xs gap-1" onClick={onAdjust} disabled={isWorking}>
+                  <Pencil className="size-3" /> Ajustar
+                </Button>
+                <Button variant="nuclear" size="sm" className="h-7 text-xs gap-1" onClick={onComplete} disabled={isWorking}>
+                  <Package className="size-3" /> Completar
+                </Button>
+              </>
             )}
           </div>
         )}
