@@ -864,8 +864,8 @@ function OrderCard({
             )}
             {order.status === "IN_PROGRESS" && (
               <>
-                <Button variant="outline" size="sm" className="h-7 text-xs gap-1" onClick={onAdjust} disabled={isWorking}>
-                  <Pencil className="size-3" /> Ajustar
+                <Button variant="outline" size="icon" className="h-7 w-7" onClick={onAdjust} disabled={isWorking}>
+                  <Pencil className="size-3" />
                 </Button>
                 <Button variant="nuclear" size="sm" className="h-7 text-xs gap-1" onClick={onComplete} disabled={isWorking}>
                   <Package className="size-3" /> Completar
