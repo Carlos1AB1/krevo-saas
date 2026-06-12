@@ -13,6 +13,7 @@ interface AuthSession {
   logoutUser: () => Promise<void>;
   reloadSession: () => Promise<void>;
   clearError: () => void;
+  updateUser: (updates: Partial<AuthUser>) => void;
 }
 
 export function useAuthSession(): AuthSession {
@@ -121,6 +122,10 @@ export function useAuthSession(): AuthSession {
     }
   }
 
+  function updateUser(updates: Partial<AuthUser>) {
+    setUser((prev) => (prev ? { ...prev, ...updates } : null));
+  }
+
   return {
     user,
     isLoading,
@@ -130,6 +135,7 @@ export function useAuthSession(): AuthSession {
     logoutUser,
     reloadSession,
     clearError: () => setError(null),
+    updateUser,
   };
 }
 

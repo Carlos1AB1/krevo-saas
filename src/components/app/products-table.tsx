@@ -265,6 +265,19 @@ export function ProductsTable() {
                           p.isActive ? "bg-success/15 text-success" : "bg-muted text-muted-foreground")}>
                           {p.isActive ? "Activo" : "Inactivo"}
                         </span>
+                        {(() => {
+                          const stock = stockByProduct.get(p.id) ?? 0;
+                          const belowMin = p.minStock > 0 && stock <= p.minStock;
+                          const outOfStock = stock === 0;
+                          
+                          if (outOfStock) {
+                            return <span className="ml-2 rounded-full bg-destructive/15 px-2 py-0.5 text-[10px] font-semibold text-destructive">Sin Stock</span>;
+                          }
+                          if (belowMin) {
+                            return <span className="ml-2 rounded-full bg-warning/15 px-2 py-0.5 text-[10px] font-semibold text-warning">Stock Bajo</span>;
+                          }
+                          return null;
+                        })()}
                       </td>
                     </motion.tr>
                   ))

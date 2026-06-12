@@ -16,6 +16,8 @@ export interface ReceiptLine {
   quantity: number;
   unitCost: number | null;
   notes: string | null;
+  expirationDate: string | null;
+  storageLocationId: string | null;
 }
 
 export interface ReceiptResponse {
@@ -55,6 +57,8 @@ export interface CreateReceiptLineInput {
   lotId?: string;
   unitCost?: number;
   notes?: string;
+  expirationDate?: string;
+  storageLocationId?: string;
 }
 
 export interface CreateReceiptInput {

@@ -8,9 +8,11 @@ import {
   type OrganizationResponse,
   type UpdateOrganizationInput,
 } from "@/features/organizations/organizations.api";
+import { useAuth } from "@/features/auth/AuthProvider";
 
 export function useOrganizationSettings(organizationId: string) {
   const queryClient = useQueryClient();
+  const { reloadSession } = useAuth();
 
   const query = useQuery({
     queryKey: ["organizations", organizationId],
@@ -28,6 +30,8 @@ export function useOrganizationSettings(organizationId: string) {
         legalName: org.legalName ?? "",
         taxId: org.taxId ?? "",
         logoUrl: org.logoUrl ?? "",
+        primaryColor: org.primaryColor ?? "",
+        theme: org.theme ?? "light",
         currency: org.currency,
         timezone: org.timezone,
       });
@@ -37,9 +41,10 @@ export function useOrganizationSettings(organizationId: string) {
   const mutation = useMutation({
     mutationFn: (input: UpdateOrganizationInput) =>
       updateOrganization(organizationId, input),
-    onSuccess: (updated: OrganizationResponse) => {
+    onSuccess: async (updated: OrganizationResponse) => {
       queryClient.setQueryData(["organizations", organizationId], updated);
       toast.success("Organización actualizada");
+      await reloadSession();
     },
     onError: () => {
       toast.error("No se pudo guardar la configuración");
@@ -59,6 +64,8 @@ export function useOrganizationSettings(organizationId: string) {
       legalName: form.legalName || undefined,
       taxId: form.taxId || undefined,
       logoUrl: form.logoUrl || undefined,
+      primaryColor: form.primaryColor || undefined,
+      theme: form.theme || undefined,
       currency: form.currency,
       timezone: form.timezone,
     });

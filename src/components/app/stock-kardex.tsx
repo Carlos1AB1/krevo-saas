@@ -42,6 +42,54 @@ export function StockKardexView() {
     });
   }, [movements, q]);
 
+  const handleExportCSV = () => {
+    if (filtered.length === 0) return;
+
+    // Headers
+    const headers = [
+      "Fecha",
+      "Hora",
+      "Tipo",
+      "SKU",
+      "Producto",
+      "Lote",
+      "Referencia",
+      "Cantidad",
+      "Saldo",
+      "Responsable",
+      "Notas"
+    ];
+
+    // Rows
+    const rows = filtered.map(m => {
+      const d = parseISO(m.createdAt);
+      return [
+        format(d, "yyyy-MM-dd"),
+        format(d, "HH:mm"),
+        movementTypeLabel(m.type),
+        m.product.sku,
+        `"${m.product.name.replace(/"/g, '""')}"`,
+        m.lot?.lotNumber || "",
+        `"${(m.reference || "").replace(/"/g, '""')}"`,
+        m.quantity.toString(),
+        m.stockAfter.toString(),
+        `"${m.createdBy.firstName} ${m.createdBy.lastName}"`,
+        `"${(m.notes || "").replace(/"/g, '""')}"`
+      ].join(",");
+    });
+
+    const csvContent = [headers.join(","), ...rows].join("\n");
+    const blob = new Blob([csvContent], { type: "text/csv;charset=utf-8;" });
+    const url = URL.createObjectURL(blob);
+    const link = document.createElement("a");
+    link.setAttribute("href", url);
+    link.setAttribute("download", `kardex_export_${format(new Date(), "yyyyMMdd_HHmm")}.csv`);
+    link.style.visibility = "hidden";
+    document.body.appendChild(link);
+    link.click();
+    document.body.removeChild(link);
+  };
+
   return (
     <div className="space-y-4">
       <div className="flex flex-col sm:flex-row gap-4 sm:items-center justify-between">
@@ -51,7 +99,7 @@ export function StockKardexView() {
             Historial de movimientos, trazabilidad por lote y saldos.
           </p>
         </div>
-        <Button variant="outline" size="sm">
+        <Button variant="outline" size="sm" onClick={handleExportCSV} disabled={filtered.length === 0}>
           <FileText className="mr-2 size-4" /> Exportar Kárdex
         </Button>
       </div>

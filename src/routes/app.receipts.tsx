@@ -61,10 +61,12 @@ interface LineState {
   lotId: string;
   quantity: number;
   unitCost: string;
+  expirationDate: string;
+  storageLocationId: string;
 }
 
 function makeEmptyLine(): LineState {
-  return { _key: Math.random().toString(36).slice(2), productId: "", lotId: "", quantity: 1, unitCost: "" };
+  return { _key: Math.random().toString(36).slice(2), productId: "", lotId: "", quantity: 1, unitCost: "", expirationDate: "", storageLocationId: "" };
 }
 
 // Sub-component so each line can independently fetch its own lots
@@ -72,6 +74,7 @@ function ReceiptLineRow({
   line,
   idx,
   products,
+  locations,
   showRemove,
   onUpdate,
   onRemove,
@@ -79,6 +82,7 @@ function ReceiptLineRow({
   line: LineState;
   idx: number;
   products: { id: string; name: string; sku: string }[];
+  locations: { id: string; code: string; warehouse: string }[];
   showRemove: boolean;
   onUpdate: (key: string, patch: Partial<LineState>) => void;
   onRemove: (key: string) => void;
@@ -147,6 +151,30 @@ function ReceiptLineRow({
             onChange={(e) => onUpdate(line._key, { unitCost: e.target.value })}
           />
         </div>
+        {!line.lotId && (
+          <>
+            <div className="space-y-1">
+              <Label className="text-xs">Vencimiento (opcional)</Label>
+              <Input
+                type="date" value={line.expirationDate}
+                onChange={(e) => onUpdate(line._key, { expirationDate: e.target.value })}
+              />
+            </div>
+            <div className="space-y-1">
+              <Label className="text-xs">Ubicación Bodega (opcional)</Label>
+              <select
+                value={line.storageLocationId}
+                onChange={(e) => onUpdate(line._key, { storageLocationId: e.target.value })}
+                className="flex h-9 w-full rounded-md border border-input bg-background px-3 text-sm shadow-sm focus:outline-none focus:ring-1 focus:ring-ring"
+              >
+                <option value="">— Sin asignar —</option>
+                {locations.map((loc) => (
+                  <option key={loc.id} value={loc.id}>{loc.warehouse} - {loc.code}</option>
+                ))}
+              </select>
+            </div>
+          </>
+        )}
       </div>
     </div>
   );
@@ -172,6 +200,12 @@ function ReceiptsPage() {
     queryFn: () => getProducts({ limit: 100 }),
   });
   const products = productsData?.data ?? [];
+
+  const { data: locationsData } = useQuery({
+    queryKey: ["inventory", "locations"],
+    queryFn: () => import("@/features/inventory/inventory.api").then(m => m.getStorageLocations()),
+  });
+  const locations = locationsData ?? [];
 
   const receipts = data?.data ?? [];
 
@@ -245,6 +279,8 @@ function ReceiptsPage() {
         lotId: l.lotId || undefined,
         quantity: l.quantity,
         unitCost: l.unitCost ? Number(l.unitCost) : undefined,
+        expirationDate: l.expirationDate ? new Date(l.expirationDate).toISOString() : undefined,
+        storageLocationId: l.storageLocationId || undefined,
       })),
     });
   }
@@ -494,6 +530,7 @@ function ReceiptsPage() {
                     line={line}
                     idx={idx}
                     products={products}
+                    locations={locations}
                     showRemove={lines.length > 1}
                     onUpdate={updateLine}
                     onRemove={removeLine}
