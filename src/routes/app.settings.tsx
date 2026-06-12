@@ -7,6 +7,8 @@ import { useOrganizationSettings } from "@/features/settings/useOrganizationSett
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
+import { toast } from "sonner";
+import { resolveOrganizationLogoSrc } from "@/lib/utils";
 
 export const Route = createFileRoute("/app/settings")({
   head: () => ({
@@ -30,7 +32,7 @@ const TIMEZONES = [
 const CURRENCIES = ["COP", "USD", "MXN", "PEN", "CLP"];
 
 function SettingsPage() {
-  const { user } = useAuth();
+  const { user, reloadSession, updateUser } = useAuth();
   const orgId = user?.organizationId ?? "";
   const { organization, isLoading, isError, form, updateField, save, isSaving } =
     useOrganizationSettings(orgId);
@@ -141,13 +143,70 @@ function SettingsPage() {
                       />
                     </div>
                     <div className="space-y-2">
-                      <Label htmlFor="logoUrl">URL del logo</Label>
-                      <Input
-                        id="logoUrl"
-                        value={form.logoUrl ?? ""}
-                        onChange={(e) => updateField("logoUrl", e.target.value)}
-                        placeholder="https://…"
-                      />
+                      <Label htmlFor="logoUrl">Logo de la empresa</Label>
+                      <div className="flex items-center gap-4">
+                        {form.logoUrl && (
+                          <img
+                            src={resolveOrganizationLogoSrc(organization.id, form.logoUrl) ?? ""}
+                            alt="Logo preview"
+                            className="h-10 w-10 rounded object-contain border"
+                          />
+                        )}
+                        <Input
+                          id="logoFile"
+                          type="file"
+                          accept="image/*"
+                          onChange={async (e) => {
+                            const file = e.target.files?.[0];
+                            if (!file) return;
+                            try {
+                              const { uploadOrganizationLogo } = await import("@/features/organizations/organizations.api");
+                              toast.loading("Subiendo logo...", { id: "logoUpload" });
+                              const res = await uploadOrganizationLogo(organization.id, file);
+                              const dbLogoUrl = res.logoUrl || "";
+                              updateField("logoUrl", dbLogoUrl);
+                              updateUser({ logoUrl: dbLogoUrl });
+                              toast.success("Logo subido correctamente", { id: "logoUpload" });
+                              await reloadSession();
+                            } catch (err) {
+                              toast.error("Error al subir el logo", { id: "logoUpload" });
+                            }
+                          }}
+                        />
+                      </div>
+                    </div>
+                    <div className="space-y-2">
+                      <Label htmlFor="primaryColor">Color Primario</Label>
+                      <div className="flex gap-2">
+                        <Input
+                          id="primaryColorPicker"
+                          type="color"
+                          value={form.primaryColor ?? "#000000"}
+                          onChange={(e) => updateField("primaryColor", e.target.value)}
+                          className="w-14 h-10 p-1 cursor-pointer"
+                        />
+                        <Input
+                          id="primaryColor"
+                          type="text"
+                          value={form.primaryColor ?? ""}
+                          onChange={(e) => updateField("primaryColor", e.target.value)}
+                          placeholder="#HexColor"
+                          className="flex-1"
+                        />
+                      </div>
+                    </div>
+                    <div className="space-y-2">
+                      <Label htmlFor="theme">Tema (Diseño)</Label>
+                      <select
+                        id="theme"
+                        value={form.theme ?? "light"}
+                        onChange={(e) => updateField("theme", e.target.value)}
+                        className="flex h-9 w-full rounded-md border border-input bg-transparent px-3 py-1 text-sm shadow-sm"
+                      >
+                        <option value="light">Claro</option>
+                        <option value="dark">Oscuro</option>
+                        <option value="system">Sistema</option>
+                      </select>
                     </div>
                     <div className="space-y-2">
                       <Label htmlFor="currency">Moneda (ISO 4217)</Label>

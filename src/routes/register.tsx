@@ -38,9 +38,6 @@ const registerSchema = z
     size: z.enum(["1-10", "11-50", "51-200", "201-1000", "1000+"], {
       message: "Selecciona el tamaño de tu equipo",
     }),
-    role: z.enum(["owner", "ops", "warehouse", "finance", "other"], {
-      message: "Selecciona tu rol",
-    }),
     accept: z.boolean().refine((v) => v === true, "Debes aceptar los términos"),
   })
   .refine((d) => d.password === d.confirm, {
@@ -105,7 +102,7 @@ function RegisterPage() {
     const ok =
       step === 0
         ? await trigger(["fullName", "email", "password", "confirm"], { shouldFocus: true })
-        : await trigger(["org", "size", "role"], { shouldFocus: true });
+        : await trigger(["org", "size"], { shouldFocus: true });
     if (ok) setStep((s) => Math.min(2, s + 1) as 0 | 1 | 2);
   };
 
@@ -248,25 +245,6 @@ function RegisterPage() {
                       <SelectItem value="51-200">51 – 200 personas</SelectItem>
                       <SelectItem value="201-1000">201 – 1.000 personas</SelectItem>
                       <SelectItem value="1000+">Más de 1.000</SelectItem>
-                    </SelectContent>
-                  </Select>
-                </Field>
-                <Field id="role" label="Tu rol" error={errors.role?.message}>
-                  <Select
-                    value={values.role}
-                    onValueChange={(v) =>
-                      setValue("role", v as RegisterValues["role"], { shouldValidate: true })
-                    }
-                  >
-                    <SelectTrigger id="role">
-                      <SelectValue placeholder="¿En qué rol vas a operar?" />
-                    </SelectTrigger>
-                    <SelectContent>
-                      <SelectItem value="owner">Founder / Dueño</SelectItem>
-                      <SelectItem value="ops">Líder de Operaciones</SelectItem>
-                      <SelectItem value="warehouse">Jefe de Bodega</SelectItem>
-                      <SelectItem value="finance">Finanzas / Compras</SelectItem>
-                      <SelectItem value="other">Otro</SelectItem>
                     </SelectContent>
                   </Select>
                 </Field>
@@ -462,7 +440,6 @@ function Summary({ values }: { values: Partial<z.infer<typeof registerSchema>> }
     ["Email", values.email],
     ["Organización", values.org],
     ["Tamaño", values.size],
-    ["Rol", values.role],
   ];
   return (
     <div className="rounded-xl border border-border bg-card/40 p-4">

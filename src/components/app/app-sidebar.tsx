@@ -18,11 +18,12 @@ import {
   Factory,
 } from "lucide-react";
 import { useState } from "react";
-import { cn } from "@/lib/utils";
+import { cn, resolveOrganizationLogoSrc } from "@/lib/utils";
 import { NuclearLogo } from "@/components/nuclear-ui/nuclear-logo";
 import { useAuth } from "@/features/auth/AuthProvider";
 import { can } from "@/features/auth/permissions";
 import { Sheet, SheetContent, SheetHeader, SheetTitle, SheetDescription } from "@/components/ui/sheet";
+import { differenceInHours, parseISO } from "date-fns";
 
 type NavItem = { to: string; label: string; icon: typeof LayoutDashboard; badge?: string };
 type NavGroup = { label: string; items: NavItem[] };
@@ -152,6 +153,12 @@ export function AppSidebar({ mobileOpen, onMobileClose }: AppSidebarProps) {
   const { user } = useAuth();
   const groups = buildGroups(user?.permissions ?? []);
 
+  const logoSrc = resolveOrganizationLogoSrc(user?.organizationId, user?.logoUrl);
+
+  const trialDaysLeft = user?.trialEndsAt 
+    ? Math.max(0, Math.ceil(differenceInHours(parseISO(user.trialEndsAt), new Date()) / 24))
+    : null;
+
   return (
     <>
       {/* ── Desktop sidebar ────────────────────────────────────────────────── */}
@@ -167,8 +174,23 @@ export function AppSidebar({ mobileOpen, onMobileClose }: AppSidebarProps) {
             collapsed ? "justify-center px-2" : "justify-start",
           )}
         >
-          <Link to="/app" className="flex min-w-0 items-center overflow-hidden">
-            <NuclearLogo withWordmark={!collapsed} imgClassName="size-9" className="gap-2" />
+          <Link to="/app" className="flex min-w-0 items-center gap-2 overflow-hidden">
+            {logoSrc ? (
+              <img
+                src={logoSrc}
+                alt="Logo"
+                className={cn(
+                  "h-8 w-8 rounded object-contain shrink-0 transition-all",
+                )}
+              />
+            ) : (
+              <NuclearLogo withWordmark={false} imgClassName="size-8" className="shrink-0" />
+            )}
+            {!collapsed && (
+              <span className="truncate text-sm font-semibold leading-tight text-sidebar-foreground">
+                {user?.organizationName ?? "Krevo"}
+              </span>
+            )}
           </Link>
         </div>
         <button
@@ -184,14 +206,18 @@ export function AppSidebar({ mobileOpen, onMobileClose }: AppSidebarProps) {
           <NavItems groups={groups} pathname={pathname} collapsed={collapsed} />
         </nav>
 
-        {!collapsed && (
+        {!collapsed && user?.subscriptionStatus === "TRIALING" && trialDaysLeft !== null && (
           <div className="m-3 rounded-lg border border-sidebar-border bg-sidebar-accent/40 p-3">
             <p className="text-[10px] font-semibold uppercase tracking-wider text-muted-foreground">
-              Plan Reactor
+              Plan de Prueba
             </p>
-            <p className="mt-1 text-xs text-sidebar-foreground/80">12 días de prueba restantes</p>
+            {trialDaysLeft >= 0 ? (
+              <p className="mt-1 text-xs text-sidebar-foreground/80">{trialDaysLeft} {trialDaysLeft === 1 ? 'día restante' : 'días restantes'}</p>
+            ) : (
+              <p className="mt-1 text-xs text-destructive">Prueba terminada</p>
+            )}
             <Link
-              to="/pricing"
+              to="/app/billing"
               className="mt-2 inline-flex text-xs font-semibold text-nuclear hover:underline"
             >
               Activar suscripción →
@@ -211,8 +237,19 @@ export function AppSidebar({ mobileOpen, onMobileClose }: AppSidebarProps) {
             <SheetDescription>Accesos a los módulos de la aplicación</SheetDescription>
           </SheetHeader>
           <div className="flex h-16 shrink-0 items-center border-b border-sidebar-border px-4">
-            <Link to="/app" onClick={onMobileClose} className="flex items-center">
-              <NuclearLogo withWordmark imgClassName="size-9" className="gap-2" />
+            <Link to="/app" onClick={onMobileClose} className="flex items-center gap-2">
+              {logoSrc ? (
+                <img
+                  src={logoSrc}
+                  alt="Logo"
+                  className="h-8 w-8 rounded object-contain shrink-0"
+                />
+              ) : (
+                <NuclearLogo withWordmark={false} imgClassName="size-8" className="shrink-0" />
+              )}
+              <span className="truncate text-sm font-semibold text-sidebar-foreground">
+                {user?.organizationName ?? "Krevo"}
+              </span>
             </Link>
           </div>
 
@@ -220,19 +257,25 @@ export function AppSidebar({ mobileOpen, onMobileClose }: AppSidebarProps) {
             <NavItems groups={groups} pathname={pathname} onNavigate={onMobileClose} />
           </nav>
 
-          <div className="m-3 rounded-lg border border-sidebar-border bg-sidebar-accent/40 p-3">
-            <p className="text-[10px] font-semibold uppercase tracking-wider text-muted-foreground">
-              Plan Reactor
-            </p>
-            <p className="mt-1 text-xs text-sidebar-foreground/80">12 días de prueba restantes</p>
-            <Link
-              to="/pricing"
-              onClick={onMobileClose}
-              className="mt-2 inline-flex text-xs font-semibold text-nuclear hover:underline"
-            >
-              Activar suscripción →
-            </Link>
-          </div>
+          {user?.subscriptionStatus === "TRIALING" && trialDaysLeft !== null && (
+            <div className="m-3 rounded-lg border border-sidebar-border bg-sidebar-accent/40 p-3">
+              <p className="text-[10px] font-semibold uppercase tracking-wider text-muted-foreground">
+                Plan de Prueba
+              </p>
+              {trialDaysLeft >= 0 ? (
+                <p className="mt-1 text-xs text-sidebar-foreground/80">{trialDaysLeft} {trialDaysLeft === 1 ? 'día restante' : 'días restantes'}</p>
+              ) : (
+                <p className="mt-1 text-xs text-destructive">Prueba terminada</p>
+              )}
+              <Link
+                to="/app/billing"
+                onClick={onMobileClose}
+                className="mt-2 inline-flex text-xs font-semibold text-nuclear hover:underline"
+              >
+                Activar suscripción →
+              </Link>
+            </div>
+          )}
         </SheetContent>
       </Sheet>
     </>

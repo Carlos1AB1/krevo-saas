@@ -7,6 +7,12 @@ export interface AuthUser {
   organizationName: string;
   roles: string[];
   permissions: string[];
+  trialEndsAt?: string | null;
+  subscriptionStatus?: string | null;
+  logoUrl?: string | null;
+  primaryColor?: string | null;
+  theme?: string | null;
+  isPlatformAdmin?: boolean;
 }
 
 export interface LoginInput {

@@ -58,12 +58,12 @@ export function AppTopbar({ breadcrumb = [] }: AppTopbarProps) {
   const [cmdOpen, setCmdOpen] = useState(false);
   const [switching, setSwitching] = useState(false);
 
-  const canSeeAllOrgs = user?.permissions.includes("manage:organizations") ?? false;
+  const isPlatformAdmin = user?.isPlatformAdmin ?? false;
 
   const { data: orgs = [] } = useQuery({
     queryKey: ["organizations"],
     queryFn: getOrganizations,
-    enabled: canSeeAllOrgs,
+    enabled: isPlatformAdmin,
     staleTime: 60_000,
   });
 
@@ -114,69 +114,62 @@ export function AppTopbar({ breadcrumb = [] }: AppTopbarProps) {
   return (
     <>
       <header className="sticky top-0 z-40 flex h-16 items-center gap-3 border-b border-border bg-background/80 px-4 backdrop-blur-xl lg:px-6">
-        {/* Tenant switcher */}
-        <DropdownMenu>
-          <DropdownMenuTrigger className="group flex items-center gap-2 rounded-md border border-border bg-card px-2.5 py-1.5 text-sm font-medium text-foreground transition-colors hover:bg-accent">
+        {/* Tenant switcher — solo visible para super admins de Krevo */}
+        {isPlatformAdmin ? (
+          <DropdownMenu>
+            <DropdownMenuTrigger className="group flex items-center gap-2 rounded-md border border-border bg-card px-2.5 py-1.5 text-sm font-medium text-foreground transition-colors hover:bg-accent">
+              <span className="grid size-6 place-items-center rounded bg-nuclear/10 text-nuclear">
+                {switching ? (
+                  <Loader2 className="size-3.5 animate-spin" />
+                ) : (
+                  <Building2 className="size-3.5" />
+                )}
+              </span>
+              <span className="max-w-[180px] truncate">{currentOrgName}</span>
+              <ChevronDown className="size-3.5 text-muted-foreground" />
+            </DropdownMenuTrigger>
+            <DropdownMenuContent align="start" className="w-64">
+              <DropdownMenuLabel className="text-[10px] uppercase tracking-wider text-muted-foreground">
+                Cambiar de organización
+              </DropdownMenuLabel>
+              {orgs.map((org) => {
+                const isActive = org.id === user?.organizationId;
+                return (
+                  <DropdownMenuItem
+                    key={org.id}
+                    onClick={() => handleSwitchOrg(org.id)}
+                    disabled={isActive || switching}
+                    className="flex items-start gap-2"
+                  >
+                    <Building2 className="mt-0.5 size-4 shrink-0 text-muted-foreground" />
+                    <div className="flex-1 min-w-0">
+                      <p className="truncate text-sm font-medium">{org.name}</p>
+                      <p className="text-xs text-muted-foreground font-mono">{org.slug}</p>
+                    </div>
+                    {isActive && (
+                      <Check className="size-3.5 shrink-0 text-nuclear" />
+                    )}
+                  </DropdownMenuItem>
+                );
+              })}
+              <DropdownMenuSeparator />
+              <DropdownMenuItem
+                className="flex items-center gap-2 text-sm"
+                onClick={() => navigate({ to: "/register" })}
+              >
+                <PlusCircle className="size-4 text-muted-foreground" />
+                Crear organización
+              </DropdownMenuItem>
+            </DropdownMenuContent>
+          </DropdownMenu>
+        ) : (
+          <div className="flex items-center gap-2 rounded-md border border-border bg-card px-2.5 py-1.5 text-sm font-medium text-foreground">
             <span className="grid size-6 place-items-center rounded bg-nuclear/10 text-nuclear">
-              {switching ? (
-                <Loader2 className="size-3.5 animate-spin" />
-              ) : (
-                <Building2 className="size-3.5" />
-              )}
+              <Building2 className="size-3.5" />
             </span>
             <span className="max-w-[180px] truncate">{currentOrgName}</span>
-            <ChevronDown className="size-3.5 text-muted-foreground" />
-          </DropdownMenuTrigger>
-          <DropdownMenuContent align="start" className="w-64">
-            {canSeeAllOrgs ? (
-              <>
-                <DropdownMenuLabel className="text-[10px] uppercase tracking-wider text-muted-foreground">
-                  Cambiar de organización
-                </DropdownMenuLabel>
-                {orgs.map((org) => {
-                  const isActive = org.id === user?.organizationId;
-                  return (
-                    <DropdownMenuItem
-                      key={org.id}
-                      onClick={() => handleSwitchOrg(org.id)}
-                      disabled={isActive || switching}
-                      className="flex items-start gap-2"
-                    >
-                      <Building2 className="mt-0.5 size-4 shrink-0 text-muted-foreground" />
-                      <div className="flex-1 min-w-0">
-                        <p className="truncate text-sm font-medium">{org.name}</p>
-                        <p className="text-xs text-muted-foreground font-mono">{org.slug}</p>
-                      </div>
-                      {isActive && (
-                        <Check className="size-3.5 shrink-0 text-nuclear" />
-                      )}
-                    </DropdownMenuItem>
-                  );
-                })}
-                <DropdownMenuSeparator />
-              </>
-            ) : (
-              <>
-                <DropdownMenuLabel className="text-[10px] uppercase tracking-wider text-muted-foreground">
-                  Organización activa
-                </DropdownMenuLabel>
-                <div className="flex items-center gap-2 px-2 py-1.5 text-sm">
-                  <Building2 className="size-4 text-muted-foreground" />
-                  <span className="font-medium truncate">{currentOrgName}</span>
-                  <Check className="ml-auto size-3.5 text-nuclear" />
-                </div>
-                <DropdownMenuSeparator />
-              </>
-            )}
-            <DropdownMenuItem
-              className="flex items-center gap-2 text-sm"
-              onClick={() => navigate({ to: "/register" })}
-            >
-              <PlusCircle className="size-4 text-muted-foreground" />
-              Crear organización
-            </DropdownMenuItem>
-          </DropdownMenuContent>
-        </DropdownMenu>
+          </div>
+        )}
 
         {/* Breadcrumb */}
         {breadcrumb.length > 0 && (

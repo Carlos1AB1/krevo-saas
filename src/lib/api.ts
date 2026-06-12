@@ -171,12 +171,14 @@ export interface ApiErrorResponse {
 }
 
 export async function apiRequest<T>(path: string, options: RequestInit = {}): Promise<T> {
+  const headers = new Headers(options.headers);
+  if (!headers.has("Content-Type") && !(options.body instanceof FormData)) {
+    headers.set("Content-Type", "application/json");
+  }
+
   const response = await fetch(apiUrl(path), {
     ...options,
-    headers: {
-      "Content-Type": "application/json",
-      ...options.headers,
-    },
+    headers,
   });
 
   if (!response.ok) {
@@ -191,9 +193,11 @@ export async function apiRequest<T>(path: string, options: RequestInit = {}): Pr
       // El backend no respondió JSON.
     }
 
-    const message = Array.isArray(errorBody.message)
+    const rawMessage = Array.isArray(errorBody.message)
       ? errorBody.message.join(", ")
       : errorBody.message;
+
+    const message = translateErrorMessage(rawMessage, errorBody.statusCode);
 
     throw new ApiError(message, errorBody.statusCode, errorBody);
   }
@@ -203,4 +207,36 @@ export async function apiRequest<T>(path: string, options: RequestInit = {}): Pr
   }
 
   return response.json() as Promise<T>;
+}
+
+function translateErrorMessage(rawMessage: string, status: number): string {
+  if (!rawMessage) return "No fue posible completar la operación.";
+  
+  const msgMap: Record<string, string> = {
+    // Auth & Users
+    "Invalid credentials.": "Correo o contraseña incorrectos.",
+    "User email already exists.": "Este correo ya está registrado en la plataforma.",
+    "User not found.": "Usuario no encontrado.",
+    "Invalid token.": "Tu sesión ha expirado. Inicia sesión de nuevo.",
+    
+    // Inventory
+    "Product SKU already exists in this tenant.": "Ya existe un producto con este SKU.",
+    "Insufficient stock for this operation.": "No hay stock suficiente para esta operación.",
+    "Insufficient stock to fulfill dispatch line.": "No hay stock suficiente para este despacho.",
+    
+    // Default Prisma Unique Constraint
+    "Unique constraint failed on the fields: (`email`)": "El correo ingresado ya existe.",
+  };
+
+  if (msgMap[rawMessage]) return msgMap[rawMessage];
+  
+  if (rawMessage.includes("Unique constraint failed")) {
+    return "Ya existe un registro con esta información en el sistema.";
+  }
+
+  if (status === 400 && rawMessage.includes("must be")) {
+    return "Los datos ingresados no son válidos. Por favor verifica el formulario.";
+  }
+
+  return rawMessage;
 }

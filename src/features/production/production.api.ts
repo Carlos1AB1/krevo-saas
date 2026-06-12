@@ -110,6 +110,20 @@ export function cancelOrder(id: string): Promise<ProductionOrderResponse> {
   return authRequest(`/production/orders/${id}/cancel`, { method: "POST" });
 }
 
+export interface AdjustPickingInput {
+  productId: string;
+  lotId: string;
+  quantityAdjusted: number;
+  reason: string;
+}
+
+export function adjustPicking(id: string, input: AdjustPickingInput): Promise<ProductionOrderResponse> {
+  return authRequest(`/production/orders/${id}/adjust-picking`, {
+    method: "POST",
+    body: JSON.stringify(input),
+  });
+}
+
 export interface CreateFormulaIngredientInput {
   productId: string;
   quantity: number;
