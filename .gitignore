@@ -33,3 +33,4 @@ dist-ssr
 
 # Backend (repositorio independiente)
 krevo-core-saas/
+.vercel
