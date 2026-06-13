@@ -65,14 +65,14 @@ function LoginPage() {
   const onSubmit = async (values: LoginValues) => {
     setAuthError(null);
 
-    const success = await loginUser(values.email, values.password);
+    const user = await loginUser(values.email, values.password);
 
-    if (success) {
+    if (user) {
       toast.success("Sesión iniciada", {
         description: `Bienvenido de vuelta, ${values.email.split("@")[0]}.`,
       });
       navigate({
-        to: search.redirect && search.redirect.startsWith("/") ? search.redirect : "/app",
+        to: resolvePostLoginPath(user.isPlatformAdmin === true, search.redirect),
       });
     }
   };
@@ -210,4 +210,15 @@ function LoginPage() {
       </motion.div>
     </AuthShell>
   );
+}
+
+function resolvePostLoginPath(isPlatformAdmin: boolean, redirect?: string): "/admin" | "/app" | string {
+  const safeRedirect =
+    redirect && redirect.startsWith("/") && !redirect.startsWith("//") ? redirect : null;
+
+  if (isPlatformAdmin) {
+    return safeRedirect?.startsWith("/admin") ? safeRedirect : "/admin";
+  }
+
+  return safeRedirect?.startsWith("/app") ? safeRedirect : "/app";
 }
