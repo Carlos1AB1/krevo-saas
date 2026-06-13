@@ -23,11 +23,13 @@ export default defineConfig(({ mode }) => {
       },
     },
     plugins: [
-      nitro(),
       tanstackStart({
         server: { 
           entry: "server",
         },
+      }),
+      nitro({
+        preset: "vercel",
       }),
       tailwindcss(),
       react(),
