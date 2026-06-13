@@ -24,8 +24,10 @@ export type AdminBillingSnapshot = {
 };
 
 export type AdminCompany = {
+  currency?: string;
   id: string;
   lastActivity: string;
+  legalName?: string | null;
   mrr: number;
   name: string;
   nextBillingDate: string | null;
@@ -36,8 +38,11 @@ export type AdminCompany = {
   };
   planId: string;
   planName: string;
+  productsCount?: number;
   region: string;
+  slug?: string;
   status: CompanyStatus;
+  taxId?: string | null;
   usage: {
     transactions: number;
     transactionsLimit: number | null;
@@ -46,6 +51,38 @@ export type AdminCompany = {
     warehouses: number;
     warehousesLimit: number | null;
   };
+  usersCount?: number;
+};
+
+type BackendAdminCompany = {
+  createdAt?: string;
+  currency?: string;
+  id: string;
+  isActive: boolean;
+  legalName: string | null;
+  name: string;
+  productsCount: number;
+  slug: string;
+  subscription: BackendAdminCompanySubscription | null;
+  taxId: string | null;
+  timezone?: string;
+  updatedAt?: string;
+  usersCount: number;
+};
+
+type BackendAdminCompanySubscription = {
+  currentPeriodEnd: string | null;
+  plan: BackendAdminCompanyPlan;
+  status: "TRIALING" | "ACTIVE" | "PAST_DUE" | "CANCELED" | "EXPIRED";
+  trialEndsAt: string | null;
+};
+
+type BackendAdminCompanyPlan = {
+  id: string;
+  maxProducts: number | null;
+  maxUsers: number | null;
+  name: string;
+  priceCents: number;
 };
 
 export type AdminPlan = {
@@ -127,7 +164,9 @@ export const adminApi = {
     return apiFetch<AdminBillingResponse>("/admin/billing", { method: "GET" });
   },
   getCompanies() {
-    return apiFetch<AdminCompany[]>("/admin/companies", { method: "GET" });
+    return apiFetch<BackendAdminCompany[]>("/admin/companies", { method: "GET" }).then(
+      (companies) => companies.map(toAdminCompany),
+    );
   },
   getHealth() {
     return apiFetch<AdminHealth>("/admin/health", { method: "GET" });
@@ -154,3 +193,66 @@ export const adminApi = {
     });
   },
 };
+
+function toAdminCompany(company: BackendAdminCompany): AdminCompany {
+  const subscription = company.subscription;
+  const plan = subscription?.plan;
+
+  return {
+    currency: company.currency,
+    id: company.id,
+    lastActivity: toDateLabel(company.updatedAt ?? company.createdAt) ?? "Sin actividad",
+    legalName: company.legalName,
+    mrr: centsToCop(plan?.priceCents),
+    name: company.name,
+    nextBillingDate: toDateLabel(subscription?.currentPeriodEnd ?? subscription?.trialEndsAt),
+    nit: company.taxId ?? company.slug,
+    owner: {
+      email: "No disponible",
+      name: "Sin administrador asignado",
+    },
+    planId: plan?.id ?? "",
+    planName: plan?.name ?? "Sin plan",
+    productsCount: company.productsCount,
+    region: company.timezone ?? company.currency ?? "Sin región",
+    slug: company.slug,
+    status: toCompanyStatus(company),
+    taxId: company.taxId,
+    usage: {
+      transactions: company.productsCount,
+      transactionsLimit: plan?.maxProducts ?? null,
+      users: company.usersCount,
+      usersLimit: plan?.maxUsers ?? null,
+      warehouses: 0,
+      warehousesLimit: null,
+    },
+    usersCount: company.usersCount,
+  };
+}
+
+function toCompanyStatus(company: BackendAdminCompany): CompanyStatus {
+  if (!company.isActive) {
+    return "suspended";
+  }
+
+  switch (company.subscription?.status) {
+    case "ACTIVE":
+      return "active";
+    case "PAST_DUE":
+      return "past_due";
+    case "CANCELED":
+    case "EXPIRED":
+      return "cancelled";
+    case "TRIALING":
+    default:
+      return "trial";
+  }
+}
+
+function toDateLabel(value?: string | null): string | null {
+  return value ? value.slice(0, 10) : null;
+}
+
+function centsToCop(value?: number): number {
+  return value ? value / 100 : 0;
+}
