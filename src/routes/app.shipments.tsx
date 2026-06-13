@@ -27,7 +27,17 @@ export const Route = createFileRoute("/app/shipments")({
 function statusColor(status: DispatchResponse["status"]) {
   if (status === "APPROVED") return "var(--color-success)";
   if (status === "PENDING") return "var(--color-warning)";
+  if (status === "PICKING") return "var(--color-info)";
+  if (status === "DISPATCHED") return "var(--color-nuclear)";
   return "var(--color-destructive)";
+}
+
+function statusLabel(status: DispatchResponse["status"]) {
+  if (status === "PENDING") return "Pendiente";
+  if (status === "PICKING") return "En Picking";
+  if (status === "APPROVED") return "Aprobado";
+  if (status === "DISPATCHED") return "Despachado";
+  return "Rechazado";
 }
 
 function ShipmentsPage() {
@@ -126,7 +136,8 @@ function ShipmentsPage() {
                       </div>
                       {d.status === "APPROVED" && <PackageCheck className="size-5 text-success" />}
                       {d.status === "PENDING" && <AlertCircle className="size-5 text-warning animate-pulse" />}
-                      {(d.status === "PICKING") && <XCircle className="size-5 text-info" />}
+                      {d.status === "PICKING" && <Loader2 className="size-5 text-info animate-spin" />}
+                      {d.status === "DISPATCHED" && <Truck className="size-5 text-nuclear" />}
                     </div>
 
                     <div className="mt-4 space-y-2 text-sm">
@@ -172,7 +183,7 @@ function ShipmentsPage() {
                 <p className="font-mono text-xs text-muted-foreground">{selected.id.slice(0, 8).toUpperCase()}</p>
                 <SheetTitle>{selected.destination ?? "Sin destino"}</SheetTitle>
                 <SheetDescription>
-                  Estado: {selected.status === "PENDING" ? "Pendiente" : selected.status === "APPROVED" ? "Aprobado" : "Rechazado"}
+                  Estado: {statusLabel(selected.status)}
                   {" · "}{selected.lines.length} línea(s)
                 </SheetDescription>
               </SheetHeader>
