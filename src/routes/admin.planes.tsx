@@ -8,11 +8,22 @@ import {
   Rocket,
   SlidersHorizontal,
   Sparkles,
+  Trash2,
   UsersRound,
   type LucideIcon,
 } from "lucide-react";
 import { AdminTopbar } from "@/components/admin/admin-topbar";
 import { StatusBadge } from "@/components/admin/status-badge";
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+} from "@/components/ui/alert-dialog";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import {
@@ -48,19 +59,21 @@ export const Route = createFileRoute("/admin/planes")({
 type PlanStatus = "active" | "draft" | "legacy";
 
 type PlanFormState = {
-  enabledModules: string[];
+  billingInterval: string;
+  code: string;
+  currency: string;
+  description: string;
+  dLocalCountry: string;
+  dLocalPlanId: string;
+  dLocalPlanToken: string;
+  features: string[];
   id: string;
-  limits: {
-    transactions: string;
-    users: string;
-    warehouses: string;
-  };
+  isActive: boolean;
+  maxProducts: string;
+  maxUsers: string;
   name: string;
-  notes: string;
-  period: string;
   price: string;
-  status: PlanStatus;
-  tenantCount: number;
+  sortOrder: string;
 };
 
 type AdminPlan = BackendAdminPlan;
@@ -81,12 +94,13 @@ const availableModules = [
 function PlansPage() {
   const queryClient = useQueryClient();
   const [editingPlanId, setEditingPlanId] = useState<AdminPlan["id"] | null>(null);
+  const [deletingPlan, setDeletingPlan] = useState<AdminPlan | null>(null);
   const [isCreateOpen, setIsCreateOpen] = useState(false);
   const plansQuery = useQuery({
     queryFn: () => adminApi.getPlans(),
     queryKey: ["admin-plans"],
   });
-  const plans = plansQuery.data ?? [];
+  const plans = Array.isArray(plansQuery.data) ? plansQuery.data : [];
   const createPlanMutation = useMutation({
     mutationFn: (payload: Partial<AdminPlan>) => adminApi.createPlan(payload),
     onSuccess: () => {
@@ -100,11 +114,20 @@ function PlansPage() {
       queryClient.invalidateQueries({ queryKey: ["admin-plans"] });
     },
   });
+  const deletePlanMutation = useMutation({
+    mutationFn: (id: string) => adminApi.deletePlan(id),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["admin-plans"] });
+    },
+  });
 
-  const editingPlan = plans.find((plan) => plan.id === editingPlanId) ?? null;
-  const activePlans = plans.filter((plan) => plan.status === "active").length;
-  const totalTenants = plans.reduce((sum, plan) => sum + plan.tenantCount, 0);
-  const highestPrice = plans.reduce((max, plan) => Math.max(max, plan.price ?? 0), 0);
+  const editingPlan = plans.find((plan) => plan?.id === editingPlanId) ?? null;
+  const activePlans = plans.filter((plan) => getPlanStatus(plan) === "active").length;
+  const highestPrice = plans.reduce(
+    (max, plan) => Math.max(max, centsToUnit(getPlanPriceCents(plan)) ?? 0),
+    0,
+  );
+  const recommendedPlan = plans.find((plan) => getPlanStatus(plan) === "active") ?? plans[0];
 
   return (
     <>
@@ -123,19 +146,15 @@ function PlansPage() {
         <div className="mx-auto max-w-7xl space-y-6">
           <section className="grid grid-cols-2 gap-3 sm:gap-4 lg:grid-cols-4">
             <SummaryTile label="Planes activos" value={activePlans.toString()} icon={Rocket} />
+            <SummaryTile label="Planes totales" value={plans.length.toString()} icon={UsersRound} />
             <SummaryTile
-              label="Empresas asignadas"
-              value={totalTenants.toString()}
-              icon={UsersRound}
-            />
-            <SummaryTile
-              label="Plan recomendado"
-              value={plans.find((plan) => plan.recommended)?.name ?? "-"}
+              label="Plan destacado"
+              value={getPlanName(recommendedPlan)}
               icon={Sparkles}
             />
             <SummaryTile
               label="Ticket más alto"
-              value={`$${formatCop(highestPrice)}`}
+              value={highestPrice ? `$${formatCop(highestPrice)}` : "A medida"}
               icon={Crown}
             />
           </section>
@@ -149,32 +168,36 @@ function PlansPage() {
           ) : (
             <section className="grid gap-5 xl:grid-cols-[minmax(0,1.4fr)_minmax(320px,0.9fr)]">
               <div className="grid gap-5 lg:grid-cols-2">
-                {plans.map((plan) => {
-                  const statusTone = getStatusTone(plan.status);
+                {plans.map((plan, index) => {
+                  const status = getPlanStatus(plan);
+                  const statusTone = getStatusTone(status);
+                  const features = getPlanFeatures(plan);
+                  const price = centsToUnit(getPlanPriceCents(plan));
+                  const planId = getPlanId(plan, index);
 
                   return (
                     <Card
-                      key={plan.id}
+                      key={planId}
                       className={cn(
                         "border-border shadow-[var(--shadow-soft)]",
-                        plan.recommended && "border-nuclear/35 bg-nuclear/5",
+                        status === "active" && "border-nuclear/35 bg-nuclear/5",
                       )}
                     >
                       <CardHeader className="space-y-4">
                         <div className="flex items-start justify-between gap-3">
                           <div className="space-y-2">
                             <div className="flex flex-wrap items-center gap-2">
-                              <CardTitle>{plan.name}</CardTitle>
-                              {plan.recommended && (
+                              <CardTitle>{getPlanName(plan)}</CardTitle>
+                              {status === "active" && (
                                 <span className="rounded-full bg-nuclear px-2.5 py-1 text-[10px] font-semibold uppercase tracking-wider text-nuclear-foreground">
-                                  Recomendado
+                                  Activo
                                 </span>
                               )}
                             </div>
                             <div className="flex flex-wrap items-center gap-2">
                               <StatusBadge status={statusTone} />
                               <span className="text-xs text-muted-foreground">
-                                {plan.tenantCount} empresas usando este plan
+                                Código {getPlanCode(plan)}
                               </span>
                             </div>
                           </div>
@@ -185,57 +208,78 @@ function PlansPage() {
 
                         <div className="rounded-xl border border-border bg-background/80 p-4">
                           <p className="font-display text-3xl font-semibold tracking-tight text-foreground">
-                            {plan.price ? `$${formatCop(plan.price)}` : "A medida"}
+                            {price ? `$${formatCop(price)}` : "A medida"}
                           </p>
-                          <p className="mt-1 text-xs text-muted-foreground">COP / {plan.period}</p>
-                          <p className="mt-3 text-sm text-muted-foreground">{plan.notes}</p>
+                          <p className="mt-1 text-xs text-muted-foreground">
+                            {getPlanCurrency(plan)} / {getBillingLabel(plan)}
+                          </p>
+                          <p className="mt-3 text-sm text-muted-foreground">
+                            {getPlanDescription(plan)}
+                          </p>
                         </div>
                       </CardHeader>
 
                       <CardContent className="space-y-5">
                         <div className="grid gap-2 rounded-lg border border-border bg-muted/30 p-3 text-sm">
-                          <Limit label="Usuarios" value={plan.limits.users} />
-                          <Limit label="Bodegas" value={plan.limits.warehouses} />
-                          <Limit label="Transacciones" value={plan.limits.transactions} />
+                          <Limit label="Usuarios" value={getPlanLimit(plan, "users")} />
+                          <Limit label="Productos" value={getPlanLimit(plan, "products")} />
                         </div>
 
                         <div>
                           <p className="mb-3 text-xs font-semibold uppercase tracking-wider text-muted-foreground">
                             Módulos incluidos
                           </p>
-                          <ul className="grid gap-2 text-sm sm:grid-cols-2">
-                            {plan.enabledModules.map((module) => (
-                              <li
-                                key={module}
-                                className="flex items-start gap-2 rounded-md bg-muted/30 p-2"
-                              >
-                                <Check className="mt-0.5 size-4 shrink-0 text-success" />
-                                <span>{module}</span>
-                              </li>
-                            ))}
-                          </ul>
+                          {features.length ? (
+                            <ul className="grid gap-2 text-sm sm:grid-cols-2">
+                              {features.map((module) => (
+                                <li
+                                  key={module}
+                                  className="flex items-start gap-2 rounded-md bg-muted/30 p-2"
+                                >
+                                  <Check className="mt-0.5 size-4 shrink-0 text-success" />
+                                  <span>{module}</span>
+                                </li>
+                              ))}
+                            </ul>
+                          ) : (
+                            <p className="rounded-md bg-muted/30 p-3 text-sm text-muted-foreground">
+                              Sin módulos definidos.
+                            </p>
+                          )}
                         </div>
 
                         <div className="grid gap-3 rounded-lg border border-border bg-background/80 p-4 text-sm sm:grid-cols-2">
                           <ImpactMetric
-                            label="Impacto actual"
-                            value={`${plan.tenantCount} empresas`}
-                            helper="Cuentas que heredan este empaque base"
+                            label="Orden"
+                            value={formatNumber(plan?.sortOrder) ?? "-"}
+                            helper="Prioridad de presentación del catálogo"
                           />
                           <ImpactMetric
                             label="Tipo comercial"
-                            value={plan.price ? "Self-serve" : "Negociado"}
+                            value={price ? "Self-serve" : "Negociado"}
                             helper="Segmentación usada en ventas"
                           />
                         </div>
 
-                        <Button
-                          variant="outline"
-                          className="w-full"
-                          onClick={() => setEditingPlanId(plan.id)}
-                        >
-                          Editar plan
-                        </Button>
+                        <div className="grid gap-2 sm:grid-cols-2">
+                          <Button
+                            variant="outline"
+                            className="w-full"
+                            disabled={!plan?.id}
+                            onClick={() => setEditingPlanId(plan.id)}
+                          >
+                            Editar plan
+                          </Button>
+                          <Button
+                            variant="outline"
+                            className="w-full text-destructive hover:text-destructive"
+                            disabled={!plan?.id}
+                            onClick={() => setDeletingPlan(plan)}
+                          >
+                            <Trash2 className="size-4" />
+                            Eliminar
+                          </Button>
+                        </div>
                       </CardContent>
                     </Card>
                   );
@@ -253,31 +297,37 @@ function PlansPage() {
                         <tr>
                           <th className="px-3 py-2 font-medium text-muted-foreground">Plan</th>
                           <th className="px-3 py-2 font-medium text-muted-foreground">Precio</th>
-                          <th className="px-3 py-2 font-medium text-muted-foreground">Empresas</th>
+                          <th className="px-3 py-2 font-medium text-muted-foreground">Usuarios</th>
                         </tr>
                       </thead>
                       <tbody>
-                        {plans.map((plan) => (
-                          <tr key={plan.id} className="border-t border-border">
-                            <td className="px-3 py-3 font-medium text-foreground">{plan.name}</td>
-                            <td className="px-3 py-3 text-muted-foreground">
-                              {plan.price ? `$${formatCop(plan.price)}` : "A medida"}
-                            </td>
-                            <td className="px-3 py-3 text-muted-foreground">{plan.tenantCount}</td>
-                          </tr>
-                        ))}
+                        {plans.map((plan, index) => {
+                          const price = centsToUnit(getPlanPriceCents(plan));
+
+                          return (
+                            <tr key={getPlanId(plan, index)} className="border-t border-border">
+                              <td className="px-3 py-3 font-medium text-foreground">
+                                {getPlanName(plan)}
+                              </td>
+                              <td className="px-3 py-3 text-muted-foreground">
+                                {price ? `$${formatCop(price)}` : "A medida"}
+                              </td>
+                              <td className="px-3 py-3 text-muted-foreground">
+                                {formatLimit(getPlanLimit(plan, "users"))}
+                              </td>
+                            </tr>
+                          );
+                        })}
                       </tbody>
                     </table>
                   </div>
 
                   <div className="rounded-lg border border-dashed border-border bg-muted/20 p-4">
-                    <p className="text-sm font-semibold text-foreground">
-                      Qué debería controlar esta vista
-                    </p>
+                    <p className="text-sm font-semibold text-foreground">Qué controla esta vista</p>
                     <ul className="mt-3 space-y-2 text-sm text-muted-foreground">
                       <li>Precio, periodo y visibilidad comercial del catálogo.</li>
                       <li>Límites operativos que afectan onboarding y expansión.</li>
-                      <li>Impacto por cantidad de empresas antes de tocar un plan activo.</li>
+                      <li>Campos dLocal usados para sincronización de planes de pago.</li>
                     </ul>
                   </div>
                 </CardContent>
@@ -310,6 +360,8 @@ function PlansPage() {
           }
         }}
         onSave={async (nextPlan) => {
+          if (!nextPlan.id) return;
+
           await updatePlanMutation.mutateAsync({
             id: nextPlan.id,
             payload: nextPlan,
@@ -317,6 +369,40 @@ function PlansPage() {
           setEditingPlanId(null);
         }}
       />
+
+      <AlertDialog
+        open={Boolean(deletingPlan)}
+        onOpenChange={(open) => {
+          if (!open) {
+            setDeletingPlan(null);
+          }
+        }}
+      >
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>Eliminar plan</AlertDialogTitle>
+            <AlertDialogDescription>
+              Esta acción eliminará {getPlanName(deletingPlan)} del catálogo de planes.
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel disabled={deletePlanMutation.isPending}>Cancelar</AlertDialogCancel>
+            <AlertDialogAction
+              className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
+              disabled={deletePlanMutation.isPending || !deletingPlan?.id}
+              onClick={async (event) => {
+                event.preventDefault();
+                if (!deletingPlan?.id) return;
+
+                await deletePlanMutation.mutateAsync(deletingPlan.id);
+                setDeletingPlan(null);
+              }}
+            >
+              {deletePlanMutation.isPending ? "Eliminando..." : "Eliminar"}
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
     </>
   );
 }
@@ -361,11 +447,10 @@ function PlanDialog({
       <DialogContent className="max-h-[90vh] overflow-y-auto sm:max-w-3xl">
         <DialogHeader>
           <DialogTitle>
-            {mode === "create" ? "Nuevo plan" : `Editar plan ${plan?.name ?? ""}`}
+            {mode === "create" ? "Nuevo plan" : `Editar plan ${getPlanName(plan)}`}
           </DialogTitle>
           <DialogDescription>
-            Configura el catálogo comercial del frontend. Aquí solo modelamos la interfaz y el
-            impacto visible, no el backend.
+            Configura el catálogo comercial, límites y datos de integración del plan.
           </DialogDescription>
         </DialogHeader>
 
@@ -383,11 +468,23 @@ function PlanDialog({
             </Field>
 
             <Field>
+              <Label htmlFor="plan-code">Código</Label>
+              <Input
+                id="plan-code"
+                value={draft.code}
+                onChange={(event) =>
+                  setDraft((current) => ({ ...current, code: event.target.value }))
+                }
+                placeholder="basic, pro, enterprise"
+              />
+            </Field>
+
+            <Field>
               <Label htmlFor="plan-status">Estado del plan</Label>
               <Select
-                value={draft.status}
+                value={draft.isActive ? "active" : "draft"}
                 onValueChange={(value: PlanStatus) =>
-                  setDraft((current) => ({ ...current, status: value }))
+                  setDraft((current) => ({ ...current, isActive: value === "active" }))
                 }
               >
                 <SelectTrigger id="plan-status">
@@ -395,14 +492,13 @@ function PlanDialog({
                 </SelectTrigger>
                 <SelectContent>
                   <SelectItem value="active">Activo</SelectItem>
-                  <SelectItem value="draft">Borrador</SelectItem>
-                  <SelectItem value="legacy">Legacy</SelectItem>
+                  <SelectItem value="draft">Inactivo</SelectItem>
                 </SelectContent>
               </Select>
             </Field>
 
             <Field>
-              <Label htmlFor="plan-price">Precio mensual</Label>
+              <Label htmlFor="plan-price">Precio</Label>
               <Input
                 id="plan-price"
                 inputMode="numeric"
@@ -415,17 +511,32 @@ function PlanDialog({
             </Field>
 
             <Field>
+              <Label htmlFor="plan-currency">Moneda</Label>
+              <Input
+                id="plan-currency"
+                value={draft.currency}
+                onChange={(event) =>
+                  setDraft((current) => ({ ...current, currency: event.target.value }))
+                }
+                placeholder="COP"
+              />
+            </Field>
+
+            <Field>
               <Label htmlFor="plan-period">Periodo</Label>
               <Select
-                value={draft.period}
-                onValueChange={(value) => setDraft((current) => ({ ...current, period: value }))}
+                value={draft.billingInterval}
+                onValueChange={(value) =>
+                  setDraft((current) => ({ ...current, billingInterval: value }))
+                }
               >
                 <SelectTrigger id="plan-period">
                   <SelectValue />
                 </SelectTrigger>
                 <SelectContent>
-                  <SelectItem value="mes">Mes</SelectItem>
-                  <SelectItem value="contrato">Contrato</SelectItem>
+                  <SelectItem value="MONTHLY">Mensual</SelectItem>
+                  <SelectItem value="YEARLY">Anual</SelectItem>
+                  <SelectItem value="CONTRACT">Contrato</SelectItem>
                 </SelectContent>
               </Select>
             </Field>
@@ -437,49 +548,52 @@ function PlanDialog({
               <Input
                 id="plan-users"
                 inputMode="numeric"
-                value={draft.limits.users}
+                value={draft.maxUsers}
                 onChange={(event) =>
-                  setDraft((current) => ({
-                    ...current,
-                    limits: { ...current.limits, users: event.target.value },
-                  }))
+                  setDraft((current) => ({ ...current, maxUsers: event.target.value }))
                 }
                 placeholder="25 o ilimitado"
               />
             </Field>
 
             <Field>
-              <Label htmlFor="plan-warehouses">Bodegas</Label>
+              <Label htmlFor="plan-products">Productos</Label>
               <Input
-                id="plan-warehouses"
+                id="plan-products"
                 inputMode="numeric"
-                value={draft.limits.warehouses}
+                value={draft.maxProducts}
                 onChange={(event) =>
-                  setDraft((current) => ({
-                    ...current,
-                    limits: { ...current.limits, warehouses: event.target.value },
-                  }))
+                  setDraft((current) => ({ ...current, maxProducts: event.target.value }))
                 }
-                placeholder="5 o ilimitado"
+                placeholder="1000 o ilimitado"
               />
             </Field>
 
             <Field>
-              <Label htmlFor="plan-transactions">Transacciones</Label>
+              <Label htmlFor="plan-sort-order">Orden</Label>
               <Input
-                id="plan-transactions"
+                id="plan-sort-order"
                 inputMode="numeric"
-                value={draft.limits.transactions}
+                value={draft.sortOrder}
                 onChange={(event) =>
-                  setDraft((current) => ({
-                    ...current,
-                    limits: { ...current.limits, transactions: event.target.value },
-                  }))
+                  setDraft((current) => ({ ...current, sortOrder: event.target.value }))
                 }
-                placeholder="100000 o ilimitado"
+                placeholder="0"
               />
             </Field>
           </div>
+
+          <Field>
+            <Label htmlFor="plan-description">Descripción</Label>
+            <Input
+              id="plan-description"
+              value={draft.description}
+              onChange={(event) =>
+                setDraft((current) => ({ ...current, description: event.target.value }))
+              }
+              placeholder="Describe el uso comercial o contractual"
+            />
+          </Field>
 
           <div className="grid gap-3">
             <div>
@@ -490,7 +604,7 @@ function PlanDialog({
             </div>
             <div className="grid gap-3 rounded-lg border border-border bg-muted/20 p-4 sm:grid-cols-2">
               {availableModules.map((module) => {
-                const checked = draft.enabledModules.includes(module);
+                const checked = draft.features.includes(module);
 
                 return (
                   <label
@@ -502,9 +616,9 @@ function PlanDialog({
                       onCheckedChange={(nextChecked) =>
                         setDraft((current) => ({
                           ...current,
-                          enabledModules: nextChecked
-                            ? [...current.enabledModules, module]
-                            : current.enabledModules.filter((item) => item !== module),
+                          features: nextChecked
+                            ? [...current.features, module]
+                            : current.features.filter((item) => item !== module),
                         }))
                       }
                     />
@@ -513,33 +627,61 @@ function PlanDialog({
                 );
               })}
             </div>
-          </div>
-
-          <div className="grid gap-4 rounded-lg border border-border bg-muted/20 p-4 md:grid-cols-2">
             <Field>
-              <Label htmlFor="plan-tenants">Empresas afectadas</Label>
+              <Label htmlFor="plan-features">Features adicionales</Label>
               <Input
-                id="plan-tenants"
-                inputMode="numeric"
-                value={draft.tenantCount.toString()}
-                onChange={(event) =>
+                id="plan-features"
+                value={draft.features
+                  .filter((feature) => !availableModules.includes(feature))
+                  .join(", ")}
+                onChange={(event) => {
+                  const checkedFeatures = draft.features.filter((feature) =>
+                    availableModules.includes(feature),
+                  );
+                  const customFeatures = parseFeatureList(event.target.value);
+
                   setDraft((current) => ({
                     ...current,
-                    tenantCount: Number.parseInt(event.target.value || "0", 10) || 0,
-                  }))
+                    features: [...checkedFeatures, ...customFeatures],
+                  }));
+                }}
+                placeholder="Separadas por coma"
+              />
+            </Field>
+          </div>
+
+          <div className="grid gap-4 rounded-lg border border-border bg-muted/20 p-4 md:grid-cols-3">
+            <Field>
+              <Label htmlFor="plan-dlocal-token">dLocal token</Label>
+              <Input
+                id="plan-dlocal-token"
+                value={draft.dLocalPlanToken}
+                onChange={(event) =>
+                  setDraft((current) => ({ ...current, dLocalPlanToken: event.target.value }))
                 }
               />
             </Field>
 
             <Field>
-              <Label htmlFor="plan-notes">Nota operativa</Label>
+              <Label htmlFor="plan-dlocal-id">dLocal plan ID</Label>
               <Input
-                id="plan-notes"
-                value={draft.notes}
+                id="plan-dlocal-id"
+                value={draft.dLocalPlanId}
                 onChange={(event) =>
-                  setDraft((current) => ({ ...current, notes: event.target.value }))
+                  setDraft((current) => ({ ...current, dLocalPlanId: event.target.value }))
                 }
-                placeholder="Describe el uso comercial o contractual"
+              />
+            </Field>
+
+            <Field>
+              <Label htmlFor="plan-dlocal-country">dLocal país</Label>
+              <Input
+                id="plan-dlocal-country"
+                value={draft.dLocalCountry}
+                onChange={(event) =>
+                  setDraft((current) => ({ ...current, dLocalCountry: event.target.value }))
+                }
+                placeholder="CO"
               />
             </Field>
           </div>
@@ -558,30 +700,7 @@ function PlanDialog({
           </Button>
           <Button
             disabled={saving}
-            onClick={async () =>
-              await onSave({
-                enabledModules: draft.enabledModules,
-                id:
-                  mode === "edit" && plan
-                    ? plan.id
-                    : `custom_${draft.name.toLowerCase().replace(/\s+/g, "_")}`,
-                limits: {
-                  transactions: parseLimitValue(draft.limits.transactions),
-                  users: parseLimitValue(draft.limits.users),
-                  warehouses: parseLimitValue(draft.limits.warehouses),
-                },
-                name: draft.name.trim() || "Nuevo plan",
-                notes: draft.notes.trim() || "Sin nota operativa definida.",
-                period: draft.period.trim() || "mes",
-                price: parsePriceValue(draft.price),
-                recommended:
-                  mode === "edit" && plan
-                    ? plan.recommended
-                    : draft.name.toLowerCase().includes("pro"),
-                status: draft.status,
-                tenantCount: draft.tenantCount,
-              })
-            }
+            onClick={async () => await onSave(buildPlanPayload(mode, plan, draft))}
           >
             {saving ? "Guardando..." : mode === "create" ? "Crear plan" : "Guardar cambios"}
           </Button>
@@ -633,9 +752,7 @@ function Limit({ label, value }: { label: string; value: number | null }) {
   return (
     <div className="flex items-center justify-between gap-3">
       <span className="text-muted-foreground">{label}</span>
-      <span className="font-mono font-semibold text-foreground">
-        {value ? value.toLocaleString("es-CO") : "Ilimitado"}
-      </span>
+      <span className="font-mono font-semibold text-foreground">{formatLimit(value)}</span>
     </div>
   );
 }
@@ -650,44 +767,134 @@ function getStatusTone(status: PlanStatus) {
   return "blocked";
 }
 
+function getPlanId(plan: AdminPlan | null | undefined, index: number) {
+  return plan?.id ?? `plan-${index}`;
+}
+
+function getPlanName(plan: AdminPlan | null | undefined) {
+  return plan?.name?.trim() || "Plan sin nombre";
+}
+
+function getPlanCode(plan: AdminPlan | null | undefined) {
+  return plan?.code?.trim() || "sin-codigo";
+}
+
+function getPlanCurrency(plan: AdminPlan | null | undefined) {
+  return plan?.currency?.trim() || "COP";
+}
+
+function getPlanDescription(plan: AdminPlan | null | undefined) {
+  return plan?.description?.trim() || "Sin descripción definida.";
+}
+
+function getPlanPriceCents(plan: AdminPlan | null | undefined) {
+  return typeof plan?.priceCents === "number" ? plan.priceCents : null;
+}
+
+function getPlanLimit(plan: AdminPlan | null | undefined, limit: "products" | "users") {
+  const value = limit === "users" ? plan?.maxUsers : plan?.maxProducts;
+
+  return typeof value === "number" ? value : null;
+}
+
+function getPlanFeatures(plan: AdminPlan | null | undefined) {
+  if (!Array.isArray(plan?.features)) {
+    return [];
+  }
+
+  return plan.features
+    .filter((feature): feature is string => typeof feature === "string")
+    .map((feature) => feature.trim())
+    .filter(Boolean);
+}
+
+function getPlanStatus(plan: AdminPlan | null | undefined): PlanStatus {
+  return plan?.isActive === false ? "draft" : "active";
+}
+
+function getBillingLabel(plan: AdminPlan | null | undefined) {
+  const interval = plan?.billingInterval?.trim().toUpperCase();
+
+  if (interval === "MONTHLY") return "mes";
+  if (interval === "YEARLY") return "año";
+  if (interval === "CONTRACT") return "contrato";
+  return interval?.toLowerCase() || "mes";
+}
+
 function buildDraft(mode: "create" | "edit", plan: AdminPlan | null): PlanFormState {
   if (mode === "edit" && plan) {
     return {
-      enabledModules: plan.enabledModules,
+      billingInterval: plan.billingInterval ?? "MONTHLY",
+      code: plan.code ?? "",
+      currency: getPlanCurrency(plan),
+      description: plan.description ?? "",
+      dLocalCountry: plan.dLocalCountry ?? "",
+      dLocalPlanId: plan.dLocalPlanId ?? "",
+      dLocalPlanToken: plan.dLocalPlanToken ?? "",
+      features: getPlanFeatures(plan),
       id: plan.id,
-      limits: {
-        transactions: formatLimitValue(plan.limits.transactions),
-        users: formatLimitValue(plan.limits.users),
-        warehouses: formatLimitValue(plan.limits.warehouses),
-      },
-      name: plan.name,
-      notes: plan.notes,
-      period: plan.period,
-      price: plan.price?.toString() ?? "",
-      status: plan.status,
-      tenantCount: plan.tenantCount,
+      isActive: plan.isActive !== false,
+      maxProducts: formatLimitValue(plan.maxProducts),
+      maxUsers: formatLimitValue(plan.maxUsers),
+      name: plan.name ?? "",
+      price: centsToUnit(plan.priceCents)?.toString() ?? "",
+      sortOrder: formatNumber(plan.sortOrder) ?? "",
     };
   }
 
   return {
-    enabledModules: ["Kárdex", "Recepciones"],
+    billingInterval: "MONTHLY",
+    code: "",
+    currency: "COP",
+    description: "",
+    dLocalCountry: "",
+    dLocalPlanId: "",
+    dLocalPlanToken: "",
+    features: ["Kárdex", "Recepciones"],
     id: "custom_new",
-    limits: {
-      transactions: "",
-      users: "",
-      warehouses: "",
-    },
+    isActive: false,
+    maxProducts: "",
+    maxUsers: "",
     name: "",
-    notes: "",
-    period: "mes",
     price: "",
-    status: "draft",
-    tenantCount: 0,
+    sortOrder: "0",
   };
 }
 
-function formatLimitValue(value: number | null) {
-  return value === null ? "ilimitado" : value.toString();
+function buildPlanPayload(
+  mode: "create" | "edit",
+  plan: AdminPlan | null,
+  draft: PlanFormState,
+): AdminPlan {
+  return {
+    billingInterval: draft.billingInterval.trim() || "MONTHLY",
+    code: draft.code.trim() || slugify(draft.name || "plan"),
+    currency: draft.currency.trim() || "COP",
+    description: draft.description.trim() || null,
+    dLocalCountry: toNullableString(draft.dLocalCountry),
+    dLocalPlanId: toNullableString(draft.dLocalPlanId),
+    dLocalPlanToken: toNullableString(draft.dLocalPlanToken),
+    features: draft.features,
+    id: mode === "edit" && plan ? plan.id : `custom_${slugify(draft.name || "plan")}`,
+    isActive: draft.isActive,
+    maxProducts: parseLimitValue(draft.maxProducts),
+    maxUsers: parseLimitValue(draft.maxUsers),
+    name: draft.name.trim() || "Nuevo plan",
+    priceCents: parsePriceCents(draft.price),
+    sortOrder: parseIntegerValue(draft.sortOrder) ?? 0,
+  };
+}
+
+function formatLimitValue(value: number | null | undefined) {
+  return value === null || value === undefined ? "ilimitado" : value.toString();
+}
+
+function formatLimit(value: number | null) {
+  return value ? value.toLocaleString("es-CO") : "Ilimitado";
+}
+
+function formatNumber(value: number | null | undefined) {
+  return typeof value === "number" ? value.toLocaleString("es-CO") : null;
 }
 
 function parseLimitValue(value: string) {
@@ -700,9 +907,38 @@ function parseLimitValue(value: string) {
   return Number.parseInt(normalized.replace(/\D/g, ""), 10) || null;
 }
 
-function parsePriceValue(value: string) {
+function parseIntegerValue(value: string) {
   const numeric = Number.parseInt(value.replace(/\D/g, ""), 10);
   return Number.isNaN(numeric) ? null : numeric;
+}
+
+function parsePriceCents(value: string) {
+  const numeric = Number.parseInt(value.replace(/\D/g, ""), 10);
+  return Number.isNaN(numeric) ? null : numeric * 100;
+}
+
+function parseFeatureList(value: string) {
+  return value
+    .split(",")
+    .map((feature) => feature.trim())
+    .filter(Boolean);
+}
+
+function centsToUnit(value?: number | null) {
+  return typeof value === "number" ? value / 100 : null;
+}
+
+function toNullableString(value: string) {
+  const normalized = value.trim();
+  return normalized || null;
+}
+
+function slugify(value: string) {
+  return value
+    .trim()
+    .toLowerCase()
+    .replace(/[^a-z0-9]+/g, "_")
+    .replace(/^_+|_+$/g, "");
 }
 
 function PlansLoadingState() {

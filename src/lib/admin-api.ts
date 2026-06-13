@@ -86,20 +86,23 @@ type BackendAdminCompanyPlan = {
 };
 
 export type AdminPlan = {
-  enabledModules: string[];
   id: string;
-  limits: {
-    transactions: number | null;
-    users: number | null;
-    warehouses: number | null;
-  };
-  name: string;
-  notes: string;
-  period: string;
-  price: number | null;
-  recommended: boolean;
-  status: "active" | "draft" | "legacy";
-  tenantCount: number;
+  code?: string | null;
+  name?: string | null;
+  description?: string | null;
+  priceCents?: number | null;
+  currency?: string | null;
+  billingInterval?: string | null;
+  maxUsers?: number | null;
+  maxProducts?: number | null;
+  features?: string[] | null;
+  isActive?: boolean | null;
+  sortOrder?: number | null;
+  dLocalPlanToken?: string | null;
+  dLocalPlanId?: string | null;
+  dLocalCountry?: string | null;
+  createdAt?: string | null;
+  updatedAt?: string | null;
 };
 
 export type AdminSettings = Record<string, unknown>;
@@ -185,6 +188,9 @@ export const adminApi = {
       body: payload,
       method: "PATCH",
     });
+  },
+  deletePlan(id: string) {
+    return apiFetch<void>(`/admin/plans/${id}`, { method: "DELETE" });
   },
   updateSettings(payload: Record<string, unknown>) {
     return apiFetch<AdminSettings>("/admin/settings", {
