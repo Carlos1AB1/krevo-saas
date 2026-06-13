@@ -23,7 +23,10 @@ export default defineConfig(({ mode }) => {
     },
     plugins: [
       tanstackStart({
-        server: { entry: "server" },
+        server: { 
+          entry: "server",
+          preset: process.env.VERCEL ? "vercel" : undefined,
+        },
       }),
       tailwindcss(),
       react(),
