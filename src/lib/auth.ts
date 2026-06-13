@@ -72,13 +72,17 @@ export async function getCurrentUser(options: { forceRefresh?: boolean } = {}) {
 }
 
 export function logout() {
-  currentUserCache = null;
+  clearCurrentUserCache();
   clearSessionStorage();
 }
 
-function setCurrentUser(user: CurrentUser) {
+export function setCurrentUser(user: CurrentUser) {
   currentUserCache = user;
   setStoredUser(user);
+}
+
+export function clearCurrentUserCache() {
+  currentUserCache = null;
 }
 
 function extractTokens(response: LoginResponse) {

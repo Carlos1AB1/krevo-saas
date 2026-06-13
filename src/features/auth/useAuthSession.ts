@@ -1,6 +1,9 @@
 import { useEffect, useState } from "react";
 import { ApiError } from "@/lib/api";
-import { setStoredUser } from "@/lib/session";
+import {
+  clearCurrentUserCache,
+  setCurrentUser as setLibCurrentUser,
+} from "@/lib/auth";
 import { getMe, login, logout, refreshSession, register, type RegisterInput } from "./auth.api";
 import { clearTokens, getAccessToken, getRefreshToken, isAccessTokenExpired, saveTokens } from "./auth.storage";
 import type { AuthUser } from "./auth.types";
@@ -25,6 +28,7 @@ export function useAuthSession(): AuthSession {
     const accessToken = getAccessToken();
 
     if (!accessToken) {
+      clearCurrentUserCache();
       setUser(null);
       setIsLoading(false);
       return;
@@ -54,6 +58,7 @@ export function useAuthSession(): AuthSession {
         syncLibSessionUser(refreshedUser);
       } catch {
         clearTokens();
+        clearCurrentUserCache();
         setUser(null);
       }
     } finally {
@@ -77,6 +82,7 @@ export function useAuthSession(): AuthSession {
       return currentUser;
     } catch (error) {
       clearTokens();
+      clearCurrentUserCache();
       setUser(null);
       setError(getFriendlyError(error));
 
@@ -98,6 +104,7 @@ export function useAuthSession(): AuthSession {
       // Aunque falle el backend, la sesión local debe cerrarse.
     } finally {
       clearTokens();
+      clearCurrentUserCache();
       setUser(null);
     }
   }
@@ -118,6 +125,7 @@ export function useAuthSession(): AuthSession {
       return true;
     } catch (err) {
       clearTokens();
+      clearCurrentUserCache();
       setUser(null);
       setError(getFriendlyError(err));
       return false;
@@ -139,7 +147,7 @@ export function useAuthSession(): AuthSession {
 }
 
 function syncLibSessionUser(user: AuthUser): void {
-  setStoredUser({
+  setLibCurrentUser({
     email: user.email,
     id: user.id,
     isPlatformAdmin: user.isPlatformAdmin === true,

@@ -72,12 +72,7 @@ function LoginPage() {
         description: `Bienvenido de vuelta, ${values.email.split("@")[0]}.`,
       });
       navigate({
-        to:
-          search.redirect && search.redirect.startsWith("/")
-            ? search.redirect
-            : user.isPlatformAdmin
-              ? "/admin"
-              : "/app",
+        to: resolvePostLoginPath(user.isPlatformAdmin === true, search.redirect),
       });
     }
   };
@@ -215,4 +210,15 @@ function LoginPage() {
       </motion.div>
     </AuthShell>
   );
+}
+
+function resolvePostLoginPath(isPlatformAdmin: boolean, redirect?: string): "/admin" | "/app" | string {
+  const safeRedirect =
+    redirect && redirect.startsWith("/") && !redirect.startsWith("//") ? redirect : null;
+
+  if (isPlatformAdmin) {
+    return safeRedirect?.startsWith("/admin") ? safeRedirect : "/admin";
+  }
+
+  return safeRedirect?.startsWith("/app") ? safeRedirect : "/app";
 }
