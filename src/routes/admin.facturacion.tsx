@@ -1,4 +1,5 @@
 import { useMemo, useState } from "react";
+import { useQuery } from "@tanstack/react-query";
 import { createFileRoute } from "@tanstack/react-router";
 import { AlertTriangle, CreditCard, Download, Search, ShieldAlert, Wallet } from "lucide-react";
 import { AdminTopbar } from "@/components/admin/admin-topbar";
@@ -15,7 +16,8 @@ import {
   TableHeader,
   TableRow,
 } from "@/components/ui/table";
-import { companies, formatCop, invoices, type InvoiceRecord } from "@/lib/admin-mock";
+import { adminApi, type AdminBillingPaymentRecord } from "@/lib/admin-api";
+import { formatCop } from "@/lib/admin-mock";
 import { cn } from "@/lib/utils";
 
 export const Route = createFileRoute("/admin/facturacion")({
@@ -25,24 +27,32 @@ export const Route = createFileRoute("/admin/facturacion")({
   component: BillingAdminPage,
 });
 
-type BillingFilter = "all" | InvoiceRecord["status"];
+type BillingStatus = AdminBillingPaymentRecord["status"];
+type BillingFilter = "all" | BillingStatus;
+
+type InvoiceRow = {
+  id: string;
+  company: string;
+  plan: string;
+  amount: number;
+  status: BillingStatus;
+  date: string;
+  nextBillingDate: string | null;
+  owner: string;
+  region: string;
+};
 
 function BillingAdminPage() {
   const [searchQuery, setSearchQuery] = useState("");
   const [statusFilter, setStatusFilter] = useState<BillingFilter>("all");
+  const billingQuery = useQuery({
+    queryFn: () => adminApi.getBilling(),
+    queryKey: ["admin-billing"],
+  });
 
   const invoiceRows = useMemo(
-    () =>
-      invoices.map((invoice) => {
-        const company = companies.find((item) => item.name === invoice.company);
-        return {
-          ...invoice,
-          nextBillingDate: company?.nextBillingDate ?? null,
-          owner: company?.owner.name ?? "Sin administrador",
-          region: company?.region ?? "Sin región",
-        };
-      }),
-    [],
+    () => (billingQuery.data?.paymentRecords ?? []).map(toInvoiceRow),
+    [billingQuery.data?.paymentRecords],
   );
 
   const paidInvoices = invoiceRows.filter((invoice) => invoice.status === "paid");
@@ -144,7 +154,11 @@ function BillingAdminPage() {
                   </p>
                 </div>
 
-                {filteredInvoices.length > 0 ? (
+                {billingQuery.isLoading ? (
+                  <BillingLoadingState />
+                ) : billingQuery.isError ? (
+                  <BillingErrorState onRetry={() => billingQuery.refetch()} />
+                ) : filteredInvoices.length > 0 ? (
                   <>
                     <div className="mt-4 grid gap-3 md:hidden">
                       {filteredInvoices.map((invoice) => (
@@ -227,6 +241,7 @@ function BillingAdminPage() {
                   </>
                 ) : (
                   <EmptyBillingState
+                    hasRecords={invoiceRows.length > 0}
                     searchQuery={searchQuery}
                     statusFilter={statusFilter}
                     onClear={() => {
@@ -244,22 +259,44 @@ function BillingAdminPage() {
                   <CardTitle>Alertas del ciclo</CardTitle>
                 </CardHeader>
                 <CardContent className="space-y-3">
-                  {failedInvoices.map((invoice) => (
+                  {billingQuery.isLoading ? (
                     <AlertRow
-                      key={invoice.id}
-                      tone="danger"
-                      title={invoice.company}
-                      description={`Pago fallido por $${formatCop(invoice.amount)} en ${invoice.date}`}
-                    />
-                  ))}
-                  {pendingInvoices.map((invoice) => (
-                    <AlertRow
-                      key={invoice.id}
                       tone="warning"
-                      title={invoice.company}
-                      description={`Pendiente por conciliar ${invoice.id}`}
+                      title="Cargando ciclo"
+                      description="Consultando facturas reales del backend."
                     />
-                  ))}
+                  ) : billingQuery.isError ? (
+                    <AlertRow
+                      tone="danger"
+                      title="Historial no disponible"
+                      description="No se pudo cargar la informacion de cobros."
+                    />
+                  ) : failedInvoices.length + pendingInvoices.length > 0 ? (
+                    <>
+                      {failedInvoices.map((invoice) => (
+                        <AlertRow
+                          key={invoice.id}
+                          tone="danger"
+                          title={invoice.company}
+                          description={`Pago fallido por $${formatCop(invoice.amount)} en ${invoice.date}`}
+                        />
+                      ))}
+                      {pendingInvoices.map((invoice) => (
+                        <AlertRow
+                          key={invoice.id}
+                          tone="warning"
+                          title={invoice.company}
+                          description={`Pendiente por conciliar ${invoice.id}`}
+                        />
+                      ))}
+                    </>
+                  ) : (
+                    <AlertRow
+                      tone="warning"
+                      title="Sin alertas activas"
+                      description="No hay pagos fallidos o pendientes en el historial cargado."
+                    />
+                  )}
                 </CardContent>
               </Card>
 
@@ -380,10 +417,12 @@ function InfoPair({
 }
 
 function EmptyBillingState({
+  hasRecords,
   onClear,
   searchQuery,
   statusFilter,
 }: {
+  hasRecords: boolean;
   onClear: () => void;
   searchQuery: string;
   statusFilter: BillingFilter;
@@ -393,13 +432,46 @@ function EmptyBillingState({
       <div className="mx-auto flex size-10 items-center justify-center rounded-lg border border-border bg-background">
         <Search className="size-4 text-muted-foreground" />
       </div>
-      <p className="mt-4 text-sm font-semibold text-foreground">Sin resultados</p>
-      <p className="mx-auto mt-1 max-w-sm text-sm text-muted-foreground">
-        No encontramos registros para "{searchQuery.trim() || "el filtro actual"}" en{" "}
-        {getFilterLabel(statusFilter)}.
+      <p className="mt-4 text-sm font-semibold text-foreground">
+        {hasRecords ? "Sin resultados" : "Sin facturas registradas"}
       </p>
-      <Button variant="outline" size="sm" className="mt-4" onClick={onClear}>
-        Limpiar filtros
+      <p className="mx-auto mt-1 max-w-sm text-sm text-muted-foreground">
+        {hasRecords
+          ? `No encontramos registros para "${searchQuery.trim() || "el filtro actual"}" en ${getFilterLabel(statusFilter)}.`
+          : "Cuando se inicie un checkout, el intento aparecera aqui con su estado real."}
+      </p>
+      {hasRecords ? (
+        <Button variant="outline" size="sm" className="mt-4" onClick={onClear}>
+          Limpiar filtros
+        </Button>
+      ) : null}
+    </div>
+  );
+}
+
+function BillingLoadingState() {
+  return (
+    <div className="mt-4 space-y-3">
+      {Array.from({ length: 4 }).map((_, index) => (
+        <div key={index} className="h-16 rounded-lg border border-border bg-muted/30" />
+      ))}
+    </div>
+  );
+}
+
+function BillingErrorState({ onRetry }: { onRetry: () => void }) {
+  return (
+    <div className="mt-4 rounded-lg border border-destructive/30 bg-destructive/5 p-8 text-center">
+      <div className="mx-auto flex size-10 items-center justify-center rounded-lg border border-destructive/30 bg-background text-destructive">
+        <AlertTriangle className="size-4" />
+      </div>
+      <p className="mt-4 text-sm font-semibold text-foreground">No se pudo cargar facturacion</p>
+      <p className="mx-auto mt-1 max-w-sm text-sm text-muted-foreground">
+        El backend no respondio el historial real de cobros. Reintenta antes de tomar decisiones
+        financieras.
+      </p>
+      <Button variant="outline" size="sm" className="mt-4" onClick={onRetry}>
+        Reintentar
       </Button>
     </div>
   );
@@ -449,4 +521,26 @@ function normalizeSearch(
     .toLowerCase();
 
   return normalizedQuery.split(/\s+/).every((term) => target.includes(term));
+}
+
+function toInvoiceRow(record: AdminBillingPaymentRecord): InvoiceRow {
+  return {
+    id: record.id,
+    company: record.companyName,
+    plan: record.planName,
+    amount: centsToCopValue(record.priceCents),
+    status: record.status,
+    date: toDateLabel(record.createdAt),
+    nextBillingDate: record.currentPeriodEnd ? toDateLabel(record.currentPeriodEnd) : null,
+    owner: record.payerEmail ?? "Sin pagador registrado",
+    region: record.currency,
+  };
+}
+
+function centsToCopValue(value: number) {
+  return value / 100;
+}
+
+function toDateLabel(value: string) {
+  return value.slice(0, 10);
 }

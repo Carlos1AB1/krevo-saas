@@ -116,8 +116,23 @@ export type AdminBillingSubscription = {
   status?: string | null;
 } & Record<string, unknown>;
 
+export type AdminBillingPaymentRecord = {
+  id: string;
+  companyId: string;
+  companyName: string;
+  planName: string;
+  priceCents: number;
+  currency: string;
+  status: "paid" | "failed" | "pending";
+  payerEmail: string | null;
+  currentPeriodStart: string | null;
+  currentPeriodEnd: string | null;
+  createdAt: string;
+};
+
 export type AdminBillingResponse = {
   metrics: AdminBillingMetrics;
+  paymentRecords: AdminBillingPaymentRecord[];
   subscriptions: AdminBillingSubscription[];
   invoicesModeled: unknown;
 };
