@@ -94,11 +94,19 @@ function readableApiErrorMessage(status: number, payload: unknown) {
             Reflect.get(payload, "message"),
             Reflect.get(payload, "error"),
             Reflect.get(payload, "detail"),
-          ].find((value) => typeof value === "string" && value.trim().length > 0)
+          ].find(
+            (value) =>
+              (typeof value === "string" && value.trim().length > 0) ||
+              (Array.isArray(value) && value.length > 0),
+          )
         : null;
 
   if (typeof messageFromPayload === "string") {
     return messageFromPayload;
+  }
+
+  if (Array.isArray(messageFromPayload)) {
+    return messageFromPayload.filter((item) => typeof item === "string").join(" ");
   }
 
   switch (status) {
@@ -211,25 +219,25 @@ export async function apiRequest<T>(path: string, options: RequestInit = {}): Pr
 
 function translateErrorMessage(rawMessage: string, status: number): string {
   if (!rawMessage) return "No fue posible completar la operación.";
-  
+
   const msgMap: Record<string, string> = {
     // Auth & Users
     "Invalid credentials.": "Correo o contraseña incorrectos.",
     "User email already exists.": "Este correo ya está registrado en la plataforma.",
     "User not found.": "Usuario no encontrado.",
     "Invalid token.": "Tu sesión ha expirado. Inicia sesión de nuevo.",
-    
+
     // Inventory
     "Product SKU already exists in this tenant.": "Ya existe un producto con este SKU.",
     "Insufficient stock for this operation.": "No hay stock suficiente para esta operación.",
     "Insufficient stock to fulfill dispatch line.": "No hay stock suficiente para este despacho.",
-    
+
     // Default Prisma Unique Constraint
     "Unique constraint failed on the fields: (`email`)": "El correo ingresado ya existe.",
   };
 
   if (msgMap[rawMessage]) return msgMap[rawMessage];
-  
+
   if (rawMessage.includes("Unique constraint failed")) {
     return "Ya existe un registro con esta información en el sistema.";
   }

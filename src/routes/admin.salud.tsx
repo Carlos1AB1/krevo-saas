@@ -1,17 +1,19 @@
+import { useQuery } from "@tanstack/react-query";
 import { createFileRoute } from "@tanstack/react-router";
 import {
   Activity,
   AlertTriangle,
+  Clock,
   Database,
-  RadioTower,
+  HardDrive,
+  RefreshCw,
   Server,
-  ShieldAlert,
-  Webhook,
 } from "lucide-react";
 import { AdminTopbar } from "@/components/admin/admin-topbar";
 import { StatusBadge } from "@/components/admin/status-badge";
+import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-import { companies, usagePercent } from "@/lib/admin-mock";
+import { adminApi, type AdminHealth } from "@/lib/admin-api";
 import { cn } from "@/lib/utils";
 
 export const Route = createFileRoute("/admin/salud")({
@@ -21,61 +23,33 @@ export const Route = createFileRoute("/admin/salud")({
   component: PlatformHealthPage,
 });
 
-type ServiceHealth = {
-  icon: typeof Server;
-  latencyLabel: string;
-  name: string;
-  note: string;
-  status: "active" | "blocked" | "pending";
-};
-
-const services: ServiceHealth[] = [
-  {
-    name: "API principal",
-    status: "active",
-    latencyLabel: "184 ms",
-    note: "Tráfico estable y sin errores críticos",
-    icon: Server,
-  },
-  {
-    name: "PostgreSQL",
-    status: "active",
-    latencyLabel: "42 ms",
-    note: "Consultas dentro de ventana esperada",
-    icon: Database,
-  },
-  {
-    name: "Webhooks de cobro",
-    status: "pending",
-    latencyLabel: "3 fallos",
-    note: "Retrasos que afectan conciliación y dunning",
-    icon: Webhook,
-  },
-  {
-    name: "Canal de eventos",
-    status: "active",
-    latencyLabel: "Activo",
-    note: "Sin backlog operacional reportado",
-    icon: RadioTower,
-  },
-];
-
 function PlatformHealthPage() {
-  const serviceIssues = services.filter((service) => service.status !== "active").length;
-  const riskyTenants = companies
-    .map((company) => ({
-      ...company,
-      percent: usagePercent(company.usage.transactions, company.usage.transactionsLimit),
-    }))
-    .filter((company) => company.percent >= 80 || company.usage.transactionsLimit === null);
-  const degradedServices = services.filter((service) => service.status === "pending").length;
-  const platformStatus = degradedServices > 0 ? "pending" : "active";
+  const healthQuery = useQuery({
+    queryFn: () => adminApi.getHealth(),
+    queryKey: ["admin-health"],
+    refetchInterval: 30_000,
+  });
+  const health = healthQuery.data;
+  const databaseStatus = health?.database === "up" ? "active" : "blocked";
+  const platformStatus = health?.status === "ok" ? "active" : health ? "blocked" : "pending";
+  const memoryUsagePercent = getMemoryUsagePercent(health);
 
   return (
     <>
       <AdminTopbar
         title="Salud Plataforma"
-        description="Disponibilidad, degradación e impacto operativo sobre el SaaS completo."
+        description="Estado técnico protegido del backend SaaS, base de datos y runtime."
+        action={
+          <Button
+            variant="outline"
+            size="sm"
+            onClick={() => healthQuery.refetch()}
+            disabled={healthQuery.isFetching}
+          >
+            <RefreshCw className={cn("size-4", healthQuery.isFetching && "animate-spin")} />
+            <span className="hidden sm:inline">Actualizar</span>
+          </Button>
+        }
       />
 
       <main className="flex-1 overflow-auto bg-muted/20 p-4 sm:p-6">
@@ -83,173 +57,162 @@ function PlatformHealthPage() {
           <section className="grid gap-4 sm:grid-cols-2 xl:grid-cols-4">
             <HealthStat
               label="Estado general"
-              value={platformStatus === "active" ? "Operativo" : "Degradado"}
+              value={
+                healthQuery.isLoading
+                  ? "Consultando"
+                  : health?.status === "ok"
+                    ? "Operativo"
+                    : "Error"
+              }
               helper={
-                platformStatus === "active"
-                  ? "Servicios críticos dentro de parámetros"
-                  : "Hay componentes con impacto operativo"
+                health
+                  ? `Generado ${formatDateTime(health.generatedAt)}`
+                  : "Esperando respuesta del backend"
               }
               tone={platformStatus}
             />
             <HealthStat
-              label="Servicios degradados"
-              value={degradedServices.toString()}
-              helper="Requieren seguimiento técnico u operativo"
-              tone={degradedServices > 0 ? "pending" : "active"}
+              label="Base de datos"
+              value={health?.database === "up" ? "Disponible" : health ? "Caída" : "Pendiente"}
+              helper="Check directo con Prisma sobre PostgreSQL"
+              tone={databaseStatus}
             />
             <HealthStat
-              label="Tenants de alto consumo"
-              value={riskyTenants.length.toString()}
-              helper="Pueden amplificar latencia o carga"
-              tone={riskyTenants.length > 0 ? "pending" : "active"}
+              label="Uptime"
+              value={health ? formatDuration(health.uptimeSeconds) : "-"}
+              helper="Tiempo activo del proceso backend"
+              tone="active"
             />
             <HealthStat
-              label="Incidentes priorizados"
-              value={serviceIssues.toString()}
-              helper="Señales con afectación a cobro o acceso"
-              tone={serviceIssues > 0 ? "blocked" : "active"}
+              label="Heap usado"
+              value={health ? `${memoryUsagePercent}%` : "-"}
+              helper={
+                health
+                  ? `${formatBytes(health.memory.heapUsedBytes)} de ${formatBytes(health.memory.heapTotalBytes)}`
+                  : "Sin datos todavía"
+              }
+              tone={
+                memoryUsagePercent >= 85
+                  ? "blocked"
+                  : memoryUsagePercent >= 70
+                    ? "pending"
+                    : "active"
+              }
             />
           </section>
 
-          <section className="grid gap-6 xl:grid-cols-[1.2fr_0.8fr]">
+          {healthQuery.isError ? (
+            <Card className="border-destructive/30 bg-destructive/5 shadow-[var(--shadow-soft)]">
+              <CardContent className="flex flex-col gap-3 p-5 sm:flex-row sm:items-center sm:justify-between">
+                <div>
+                  <p className="font-semibold text-foreground">No fue posible cargar salud</p>
+                  <p className="mt-1 text-sm text-muted-foreground">
+                    Verifica la sesión SuperAdmin y que el backend esté disponible en
+                    `/api/v1/admin/health`.
+                  </p>
+                </div>
+                <Button variant="outline" size="sm" onClick={() => healthQuery.refetch()}>
+                  Reintentar
+                </Button>
+              </CardContent>
+            </Card>
+          ) : null}
+
+          <section className="grid gap-6 xl:grid-cols-[1.15fr_0.85fr]">
             <Card className="shadow-[var(--shadow-soft)]">
               <CardHeader>
-                <CardTitle>Servicios críticos</CardTitle>
+                <CardTitle>Componentes críticos</CardTitle>
               </CardHeader>
               <CardContent className="grid gap-4 md:grid-cols-2">
-                {services.map((service) => {
-                  const Icon = service.icon;
-
-                  return (
-                    <div
-                      key={service.name}
-                      className="rounded-xl border border-border bg-background/70 p-4"
-                    >
-                      <div className="flex items-start justify-between gap-3">
-                        <div className="flex items-start gap-3">
-                          <span className="grid size-10 place-items-center rounded-lg border border-border bg-background text-nuclear">
-                            <Icon className="size-4" />
-                          </span>
-                          <div>
-                            <p className="font-semibold text-foreground">{service.name}</p>
-                            <p className="mt-1 font-mono text-xs text-muted-foreground">
-                              {service.latencyLabel}
-                            </p>
-                          </div>
-                        </div>
-                        <StatusBadge status={service.status} />
-                      </div>
-                      <p className="mt-4 text-sm text-muted-foreground">{service.note}</p>
-                    </div>
-                  );
-                })}
+                <ServiceCard
+                  icon={Server}
+                  name="API Admin"
+                  status={platformStatus}
+                  metric={health?.status ?? "pendiente"}
+                  note="Respuesta autenticada del endpoint protegido de plataforma."
+                />
+                <ServiceCard
+                  icon={Database}
+                  name="PostgreSQL"
+                  status={databaseStatus}
+                  metric={health?.database ?? "pendiente"}
+                  note="Consulta `SELECT 1` ejecutada desde el servicio admin."
+                />
+                <ServiceCard
+                  icon={HardDrive}
+                  name="Memoria RSS"
+                  status={getRssStatus(health)}
+                  metric={health ? formatBytes(health.memory.rssBytes) : "pendiente"}
+                  note="Memoria residente del proceso Node.js."
+                />
+                <ServiceCard
+                  icon={Clock}
+                  name="Runtime"
+                  status="active"
+                  metric={health ? formatDuration(health.uptimeSeconds) : "pendiente"}
+                  note="Señal útil para detectar reinicios recientes."
+                />
               </CardContent>
             </Card>
 
-            <Card className="border-warning/25 bg-warning/5 shadow-[var(--shadow-soft)]">
-              <CardHeader>
-                <CardTitle className="flex items-center gap-2">
-                  <AlertTriangle className="size-4 text-warning" />
-                  Qué mirar primero
-                </CardTitle>
-              </CardHeader>
-              <CardContent className="space-y-3 text-sm text-muted-foreground">
-                <p>
-                  Si los webhooks de cobro se degradan, la facturación y la suspensión automática se
-                  desalinean. Para super admin ese es un problema de ingreso, no solo de tecnología.
-                </p>
-                <p>
-                  Los tenants con consumo alto importan porque pueden distorsionar la salud global
-                  de una plataforma compartida. La pregunta no es solo si están “grandes”, sino si
-                  afectan a otros.
-                </p>
-                <p>
-                  Un escéptico diría que una plataforma “operativa” con webhooks degradados no está
-                  realmente sana. Esa lectura es la correcta para esta vista.
-                </p>
-              </CardContent>
-            </Card>
-          </section>
-
-          <section className="grid gap-6 xl:grid-cols-[0.85fr_1.15fr]">
             <Card className="shadow-[var(--shadow-soft)]">
               <CardHeader>
-                <CardTitle>Riesgo operativo</CardTitle>
+                <CardTitle className="flex items-center gap-2">
+                  <Activity className="size-4 text-nuclear" />
+                  Lectura operativa
+                </CardTitle>
               </CardHeader>
               <CardContent className="space-y-3">
                 <RiskRow
-                  tone="pending"
-                  title="Cobro y conciliación"
-                  description="Webhooks con fallos afectan eventos de pago y reactivación."
+                  tone={platformStatus}
+                  title="Backend admin"
+                  description={
+                    health?.status === "ok"
+                      ? "La API protegida responde correctamente para usuarios platform admin."
+                      : "El panel debe tratar esta señal como incidente de plataforma."
+                  }
                 />
                 <RiskRow
-                  tone="active"
+                  tone={databaseStatus}
                   title="Base de datos"
-                  description="Latencia dentro de rango. Sin señal de saturación estructural."
+                  description={
+                    health?.database === "up"
+                      ? "Prisma pudo comunicarse con PostgreSQL."
+                      : "Sin base de datos, el resto de métricas admin no es confiable."
+                  }
                 />
                 <RiskRow
-                  tone={riskyTenants.length > 0 ? "pending" : "active"}
-                  title="Carga por tenants"
-                  description={`${riskyTenants.length} empresas requieren seguimiento por volumen o perfil Enterprise.`}
+                  tone={memoryUsagePercent >= 70 ? "pending" : "active"}
+                  title="Uso de memoria"
+                  description={
+                    health
+                      ? `Heap en ${memoryUsagePercent}%. RSS actual: ${formatBytes(health.memory.rssBytes)}.`
+                      : "Pendiente de respuesta del backend."
+                  }
                 />
-              </CardContent>
-            </Card>
-
-            <Card className="shadow-[var(--shadow-soft)]">
-              <CardHeader>
-                <CardTitle>Empresas con consumo intensivo</CardTitle>
-              </CardHeader>
-              <CardContent className="space-y-4">
-                {riskyTenants.map((company) => (
-                  <div key={company.id} className="space-y-2">
-                    <div className="flex items-center justify-between gap-3">
-                      <div>
-                        <p className="text-sm font-semibold text-foreground">{company.name}</p>
-                        <p className="text-xs text-muted-foreground">
-                          {company.usage.transactions.toLocaleString("es-CO")} transacciones este
-                          mes · {company.region}
-                        </p>
-                      </div>
-                      <span className="font-mono text-xs text-muted-foreground">
-                        {company.usage.transactionsLimit ? `${company.percent}%` : "Enterprise"}
-                      </span>
-                    </div>
-                    <div className="h-2 overflow-hidden rounded-full bg-muted">
-                      <div
-                        className={cn(
-                          "h-full rounded-full",
-                          company.usage.transactionsLimit ? "bg-warning" : "bg-nuclear",
-                        )}
-                        style={{
-                          width: `${company.usage.transactionsLimit ? company.percent : 68}%`,
-                        }}
-                      />
-                    </div>
-                  </div>
-                ))}
               </CardContent>
             </Card>
           </section>
 
           <Card className="shadow-[var(--shadow-soft)]">
             <CardHeader>
-              <CardTitle>Lectura correcta de esta pantalla</CardTitle>
+              <CardTitle>Memoria del proceso</CardTitle>
             </CardHeader>
             <CardContent className="grid gap-4 md:grid-cols-3">
-              <ReadingNote
-                icon={ShieldAlert}
-                title="Salud no es solo uptime"
-                description="Si el cobro falla o la suspensión automática se rompe, la plataforma está degradada para el negocio."
+              <MemoryMeter
+                label="Heap usado"
+                value={health?.memory.heapUsedBytes}
+                max={health?.memory.heapTotalBytes}
               />
-              <ReadingNote
-                icon={Activity}
-                title="El contexto importa"
-                description="Una sola empresa Enterprise puede tensionar la plataforma más que varias cuentas pequeñas."
+              <MemoryMeter
+                label="Heap total"
+                value={health?.memory.heapTotalBytes}
+                max={health?.memory.rssBytes}
               />
-              <ReadingNote
-                icon={AlertTriangle}
-                title="Prioridad por impacto"
-                description="Super admin debe ver primero qué afecta ingresos, acceso y experiencia cross-tenant."
+              <MemoryMeter
+                label="RSS"
+                value={health?.memory.rssBytes}
+                max={health?.memory.rssBytes}
               />
             </CardContent>
           </Card>
@@ -288,6 +251,38 @@ function HealthStat({
   );
 }
 
+function ServiceCard({
+  icon: Icon,
+  metric,
+  name,
+  note,
+  status,
+}: {
+  icon: typeof Server;
+  metric: string;
+  name: string;
+  note: string;
+  status: "active" | "blocked" | "pending";
+}) {
+  return (
+    <div className="rounded-lg border border-border bg-background/70 p-4">
+      <div className="flex items-start justify-between gap-3">
+        <div className="flex items-start gap-3">
+          <span className="grid size-10 place-items-center rounded-lg border border-border bg-background text-nuclear">
+            <Icon className="size-4" />
+          </span>
+          <div>
+            <p className="font-semibold text-foreground">{name}</p>
+            <p className="mt-1 font-mono text-xs text-muted-foreground">{metric}</p>
+          </div>
+        </div>
+        <StatusBadge status={status} />
+      </div>
+      <p className="mt-4 text-sm text-muted-foreground">{note}</p>
+    </div>
+  );
+}
+
 function RiskRow({
   description,
   title,
@@ -295,7 +290,7 @@ function RiskRow({
 }: {
   description: string;
   title: string;
-  tone: "active" | "pending";
+  tone: "active" | "blocked" | "pending";
 }) {
   return (
     <div className="rounded-lg border border-border bg-background/70 p-4">
@@ -305,6 +300,7 @@ function RiskRow({
             "grid size-8 shrink-0 place-items-center rounded-md",
             tone === "active" && "bg-success/10 text-success",
             tone === "pending" && "bg-warning/10 text-warning",
+            tone === "blocked" && "bg-destructive/10 text-destructive",
           )}
         >
           <AlertTriangle className="size-4" />
@@ -318,26 +314,78 @@ function RiskRow({
   );
 }
 
-function ReadingNote({
-  description,
-  icon: Icon,
-  title,
-}: {
-  description: string;
-  icon: typeof Activity;
-  title: string;
-}) {
+function MemoryMeter({ label, max, value }: { label: string; max?: number; value?: number }) {
+  const percent = value && max ? Math.min(100, Math.round((value / max) * 100)) : 0;
+
   return (
     <div className="rounded-lg border border-border bg-background/70 p-4">
-      <div className="flex items-start gap-3">
-        <div className="grid size-8 shrink-0 place-items-center rounded-md bg-muted/50 text-nuclear">
-          <Icon className="size-4" />
-        </div>
-        <div>
-          <p className="text-sm font-semibold text-foreground">{title}</p>
-          <p className="mt-1 text-sm text-muted-foreground">{description}</p>
-        </div>
+      <div className="flex items-center justify-between gap-3">
+        <p className="text-sm font-semibold text-foreground">{label}</p>
+        <span className="font-mono text-xs text-muted-foreground">
+          {value ? formatBytes(value) : "-"}
+        </span>
+      </div>
+      <div className="mt-3 h-2 overflow-hidden rounded-full bg-muted">
+        <div
+          className={cn(
+            "h-full rounded-full",
+            percent >= 85 ? "bg-destructive" : percent >= 70 ? "bg-warning" : "bg-success",
+          )}
+          style={{ width: `${percent}%` }}
+        />
       </div>
     </div>
   );
+}
+
+function getMemoryUsagePercent(health?: AdminHealth) {
+  if (!health || health.memory.heapTotalBytes <= 0) {
+    return 0;
+  }
+
+  return Math.round((health.memory.heapUsedBytes / health.memory.heapTotalBytes) * 100);
+}
+
+function getRssStatus(health?: AdminHealth): "active" | "blocked" | "pending" {
+  if (!health) {
+    return "pending";
+  }
+
+  return health.memory.rssBytes >= 512 * 1024 * 1024 ? "pending" : "active";
+}
+
+function formatBytes(value: number) {
+  const units = ["B", "KB", "MB", "GB"];
+  let size = value;
+  let unit = 0;
+
+  while (size >= 1024 && unit < units.length - 1) {
+    size /= 1024;
+    unit += 1;
+  }
+
+  return `${size.toFixed(unit === 0 ? 0 : 1)} ${units[unit]}`;
+}
+
+function formatDuration(seconds: number) {
+  const days = Math.floor(seconds / 86_400);
+  const hours = Math.floor((seconds % 86_400) / 3_600);
+  const minutes = Math.floor((seconds % 3_600) / 60);
+
+  if (days > 0) {
+    return `${days}d ${hours}h`;
+  }
+
+  if (hours > 0) {
+    return `${hours}h ${minutes}m`;
+  }
+
+  return `${minutes}m`;
+}
+
+function formatDateTime(value: string) {
+  return new Intl.DateTimeFormat("es-CO", {
+    dateStyle: "short",
+    timeStyle: "short",
+  }).format(new Date(value));
 }
