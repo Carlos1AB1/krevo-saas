@@ -1,12 +1,30 @@
 import { createFileRoute } from "@tanstack/react-router";
+import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { Mail, Plus, ShieldCheck, UserCog, UserPlus, UserX } from "lucide-react";
-import { useMemo, useState } from "react";
+import { useMemo, useState, type ReactNode } from "react";
+import { toast } from "sonner";
 import { AdminTopbar } from "@/components/admin/admin-topbar";
 import { StatusBadge } from "@/components/admin/status-badge";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogFooter,
+  DialogHeader,
+  DialogTitle,
+} from "@/components/ui/dialog";
 import { Input } from "@/components/ui/input";
+import { Label } from "@/components/ui/label";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
 import { Tabs, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import {
   Table,
@@ -16,10 +34,19 @@ import {
   TableHeader,
   TableRow,
 } from "@/components/ui/table";
-import { adminUsers, companies } from "@/lib/admin-mock";
+import { adminApi, type AdminUserPayload, type AdminUserRecord } from "@/lib/admin-api";
 import { cn } from "@/lib/utils";
 
 type UserFilter = "all" | "active" | "invited" | "blocked";
+type AdminUserForm = AdminUserPayload;
+
+const EMPTY_USER_FORM: AdminUserForm = {
+  email: "",
+  firstName: "",
+  lastName: "",
+  organizationId: "",
+  password: "",
+};
 
 export const Route = createFileRoute("/admin/usuarios")({
   head: () => ({
@@ -29,27 +56,83 @@ export const Route = createFileRoute("/admin/usuarios")({
 });
 
 function AdminUsersPage() {
+  const queryClient = useQueryClient();
   const [searchQuery, setSearchQuery] = useState("");
   const [statusFilter, setStatusFilter] = useState<UserFilter>("all");
+  const [isCreateOpen, setIsCreateOpen] = useState(false);
+  const [form, setForm] = useState<AdminUserForm>(EMPTY_USER_FORM);
+
+  const usersQuery = useQuery({
+    queryFn: () => adminApi.getAdminUsers(),
+    queryKey: ["admin-users"],
+  });
+  const companiesQuery = useQuery({
+    queryFn: () => adminApi.getCompanies(),
+    queryKey: ["admin-companies"],
+  });
+  const users = Array.isArray(usersQuery.data) ? usersQuery.data : [];
+  const companies = Array.isArray(companiesQuery.data) ? companiesQuery.data : [];
+
+  const createUserMutation = useMutation({
+    mutationFn: (payload: AdminUserPayload) => adminApi.createAdminUser(payload),
+    onSuccess: () => {
+      toast.success("Usuario con acceso global creado");
+      queryClient.invalidateQueries({ queryKey: ["admin-users"] });
+      setIsCreateOpen(false);
+      setForm(EMPTY_USER_FORM);
+    },
+    onError: (error: Error) => {
+      toast.error(error.message || "No fue posible crear el usuario");
+    },
+  });
 
   const filteredUsers = useMemo(() => {
     const term = normalizeSearch(searchQuery);
 
-    return adminUsers.filter((user) => {
+    return users.filter((user) => {
       const matchesStatus = statusFilter === "all" || user.status === statusFilter;
       const haystack = normalizeSearch(
-        [user.name, user.email, user.role, user.lastActive].join(" "),
+        [getUserName(user), user.email, user.role, user.lastActive, user.organizationName].join(
+          " ",
+        ),
       );
       const matchesSearch = !term || haystack.includes(term);
 
       return matchesStatus && matchesSearch;
     });
-  }, [searchQuery, statusFilter]);
+  }, [searchQuery, statusFilter, users]);
 
-  const activeUsers = adminUsers.filter((user) => user.status === "active").length;
-  const invitedUsers = adminUsers.filter((user) => user.status === "invited").length;
-  const blockedUsers = adminUsers.filter((user) => user.status === "blocked").length;
-  const ownerUsers = adminUsers.filter((user) => user.role === "Owner SaaS").length;
+  const activeUsers = users.filter((user) => user.status === "active").length;
+  const invitedUsers = users.filter((user) => user.status === "invited").length;
+  const blockedUsers = users.filter((user) => user.status === "blocked").length;
+  const ownerUsers = users.filter((user) => user.role === "Owner SaaS").length;
+
+  function submitCreateUser() {
+    if (!form.firstName.trim() || !form.lastName.trim()) {
+      toast.error("Nombre y apellido son obligatorios");
+      return;
+    }
+    if (!form.email.trim()) {
+      toast.error("El correo es obligatorio");
+      return;
+    }
+    if (!form.organizationId) {
+      toast.error("Selecciona una empresa base");
+      return;
+    }
+    if (form.password.length < 8) {
+      toast.error("La contraseña inicial debe tener al menos 8 caracteres");
+      return;
+    }
+
+    createUserMutation.mutate({
+      email: form.email.trim(),
+      firstName: form.firstName.trim(),
+      lastName: form.lastName.trim(),
+      organizationId: form.organizationId,
+      password: form.password,
+    });
+  }
 
   return (
     <>
@@ -57,7 +140,7 @@ function AdminUsersPage() {
         title="Usuarios"
         description="Gobierno del equipo interno con acceso a la consola global del SaaS."
         action={
-          <Button size="sm">
+          <Button size="sm" onClick={() => setIsCreateOpen(true)}>
             <Plus className="size-4" />
             <span className="hidden sm:inline">Invitar usuario</span>
           </Button>
@@ -104,8 +187,11 @@ function AdminUsersPage() {
                   <div>
                     <CardTitle>Accesos internos</CardTitle>
                     <p className="mt-1 text-sm text-muted-foreground">
-                      {filteredUsers.length} usuario{filteredUsers.length === 1 ? "" : "s"} visible
-                      {searchQuery ? ` para "${searchQuery}"` : ""}.
+                      {usersQuery.isLoading
+                        ? "Cargando usuarios..."
+                        : `${filteredUsers.length} usuario${
+                            filteredUsers.length === 1 ? "" : "s"
+                          } visible${searchQuery ? ` para "${searchQuery}"` : ""}.`}
                     </p>
                   </div>
 
@@ -135,39 +221,43 @@ function AdminUsersPage() {
 
               <CardContent className="p-4 pt-0 sm:p-6 sm:pt-0">
                 <div className="grid gap-3 sm:hidden">
-                  {filteredUsers.length ? (
+                  {usersQuery.isLoading ? (
+                    <UsersLoadingState />
+                  ) : usersQuery.isError ? (
+                    <UsersErrorState onRetry={() => usersQuery.refetch()} />
+                  ) : filteredUsers.length ? (
                     filteredUsers.map((user) => (
                       <article
-                        key={user.id}
+                        key={getUserId(user)}
                         className="rounded-lg border border-border bg-background/80 p-4"
                       >
                         <div className="flex items-start gap-3">
                           <div className="grid size-10 shrink-0 place-items-center rounded-full bg-nuclear/10 text-xs font-bold text-nuclear">
-                            {getInitials(user.name)}
+                            {getInitials(getUserName(user))}
                           </div>
                           <div className="min-w-0 flex-1">
                             <div className="flex items-start justify-between gap-2">
                               <div className="min-w-0">
                                 <p className="truncate font-semibold text-foreground">
-                                  {user.name}
+                                  {getUserName(user)}
                                 </p>
                                 <p className="mt-1 flex items-center gap-1 truncate text-xs text-muted-foreground">
                                   <Mail className="size-3 shrink-0" />
-                                  <span className="truncate">{user.email}</span>
+                                  <span className="truncate">{user.email ?? "Sin correo"}</span>
                                 </p>
                               </div>
-                              <StatusBadge status={user.status} />
+                              <StatusBadge status={getUserStatus(user)} />
                             </div>
 
                             <div className="mt-4 space-y-3 text-sm">
-                              <InfoPair label="Rol" value={user.role} />
-                              <InfoPair label="Última actividad" value={user.lastActive} />
+                              <InfoPair label="Rol" value={getUserRole(user)} />
+                              <InfoPair label="Última actividad" value={getLastActive(user)} />
                               <InfoPair
                                 label="Acceso"
                                 value={
-                                  user.status === "invited"
+                                  getUserStatus(user) === "invited"
                                     ? "Invitación enviada, sin acceso efectivo."
-                                    : user.status === "blocked"
+                                    : getUserStatus(user) === "blocked"
                                       ? "Acceso revocado temporalmente."
                                       : "Consola global habilitada."
                                 }
@@ -195,27 +285,41 @@ function AdminUsersPage() {
                         </TableRow>
                       </TableHeader>
                       <TableBody>
-                        {filteredUsers.length ? (
+                        {usersQuery.isLoading ? (
+                          <TableRow>
+                            <TableCell colSpan={5} className="px-4 py-10">
+                              <UsersLoadingState />
+                            </TableCell>
+                          </TableRow>
+                        ) : usersQuery.isError ? (
+                          <TableRow>
+                            <TableCell colSpan={5} className="px-4 py-10">
+                              <UsersErrorState onRetry={() => usersQuery.refetch()} />
+                            </TableCell>
+                          </TableRow>
+                        ) : filteredUsers.length ? (
                           filteredUsers.map((user) => (
-                            <TableRow key={user.id}>
+                            <TableRow key={getUserId(user)}>
                               <TableCell className="px-4 py-4">
                                 <div className="flex items-center gap-3">
                                   <div className="grid size-9 shrink-0 place-items-center rounded-full bg-nuclear/10 text-xs font-bold text-nuclear">
-                                    {getInitials(user.name)}
+                                    {getInitials(getUserName(user))}
                                   </div>
                                   <div>
-                                    <p className="font-medium text-foreground">{user.name}</p>
+                                    <p className="font-medium text-foreground">
+                                      {getUserName(user)}
+                                    </p>
                                     <p className="flex items-center gap-1 text-xs text-muted-foreground">
                                       <Mail className="size-3" />
-                                      {user.email}
+                                      {user.email ?? "Sin correo"}
                                     </p>
                                   </div>
                                 </div>
                               </TableCell>
                               <TableCell>
                                 <div className="flex flex-wrap items-center gap-2">
-                                  <span>{user.role}</span>
-                                  {user.role === "Owner SaaS" ? (
+                                  <span>{getUserRole(user)}</span>
+                                  {getUserRole(user) === "Owner SaaS" ? (
                                     <Badge variant="secondary" className="text-[10px] uppercase">
                                       Control total
                                     </Badge>
@@ -223,27 +327,27 @@ function AdminUsersPage() {
                                 </div>
                               </TableCell>
                               <TableCell>
-                                <StatusBadge status={user.status} />
+                                <StatusBadge status={getUserStatus(user)} />
                               </TableCell>
                               <TableCell className="text-xs text-muted-foreground">
-                                {user.lastActive}
+                                {getLastActive(user)}
                               </TableCell>
                               <TableCell>
                                 <span
                                   className={cn(
                                     "inline-flex items-center gap-1 rounded-md px-2 py-1 text-xs",
-                                    user.status === "active" &&
+                                    getUserStatus(user) === "active" &&
                                       "bg-success/10 text-success ring-1 ring-success/15",
-                                    user.status === "invited" &&
+                                    getUserStatus(user) === "invited" &&
                                       "bg-info/10 text-info ring-1 ring-info/15",
-                                    user.status === "blocked" &&
+                                    getUserStatus(user) === "blocked" &&
                                       "bg-destructive/10 text-destructive ring-1 ring-destructive/15",
                                   )}
                                 >
                                   <ShieldCheck className="size-3" />
-                                  {user.status === "invited"
+                                  {getUserStatus(user) === "invited"
                                     ? "Pendiente"
-                                    : user.status === "blocked"
+                                    : getUserStatus(user) === "blocked"
                                       ? "Bloqueado"
                                       : "Consola global"}
                                 </span>
@@ -277,8 +381,8 @@ function AdminUsersPage() {
                   />
                   <ReadingNote
                     tone="warning"
-                    title="Invitaciones abiertas"
-                    body="Invitar sin fecha de expiración o seguimiento genera superficie innecesaria de acceso."
+                    title="Alta con contraseña inicial"
+                    body="Esta versión no envía correos: crea el acceso global y exige entregar la contraseña por un canal controlado."
                   />
                   <ReadingNote
                     tone="info"
@@ -307,6 +411,105 @@ function AdminUsersPage() {
           </section>
         </div>
       </main>
+
+      <Dialog open={isCreateOpen} onOpenChange={setIsCreateOpen}>
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle>Invitar usuario interno</DialogTitle>
+            <DialogDescription>
+              Crea un usuario activo con acceso a la consola global. No se enviará correo
+              automático.
+            </DialogDescription>
+          </DialogHeader>
+
+          <div className="grid gap-4 py-2">
+            <div className="grid gap-2 sm:grid-cols-2">
+              <Field label="Nombre" id="admin-first-name">
+                <Input
+                  id="admin-first-name"
+                  value={form.firstName}
+                  onChange={(event) =>
+                    setForm((current) => ({ ...current, firstName: event.target.value }))
+                  }
+                />
+              </Field>
+              <Field label="Apellido" id="admin-last-name">
+                <Input
+                  id="admin-last-name"
+                  value={form.lastName}
+                  onChange={(event) =>
+                    setForm((current) => ({ ...current, lastName: event.target.value }))
+                  }
+                />
+              </Field>
+            </div>
+
+            <Field label="Correo" id="admin-email">
+              <Input
+                id="admin-email"
+                type="email"
+                value={form.email}
+                onChange={(event) =>
+                  setForm((current) => ({ ...current, email: event.target.value }))
+                }
+              />
+            </Field>
+
+            <Field label="Empresa base" id="admin-company">
+              <Select
+                value={form.organizationId}
+                onValueChange={(organizationId) =>
+                  setForm((current) => ({ ...current, organizationId }))
+                }
+              >
+                <SelectTrigger id="admin-company">
+                  <SelectValue
+                    placeholder={
+                      companiesQuery.isLoading ? "Cargando empresas..." : "Selecciona empresa"
+                    }
+                  />
+                </SelectTrigger>
+                <SelectContent>
+                  {companies.map((company) => (
+                    <SelectItem key={company.id} value={company.id}>
+                      {company.name}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            </Field>
+
+            <Field label="Contraseña inicial" id="admin-password">
+              <Input
+                id="admin-password"
+                type="password"
+                value={form.password}
+                onChange={(event) =>
+                  setForm((current) => ({ ...current, password: event.target.value }))
+                }
+              />
+            </Field>
+          </div>
+
+          <DialogFooter>
+            <Button
+              variant="outline"
+              onClick={() => {
+                setIsCreateOpen(false);
+                setForm(EMPTY_USER_FORM);
+              }}
+            >
+              Cancelar
+            </Button>
+            <Button
+              onClick={submitCreateUser}
+              disabled={createUserMutation.isPending || companiesQuery.isLoading}
+            >
+              {createUserMutation.isPending ? "Creando..." : "Crear acceso"}
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
     </>
   );
 }
@@ -359,6 +562,38 @@ function InfoPair({ label, value }: { label: string; value: string }) {
   );
 }
 
+function Field({ children, id, label }: { children: ReactNode; id: string; label: string }) {
+  return (
+    <div className="space-y-2">
+      <Label htmlFor={id}>{label}</Label>
+      {children}
+    </div>
+  );
+}
+
+function UsersLoadingState() {
+  return (
+    <div className="rounded-lg border border-dashed border-border bg-background/60 px-4 py-10 text-center">
+      <p className="font-medium text-foreground">Cargando usuarios</p>
+      <p className="mt-1 text-sm text-muted-foreground">Consultando accesos internos reales.</p>
+    </div>
+  );
+}
+
+function UsersErrorState({ onRetry }: { onRetry: () => void }) {
+  return (
+    <div className="rounded-lg border border-dashed border-destructive/30 bg-destructive/5 px-4 py-10 text-center">
+      <p className="font-medium text-foreground">No fue posible cargar usuarios</p>
+      <p className="mt-1 text-sm text-muted-foreground">
+        Verifica la sesión SuperAdmin y la disponibilidad del backend.
+      </p>
+      <Button variant="outline" size="sm" className="mt-4" onClick={onRetry}>
+        Reintentar
+      </Button>
+    </div>
+  );
+}
+
 function ReadingNote({
   title,
   body,
@@ -400,6 +635,37 @@ function getInitials(name: string) {
     .map((part) => part[0])
     .slice(0, 2)
     .join("");
+}
+
+function getUserId(user: AdminUserRecord) {
+  return user.id ?? `${user.email ?? "admin"}-${getUserName(user)}`;
+}
+
+function getUserName(user: AdminUserRecord) {
+  const fullName = user.name?.trim();
+
+  if (fullName) {
+    return fullName;
+  }
+
+  const derivedName = [user.firstName, user.lastName].filter(Boolean).join(" ").trim();
+  return derivedName || user.email || "Usuario sin nombre";
+}
+
+function getUserRole(user: AdminUserRecord) {
+  return user.role || user.roles?.[0] || "Owner SaaS";
+}
+
+function getUserStatus(user: AdminUserRecord): UserFilter {
+  if (user.status === "invited" || user.status === "blocked") {
+    return user.status;
+  }
+
+  return "active";
+}
+
+function getLastActive(user: AdminUserRecord) {
+  return user.lastActive || "Sin actividad registrada";
 }
 
 function normalizeSearch(value: string) {
