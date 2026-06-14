@@ -169,6 +169,17 @@ export type AdminAuditResponse = {
   totalPages: number;
 };
 
+export type AdminAuditQuery = {
+  action?: string;
+  from?: string;
+  limit?: number;
+  module?: string;
+  page?: number;
+  severity?: string;
+  to?: string;
+  userId?: string;
+};
+
 export type AdminHealth = Record<string, unknown>;
 export type AdminUserRecord = {
   id?: string;
@@ -209,8 +220,17 @@ export const adminApi = {
       method: "POST",
     });
   },
-  getAudit() {
-    return apiFetch<AdminAuditResponse>("/admin/audit", { method: "GET" });
+  getAudit(params?: AdminAuditQuery) {
+    const qs = new URLSearchParams();
+
+    Object.entries(params ?? {}).forEach(([key, value]) => {
+      if (value !== undefined && value !== null && value !== "") {
+        qs.set(key, String(value));
+      }
+    });
+
+    const suffix = qs.toString() ? `?${qs.toString()}` : "";
+    return apiFetch<AdminAuditResponse>(`/admin/audit${suffix}`, { method: "GET" });
   },
   getBilling() {
     return apiFetch<AdminBillingResponse>("/admin/billing", { method: "GET" });

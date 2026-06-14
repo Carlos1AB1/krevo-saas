@@ -48,6 +48,8 @@ const EMPTY_USER_FORM: AdminUserForm = {
   password: "",
 };
 
+const INITIAL_PASSWORD_PATTERN = /^(?=.*[a-z])(?=.*[A-Z])(?=.*\d)(?=.*[^A-Za-z\d]).{8,}$/;
+
 export const Route = createFileRoute("/admin/usuarios")({
   head: () => ({
     meta: [{ title: "Usuarios · SuperAdmin Krevo" }],
@@ -108,8 +110,8 @@ function AdminUsersPage() {
   const ownerUsers = users.filter((user) => user.role === "Owner SaaS").length;
 
   function submitCreateUser() {
-    if (!form.firstName.trim() || !form.lastName.trim()) {
-      toast.error("Nombre y apellido son obligatorios");
+    if (form.firstName.trim().length < 2 || form.lastName.trim().length < 2) {
+      toast.error("Nombre y apellido deben tener al menos 2 caracteres");
       return;
     }
     if (!form.email.trim()) {
@@ -120,8 +122,10 @@ function AdminUsersPage() {
       toast.error("Selecciona una empresa base");
       return;
     }
-    if (form.password.length < 8) {
-      toast.error("La contraseña inicial debe tener al menos 8 caracteres");
+    if (!INITIAL_PASSWORD_PATTERN.test(form.password)) {
+      toast.error(
+        "La contraseña debe tener mínimo 8 caracteres, mayúscula, minúscula, número y símbolo",
+      );
       return;
     }
 
@@ -488,6 +492,9 @@ function AdminUsersPage() {
                   setForm((current) => ({ ...current, password: event.target.value }))
                 }
               />
+              <p className="text-xs text-muted-foreground">
+                Mínimo 8 caracteres con mayúscula, minúscula, número y símbolo.
+              </p>
             </Field>
           </div>
 
