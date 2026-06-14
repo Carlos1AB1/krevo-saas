@@ -95,14 +95,28 @@ export type AdminPlan = {
   billingInterval?: string | null;
   maxUsers?: number | null;
   maxProducts?: number | null;
-  features?: string[] | null;
+  features?: Record<string, unknown> | null;
   isActive?: boolean | null;
   sortOrder?: number | null;
   dLocalPlanToken?: string | null;
-  dLocalPlanId?: string | null;
+  dLocalPlanId?: number | null;
   dLocalCountry?: string | null;
   createdAt?: string | null;
   updatedAt?: string | null;
+};
+
+export type AdminPlanPayload = {
+  billingInterval?: string;
+  code: string;
+  currency?: string;
+  description?: string | null;
+  features?: Record<string, unknown> | null;
+  isActive?: boolean;
+  maxProducts?: number | null;
+  maxUsers?: number | null;
+  name: string;
+  priceCents: number;
+  sortOrder?: number;
 };
 
 export type AdminSettings = Record<string, unknown>;
@@ -166,7 +180,7 @@ export type AdminUserRecord = {
 } & Record<string, unknown>;
 
 export const adminApi = {
-  createPlan(payload: Partial<AdminPlan>) {
+  createPlan(payload: AdminPlanPayload) {
     return apiFetch<AdminPlan>("/admin/plans", {
       body: payload,
       method: "POST",
@@ -198,7 +212,7 @@ export const adminApi = {
   getSettings() {
     return apiFetch<AdminSettings>("/admin/settings", { method: "GET" });
   },
-  updatePlan(id: string, payload: Partial<AdminPlan>) {
+  updatePlan(id: string, payload: Partial<AdminPlanPayload>) {
     return apiFetch<AdminPlan>(`/admin/plans/${id}`, {
       body: payload,
       method: "PATCH",

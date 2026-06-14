@@ -45,7 +45,11 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 import { Checkbox } from "@/components/ui/checkbox";
-import { adminApi, type AdminPlan as BackendAdminPlan } from "@/lib/admin-api";
+import {
+  adminApi,
+  type AdminPlan as BackendAdminPlan,
+  type AdminPlanPayload,
+} from "@/lib/admin-api";
 import { formatCop } from "@/lib/admin-mock";
 import { cn } from "@/lib/utils";
 
@@ -102,13 +106,13 @@ function PlansPage() {
   });
   const plans = Array.isArray(plansQuery.data) ? plansQuery.data : [];
   const createPlanMutation = useMutation({
-    mutationFn: (payload: Partial<AdminPlan>) => adminApi.createPlan(payload),
+    mutationFn: (payload: AdminPlanPayload) => adminApi.createPlan(payload),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["admin-plans"] });
     },
   });
   const updatePlanMutation = useMutation({
-    mutationFn: ({ id, payload }: { id: string; payload: Partial<AdminPlan> }) =>
+    mutationFn: ({ id, payload }: { id: string; payload: Partial<AdminPlanPayload> }) =>
       adminApi.updatePlan(id, payload),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["admin-plans"] });
@@ -359,12 +363,12 @@ function PlansPage() {
             setEditingPlanId(null);
           }
         }}
-        onSave={async (nextPlan) => {
-          if (!nextPlan.id) return;
+        onSave={async (payload) => {
+          if (!editingPlan?.id) return;
 
           await updatePlanMutation.mutateAsync({
-            id: nextPlan.id,
-            payload: nextPlan,
+            id: editingPlan.id,
+            payload,
           });
           setEditingPlanId(null);
         }}
@@ -417,7 +421,7 @@ function PlanDialog({
 }: {
   mode: "create" | "edit";
   onOpenChange: (open: boolean) => void;
-  onSave: (plan: AdminPlan) => Promise<void>;
+  onSave: (payload: AdminPlanPayload) => Promise<void>;
   open: boolean;
   plan: AdminPlan | null;
   saving: boolean;
@@ -698,10 +702,7 @@ function PlanDialog({
           >
             Cancelar
           </Button>
-          <Button
-            disabled={saving}
-            onClick={async () => await onSave(buildPlanPayload(mode, plan, draft))}
-          >
+          <Button disabled={saving} onClick={async () => await onSave(buildPlanPayload(draft))}>
             {saving ? "Guardando..." : mode === "create" ? "Crear plan" : "Guardar cambios"}
           </Button>
         </DialogFooter>
@@ -798,11 +799,13 @@ function getPlanLimit(plan: AdminPlan | null | undefined, limit: "products" | "u
 }
 
 function getPlanFeatures(plan: AdminPlan | null | undefined) {
-  if (!Array.isArray(plan?.features)) {
+  const items = plan?.features?.items;
+
+  if (!Array.isArray(items)) {
     return [];
   }
 
-  return plan.features
+  return items
     .filter((feature): feature is string => typeof feature === "string")
     .map((feature) => feature.trim())
     .filter(Boolean);
@@ -829,7 +832,7 @@ function buildDraft(mode: "create" | "edit", plan: AdminPlan | null): PlanFormSt
       currency: getPlanCurrency(plan),
       description: plan.description ?? "",
       dLocalCountry: plan.dLocalCountry ?? "",
-      dLocalPlanId: plan.dLocalPlanId ?? "",
+      dLocalPlanId: plan.dLocalPlanId?.toString() ?? "",
       dLocalPlanToken: plan.dLocalPlanToken ?? "",
       features: getPlanFeatures(plan),
       id: plan.id,
@@ -861,21 +864,13 @@ function buildDraft(mode: "create" | "edit", plan: AdminPlan | null): PlanFormSt
   };
 }
 
-function buildPlanPayload(
-  mode: "create" | "edit",
-  plan: AdminPlan | null,
-  draft: PlanFormState,
-): AdminPlan {
+function buildPlanPayload(draft: PlanFormState): AdminPlanPayload {
   return {
     billingInterval: draft.billingInterval.trim() || "MONTHLY",
     code: draft.code.trim() || slugify(draft.name || "plan"),
     currency: draft.currency.trim() || "COP",
     description: draft.description.trim() || null,
-    dLocalCountry: toNullableString(draft.dLocalCountry),
-    dLocalPlanId: toNullableString(draft.dLocalPlanId),
-    dLocalPlanToken: toNullableString(draft.dLocalPlanToken),
-    features: draft.features,
-    id: mode === "edit" && plan ? plan.id : `custom_${slugify(draft.name || "plan")}`,
+    features: draft.features.length ? { items: draft.features } : null,
     isActive: draft.isActive,
     maxProducts: parseLimitValue(draft.maxProducts),
     maxUsers: parseLimitValue(draft.maxUsers),
@@ -926,11 +921,6 @@ function parseFeatureList(value: string) {
 
 function centsToUnit(value?: number | null) {
   return typeof value === "number" ? value / 100 : null;
-}
-
-function toNullableString(value: string) {
-  const normalized = value.trim();
-  return normalized || null;
 }
 
 function slugify(value: string) {
