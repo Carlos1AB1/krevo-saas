@@ -1,6 +1,7 @@
 import {
   Activity,
   Building2,
+  ContactRound,
   CreditCard,
   Gauge,
   ScrollText,
@@ -24,6 +25,7 @@ export const adminGroups: { label: string; items: AdminNavItem[] }[] = [
       { to: "/admin/empresas", label: "Empresas", icon: Building2, badge: "5" },
       { to: "/admin/planes", label: "Planes", icon: SlidersHorizontal },
       { to: "/admin/facturacion", label: "Facturación", icon: CreditCard, badge: "2" },
+      { to: "/admin/leads", label: "Leads", icon: ContactRound },
     ],
   },
   {

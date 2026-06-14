@@ -41,6 +41,7 @@ import { Route as AppAnalyticsRouteImport } from './routes/app.analytics'
 import { Route as AdminUsuariosRouteImport } from './routes/admin.usuarios'
 import { Route as AdminSaludRouteImport } from './routes/admin.salud'
 import { Route as AdminPlanesRouteImport } from './routes/admin.planes'
+import { Route as AdminLeadsRouteImport } from './routes/admin.leads'
 import { Route as AdminFacturacionRouteImport } from './routes/admin.facturacion'
 import { Route as AdminEmpresasRouteImport } from './routes/admin.empresas'
 import { Route as AdminConfiguracionRouteImport } from './routes/admin.configuracion'
@@ -206,6 +207,11 @@ const AdminPlanesRoute = AdminPlanesRouteImport.update({
   path: '/planes',
   getParentRoute: () => AdminRoute,
 } as any)
+const AdminLeadsRoute = AdminLeadsRouteImport.update({
+  id: '/leads',
+  path: '/leads',
+  getParentRoute: () => AdminRoute,
+} as any)
 const AdminFacturacionRoute = AdminFacturacionRouteImport.update({
   id: '/facturacion',
   path: '/facturacion',
@@ -243,6 +249,7 @@ export interface FileRoutesByFullPath {
   '/admin/configuracion': typeof AdminConfiguracionRoute
   '/admin/empresas': typeof AdminEmpresasRoute
   '/admin/facturacion': typeof AdminFacturacionRoute
+  '/admin/leads': typeof AdminLeadsRoute
   '/admin/planes': typeof AdminPlanesRoute
   '/admin/salud': typeof AdminSaludRoute
   '/admin/usuarios': typeof AdminUsuariosRoute
@@ -279,6 +286,7 @@ export interface FileRoutesByTo {
   '/admin/configuracion': typeof AdminConfiguracionRoute
   '/admin/empresas': typeof AdminEmpresasRoute
   '/admin/facturacion': typeof AdminFacturacionRoute
+  '/admin/leads': typeof AdminLeadsRoute
   '/admin/planes': typeof AdminPlanesRoute
   '/admin/salud': typeof AdminSaludRoute
   '/admin/usuarios': typeof AdminUsuariosRoute
@@ -318,6 +326,7 @@ export interface FileRoutesById {
   '/admin/configuracion': typeof AdminConfiguracionRoute
   '/admin/empresas': typeof AdminEmpresasRoute
   '/admin/facturacion': typeof AdminFacturacionRoute
+  '/admin/leads': typeof AdminLeadsRoute
   '/admin/planes': typeof AdminPlanesRoute
   '/admin/salud': typeof AdminSaludRoute
   '/admin/usuarios': typeof AdminUsuariosRoute
@@ -358,6 +367,7 @@ export interface FileRouteTypes {
     | '/admin/configuracion'
     | '/admin/empresas'
     | '/admin/facturacion'
+    | '/admin/leads'
     | '/admin/planes'
     | '/admin/salud'
     | '/admin/usuarios'
@@ -394,6 +404,7 @@ export interface FileRouteTypes {
     | '/admin/configuracion'
     | '/admin/empresas'
     | '/admin/facturacion'
+    | '/admin/leads'
     | '/admin/planes'
     | '/admin/salud'
     | '/admin/usuarios'
@@ -432,6 +443,7 @@ export interface FileRouteTypes {
     | '/admin/configuracion'
     | '/admin/empresas'
     | '/admin/facturacion'
+    | '/admin/leads'
     | '/admin/planes'
     | '/admin/salud'
     | '/admin/usuarios'
@@ -697,6 +709,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof AdminPlanesRouteImport
       parentRoute: typeof AdminRoute
     }
+    '/admin/leads': {
+      id: '/admin/leads'
+      path: '/leads'
+      fullPath: '/admin/leads'
+      preLoaderRoute: typeof AdminLeadsRouteImport
+      parentRoute: typeof AdminRoute
+    }
     '/admin/facturacion': {
       id: '/admin/facturacion'
       path: '/facturacion'
@@ -733,6 +752,7 @@ interface AdminRouteChildren {
   AdminConfiguracionRoute: typeof AdminConfiguracionRoute
   AdminEmpresasRoute: typeof AdminEmpresasRoute
   AdminFacturacionRoute: typeof AdminFacturacionRoute
+  AdminLeadsRoute: typeof AdminLeadsRoute
   AdminPlanesRoute: typeof AdminPlanesRoute
   AdminSaludRoute: typeof AdminSaludRoute
   AdminUsuariosRoute: typeof AdminUsuariosRoute
@@ -744,6 +764,7 @@ const AdminRouteChildren: AdminRouteChildren = {
   AdminConfiguracionRoute: AdminConfiguracionRoute,
   AdminEmpresasRoute: AdminEmpresasRoute,
   AdminFacturacionRoute: AdminFacturacionRoute,
+  AdminLeadsRoute: AdminLeadsRoute,
   AdminPlanesRoute: AdminPlanesRoute,
   AdminSaludRoute: AdminSaludRoute,
   AdminUsuariosRoute: AdminUsuariosRoute,

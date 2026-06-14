@@ -1,6 +1,9 @@
 import { useState } from "react";
 import { createFileRoute, Link } from "@tanstack/react-router";
-import { Loader2, Mail, MessageSquare, Phone } from "lucide-react";
+import { useForm } from "react-hook-form";
+import { zodResolver } from "@hookform/resolvers/zod";
+import { CheckCircle2, Loader2, Mail, MessageSquare, Phone } from "lucide-react";
+import { toast } from "sonner";
 import { SiteHeader } from "@/components/marketing/site-header";
 import { SiteFooter } from "@/components/marketing/site-footer";
 import { SectionHeading } from "@/components/nuclear-ui/section-heading";
@@ -8,6 +11,9 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
+import { submitContactRequest } from "@/features/contact/contact.api";
+import { contactFormSchema, type ContactFormValues } from "@/features/contact/contact.schema";
+import { cn } from "@/lib/utils";
 
 export const Route = createFileRoute("/contact")({
   head: () => ({
@@ -26,15 +32,44 @@ export const Route = createFileRoute("/contact")({
 });
 
 function ContactPage() {
-  const [isSubmitting, setIsSubmitting] = useState(false);
+  const [submitted, setSubmitted] = useState(false);
 
-  const handleSubmit = async (e: React.FormEvent<HTMLFormElement>) => {
-    e.preventDefault();
-    setIsSubmitting(true);
-    // TODO: POST /v1/contact-requests una vez el backend esté listo
-    await new Promise((r) => setTimeout(r, 900));
-    setIsSubmitting(false);
+  const {
+    register,
+    handleSubmit,
+    formState: { errors, isSubmitting },
+    reset,
+  } = useForm<ContactFormValues>({
+    resolver: zodResolver(contactFormSchema),
+    mode: "onBlur",
+    defaultValues: {
+      fullName: "",
+      email: "",
+      companyName: "",
+      message: "",
+      source: "",
+    },
+  });
+
+  const onSubmit = async (data: ContactFormValues) => {
+    try {
+      await submitContactRequest({
+        fullName: data.fullName,
+        email: data.email,
+        companyName: data.companyName || undefined,
+        message: data.message,
+        source: data.source || undefined,
+      });
+      setSubmitted(true);
+      reset();
+      toast.success("Solicitud enviada correctamente. Te contactaremos pronto.");
+    } catch {
+      toast.error(
+        "No pudimos enviar tu solicitud. Verifica tu conexión e intenta de nuevo.",
+      );
+    }
   };
+
   return (
     <div className="bg-background text-foreground">
       <SiteHeader />
@@ -73,62 +108,123 @@ function ContactPage() {
               ))}
             </div>
 
-            {/* Form */}
-            <form
-              className="rounded-2xl border border-border bg-card p-7 shadow-[var(--shadow-soft)]"
-              onSubmit={handleSubmit}
-            >
-              <div className="grid gap-5">
-                <div className="grid gap-2">
-                  <Label htmlFor="nombre">Nombre completo</Label>
-                  <Input id="nombre" placeholder="María Restrepo" required />
+            {/* Form / Success */}
+            {submitted ? (
+              <div className="flex flex-col items-center justify-center rounded-2xl border border-border bg-card p-10 text-center shadow-[var(--shadow-soft)]">
+                <div className="grid size-16 place-items-center rounded-full bg-success/10">
+                  <CheckCircle2 className="size-8 text-success" />
                 </div>
-                <div className="grid gap-5 sm:grid-cols-2">
-                  <div className="grid gap-2">
-                    <Label htmlFor="email">Correo corporativo</Label>
-                    <Input id="email" type="email" placeholder="maria@empresa.co" required />
-                  </div>
-                  <div className="grid gap-2">
-                    <Label htmlFor="empresa">Empresa</Label>
-                    <Input id="empresa" placeholder="Empresa S.A.S." required />
-                  </div>
-                </div>
-                <div className="grid gap-2">
-                  <Label htmlFor="mensaje">¿Qué necesitas resolver?</Label>
-                  <Textarea
-                    id="mensaje"
-                    placeholder="Tenemos 3 bodegas y queremos consolidar el inventario en tiempo real…"
-                    rows={5}
-                  />
-                </div>
-                <Button type="submit" variant="nuclear" size="lg" disabled={isSubmitting}>
-                  {isSubmitting ? (
-                    <>
-                      <Loader2 className="size-4 animate-spin" /> Enviando…
-                    </>
-                  ) : (
-                    "Enviar solicitud"
-                  )}
-                </Button>
-                <p className="text-xs text-muted-foreground">
-                  Al enviar aceptas nuestros{" "}
-                  <Link
-                    to="/legal/terms"
-                    className="text-foreground underline-offset-4 hover:underline"
-                  >
-                    términos
-                  </Link>{" "}
-                  y{" "}
-                  <Link
-                    to="/legal/privacy"
-                    className="text-foreground underline-offset-4 hover:underline"
-                  >
-                    política de privacidad
-                  </Link>
-                  .
+                <h3 className="mt-6 font-display text-xl font-semibold">
+                  Solicitud enviada
+                </h3>
+                <p className="mt-2 max-w-sm text-sm text-muted-foreground">
+                  Recibimos tu mensaje correctamente. Nuestro equipo se pondrá en contacto contigo
+                  en menos de 24 horas hábiles.
                 </p>
+                <Button
+                  variant="outline"
+                  className="mt-6"
+                  onClick={() => setSubmitted(false)}
+                >
+                  Enviar otra solicitud
+                </Button>
               </div>
-            </form>
+            ) : (
+              <form
+                className="rounded-2xl border border-border bg-card p-7 shadow-[var(--shadow-soft)]"
+                onSubmit={handleSubmit(onSubmit)}
+                noValidate
+              >
+                <div className="grid gap-5">
+                  <div className="grid gap-2">
+                    <Label htmlFor="fullName">Nombre completo</Label>
+                    <Input
+                      id="fullName"
+                      placeholder="María Restrepo"
+                      {...register("fullName")}
+                      aria-invalid={!!errors.fullName}
+                      className={cn(errors.fullName && "border-destructive")}
+                    />
+                    {errors.fullName && (
+                      <p className="text-xs text-destructive">{errors.fullName.message}</p>
+                    )}
+                  </div>
+
+                  <div className="grid gap-5 sm:grid-cols-2">
+                    <div className="grid gap-2">
+                      <Label htmlFor="email">Correo corporativo</Label>
+                      <Input
+                        id="email"
+                        type="email"
+                        placeholder="maria@empresa.co"
+                        {...register("email")}
+                        aria-invalid={!!errors.email}
+                        className={cn(errors.email && "border-destructive")}
+                      />
+                      {errors.email && (
+                        <p className="text-xs text-destructive">{errors.email.message}</p>
+                      )}
+                    </div>
+                    <div className="grid gap-2">
+                      <Label htmlFor="companyName">Empresa</Label>
+                      <Input
+                        id="companyName"
+                        placeholder="Empresa S.A.S."
+                        {...register("companyName")}
+                      />
+                    </div>
+                  </div>
+
+                  <div className="grid gap-2">
+                    <Label htmlFor="message">¿Qué necesitas resolver?</Label>
+                    <Textarea
+                      id="message"
+                      placeholder="Tenemos 3 bodegas y queremos consolidar el inventario en tiempo real…"
+                      rows={5}
+                      {...register("message")}
+                      aria-invalid={!!errors.message}
+                      className={cn(errors.message && "border-destructive")}
+                    />
+                    {errors.message && (
+                      <p className="text-xs text-destructive">{errors.message.message}</p>
+                    )}
+                  </div>
+
+                  <Button
+                    type="submit"
+                    variant="nuclear"
+                    size="lg"
+                    disabled={isSubmitting}
+                  >
+                    {isSubmitting ? (
+                      <>
+                        <Loader2 className="size-4 animate-spin" /> Enviando…
+                      </>
+                    ) : (
+                      "Enviar solicitud"
+                    )}
+                  </Button>
+
+                  <p className="text-xs text-muted-foreground">
+                    Al enviar aceptas nuestros{" "}
+                    <Link
+                      to="/legal/terms"
+                      className="text-foreground underline-offset-4 hover:underline"
+                    >
+                      términos
+                    </Link>{" "}
+                    y{" "}
+                    <Link
+                      to="/legal/privacy"
+                      className="text-foreground underline-offset-4 hover:underline"
+                    >
+                      política de privacidad
+                    </Link>
+                    .
+                  </p>
+                </div>
+              </form>
+            )}
           </div>
         </section>
       </main>
