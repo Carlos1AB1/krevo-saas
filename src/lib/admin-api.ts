@@ -173,11 +173,25 @@ export type AdminHealth = Record<string, unknown>;
 export type AdminUserRecord = {
   id?: string;
   email?: string | null;
+  firstName?: string | null;
+  lastName?: string | null;
   name?: string | null;
+  organizationId?: string | null;
+  organizationName?: string | null;
   role?: string | null;
+  roles?: string[];
   status?: "active" | "invited" | "blocked" | string | null;
   lastActive?: string | null;
 } & Record<string, unknown>;
+
+export type AdminUserPayload = {
+  email: string;
+  firstName: string;
+  lastName: string;
+  organizationId: string;
+  password: string;
+  roleIds?: string[];
+};
 
 export const adminApi = {
   createPlan(payload: AdminPlanPayload) {
@@ -188,6 +202,12 @@ export const adminApi = {
   },
   getAdminUsers() {
     return apiFetch<AdminUserRecord[]>("/admin/admin-users", { method: "GET" });
+  },
+  createAdminUser(payload: AdminUserPayload) {
+    return apiFetch<AdminUserRecord>("/admin/admin-users", {
+      body: payload,
+      method: "POST",
+    });
   },
   getAudit() {
     return apiFetch<AdminAuditResponse>("/admin/audit", { method: "GET" });
