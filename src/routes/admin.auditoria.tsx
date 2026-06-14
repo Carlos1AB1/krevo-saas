@@ -1,5 +1,5 @@
 import { createFileRoute } from "@tanstack/react-router";
-import { Download, Filter, ScrollText, ShieldAlert, Siren, UserLock } from "lucide-react";
+import { Download, Filter, ScrollText, Siren, UserLock } from "lucide-react";
 import { useMemo, useState } from "react";
 import { AdminTopbar } from "@/components/admin/admin-topbar";
 import { Badge } from "@/components/ui/badge";
@@ -89,19 +89,8 @@ function GlobalAuditPage() {
       />
 
       <main className="flex-1 overflow-auto bg-muted/20 p-4 sm:p-6">
-        <div className="mx-auto max-w-7xl space-y-5">
-          <Card className="border-warning/25 bg-warning/5 shadow-[var(--shadow-soft)]">
-            <CardContent className="flex items-start gap-3 p-4">
-              <ShieldAlert className="mt-0.5 size-5 shrink-0 text-warning" />
-              <div>
-                <p className="font-semibold text-foreground">Auditoría global inmutable</p>
-                <p className="mt-1 text-sm text-muted-foreground">
-                  Un super admin no revisa actividad por curiosidad. Revisa cambios que alteran
-                  cobros, aislamiento, catálogo o continuidad operativa del SaaS.
-                </p>
-              </div>
-            </CardContent>
-          </Card>
+        <div className="w-full space-y-5">
+          {/* Banner informativo eliminado por no aportar información relevante */}
 
           <section className="grid gap-3 sm:grid-cols-2 xl:grid-cols-4">
             <AuditStat
@@ -134,7 +123,7 @@ function GlobalAuditPage() {
             />
           </section>
 
-          <section className="grid gap-5 xl:grid-cols-[minmax(0,1fr)_320px]">
+          <section className="grid gap-5">
             <Card className="shadow-[var(--shadow-soft)]">
               <CardHeader className="space-y-4">
                 <div className="flex flex-col gap-3 lg:flex-row lg:items-start lg:justify-between">
@@ -267,46 +256,7 @@ function GlobalAuditPage() {
               </CardContent>
             </Card>
 
-            <div className="space-y-5">
-              <Card className="shadow-[var(--shadow-soft)]">
-                <CardHeader>
-                  <CardTitle className="text-base">Qué revisar primero</CardTitle>
-                </CardHeader>
-                <CardContent className="space-y-3">
-                  <ReadingNote
-                    tone="critical"
-                    title="Críticos de seguridad"
-                    body="Confirma si hubo bloqueo preventivo suficiente o si toca rotar accesos y revisar alcance."
-                  />
-                  <ReadingNote
-                    tone="warning"
-                    title="Cambios de plan"
-                    body="Un ajuste sobre un plan base puede alterar límites, pricing o capacidad de varias cuentas activas."
-                  />
-                  <ReadingNote
-                    tone="info"
-                    title="Reactivaciones y cobros"
-                    body="Cruza estos eventos con facturación para confirmar que la operación comercial sigue consistente."
-                  />
-                </CardContent>
-              </Card>
-
-              <Card className="shadow-[var(--shadow-soft)]">
-                <CardHeader>
-                  <CardTitle className="text-base">Lectura correcta</CardTitle>
-                </CardHeader>
-                <CardContent className="space-y-3 text-sm text-muted-foreground">
-                  <p>
-                    Esta vista no existe para ver “qué hizo cada usuario” de forma aislada. Existe
-                    para detectar decisiones con blast radius sobre múltiples tenants.
-                  </p>
-                  <p>
-                    Si encuentras muchos eventos informativos pero pocos críticos, eso no prueba
-                    salud. Solo indica bajo nivel de incidentes registrados en este mock.
-                  </p>
-                </CardContent>
-              </Card>
-            </div>
+          {/* Contenido lateral eliminado por no aportar información útil */}
           </section>
         </div>
       </main>
@@ -409,7 +359,6 @@ function ReadingNote({
     </div>
   );
 }
-
 function EmptyAuditState() {
   return (
     <div className="rounded-lg border border-dashed border-border bg-background/60 px-4 py-10 text-center">
