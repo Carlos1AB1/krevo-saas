@@ -30,6 +30,17 @@ export default defineConfig(({ mode }) => {
       }),
       nitro({
         preset: "vercel",
+        // TanStack Start serves through Nitro in dev; Vite's server.proxy is not used.
+        devProxy: {
+          "/api/**": {
+            target: apiProxyTarget,
+            changeOrigin: true,
+          },
+          "/uploads/**": {
+            target: apiProxyTarget,
+            changeOrigin: true,
+          },
+        },
       }),
       tailwindcss(),
       react(),
