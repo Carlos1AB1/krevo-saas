@@ -68,6 +68,10 @@ function CompaniesPage() {
       <AdminTopbar
         title="Empresas"
         description="Gestión de clientes, estados de suscripción, límites y actividad reciente."
+        searchAriaLabel="Buscar empresas"
+        searchPlaceholder="Buscar empresa, NIT o plan..."
+        searchValue={searchQuery}
+        onSearchChange={setSearchQuery}
         action={
           <Button size="sm">
             <Plus className="size-4" />
@@ -336,10 +340,14 @@ function matchesCompanySearch(company: AdminCompany, query: string) {
   const searchTarget = normalizeSearchValue(
     [
       company.name,
+      company.legalName ?? "",
       company.nit,
+      company.taxId ?? "",
+      company.slug ?? "",
       company.owner.name,
       company.owner.email,
       company.region,
+      company.currency ?? "",
       company.planId,
       company.planName,
       company.status,
