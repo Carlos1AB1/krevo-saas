@@ -1,9 +1,7 @@
-import { Link } from "@tanstack/react-router";
-import { ArrowRight, Bell, Search, ShieldCheck } from "lucide-react";
+import { Bell, Search } from "lucide-react";
 import type { ReactNode } from "react";
 import { AdminMobileNav } from "@/components/admin/admin-mobile-nav";
 import { Badge } from "@/components/ui/badge";
-import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 
 type AdminTopbarProps = {
@@ -73,14 +71,6 @@ export function AdminTopbar({
         </button>
 
         {action ? <div className="flex shrink-0">{action}</div> : null}
-
-        <Button asChild variant="outline" size="sm" className="hidden md:inline-flex">
-          <Link to="/app">
-            <ShieldCheck className="size-4" />
-            Ver app tenant
-            <ArrowRight className="size-4" />
-          </Link>
-        </Button>
       </div>
     </header>
   );
