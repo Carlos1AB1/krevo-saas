@@ -1,6 +1,8 @@
-import { useState } from "react";
+import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { createFileRoute } from "@tanstack/react-router";
 import { Bell, CreditCard, Lock, Save, Settings, Shield, Sparkles, Workflow } from "lucide-react";
+import { useEffect, useState } from "react";
+import { toast } from "sonner";
 import { AdminTopbar } from "@/components/admin/admin-topbar";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
@@ -14,6 +16,7 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 import { Switch } from "@/components/ui/switch";
+import { adminApi, type AdminSettings, type AdminSettingsPayload } from "@/lib/admin-api";
 import { cn } from "@/lib/utils";
 
 export const Route = createFileRoute("/admin/configuracion")({
@@ -108,8 +111,44 @@ const initialState: SettingState = {
 };
 
 function AdminSettingsPage() {
+  const queryClient = useQueryClient();
   const [activeSection, setActiveSection] = useState<ConfigSection>("general");
   const [settings, setSettings] = useState(initialState);
+  const settingsQuery = useQuery({
+    queryFn: () => adminApi.getSettings(),
+    queryKey: ["admin-settings"],
+  });
+  const updateSettingsMutation = useMutation({
+    mutationFn: (payload: AdminSettingsPayload) => adminApi.updateSettings(payload),
+    onSuccess: (data) => {
+      queryClient.setQueryData(["admin-settings"], data);
+      setSettings(toSettingState(data));
+      toast.success("Configuración global guardada");
+    },
+    onError: (error: Error) => {
+      toast.error(error.message || "No fue posible guardar la configuración");
+    },
+  });
+
+  useEffect(() => {
+    if (settingsQuery.data) {
+      setSettings(toSettingState(settingsQuery.data));
+    }
+  }, [settingsQuery.data]);
+
+  function saveSettings() {
+    const payload = toSettingsPayload(settings);
+    const invalidNumberField = Object.entries(payload).find(
+      ([, value]) => typeof value === "number" && Number.isNaN(value),
+    );
+
+    if (invalidNumberField) {
+      toast.error("Revisa los campos numéricos antes de guardar");
+      return;
+    }
+
+    updateSettingsMutation.mutate(payload);
+  }
 
   return (
     <>
@@ -117,15 +156,37 @@ function AdminSettingsPage() {
         title="Configuración"
         description="Centro de control del SaaS: trials, cobro, seguridad y automatismos globales."
         action={
-          <Button size="sm">
+          <Button
+            size="sm"
+            onClick={saveSettings}
+            disabled={settingsQuery.isLoading || updateSettingsMutation.isPending}
+          >
             <Save className="size-4" />
-            Guardar cambios
+            {updateSettingsMutation.isPending ? "Guardando..." : "Guardar cambios"}
           </Button>
         }
       />
 
       <main className="flex-1 overflow-auto bg-muted/20 p-4 sm:p-6">
         <div className="mx-auto max-w-7xl space-y-6">
+          {settingsQuery.isError ? (
+            <Card className="border-destructive/30 bg-destructive/5 shadow-[var(--shadow-soft)]">
+              <CardContent className="flex flex-col gap-3 p-5 sm:flex-row sm:items-center sm:justify-between">
+                <div>
+                  <p className="font-semibold text-foreground">
+                    No fue posible cargar configuración
+                  </p>
+                  <p className="mt-1 text-sm text-muted-foreground">
+                    Verifica tu sesión SuperAdmin y la disponibilidad del backend.
+                  </p>
+                </div>
+                <Button variant="outline" size="sm" onClick={() => settingsQuery.refetch()}>
+                  Reintentar
+                </Button>
+              </CardContent>
+            </Card>
+          ) : null}
+
           <section className="grid gap-4 sm:grid-cols-2 xl:grid-cols-4">
             <ConfigStat
               label="Trial estándar"
@@ -504,6 +565,58 @@ function AdminSettingsPage() {
       </main>
     </>
   );
+}
+
+function toSettingState(settings: AdminSettings): SettingState {
+  return {
+    auditPlanChanges: settings.auditPlanChanges,
+    autoSuspendAfterDays: String(settings.autoSuspendAfterDays),
+    blockCrossTenantSignals: settings.blockCrossTenantSignals,
+    collectBeforeSuspend: settings.collectBeforeSuspend,
+    dunningSequence: settings.dunningSequence,
+    failedLoginWindow: String(settings.failedLoginWindow),
+    invoiceDueDays: String(settings.invoiceDueDays),
+    maxTrialTransactions: String(settings.maxTrialTransactions),
+    maxTrialUsers: String(settings.maxTrialUsers),
+    maxTrialWarehouses: String(settings.maxTrialWarehouses),
+    nextFailureEscalation: settings.nextFailureEscalation,
+    notifyFinanceOnFailure: settings.notifyFinanceOnFailure,
+    notifyOpsOnPending: settings.notifyOpsOnPending,
+    notifyOwnersBeforeRenewal: settings.notifyOwnersBeforeRenewal,
+    paymentToleranceDays: String(settings.paymentToleranceDays),
+    requireSuperAdminMfa: settings.requireSuperAdminMfa,
+    trialDays: String(settings.trialDays),
+    trialMode: settings.trialMode,
+    webhookRetries: String(settings.webhookRetries),
+  };
+}
+
+function toSettingsPayload(settings: SettingState): AdminSettingsPayload {
+  return {
+    auditPlanChanges: settings.auditPlanChanges,
+    autoSuspendAfterDays: toInteger(settings.autoSuspendAfterDays),
+    blockCrossTenantSignals: settings.blockCrossTenantSignals,
+    collectBeforeSuspend: settings.collectBeforeSuspend,
+    dunningSequence: settings.dunningSequence,
+    failedLoginWindow: toInteger(settings.failedLoginWindow),
+    invoiceDueDays: toInteger(settings.invoiceDueDays),
+    maxTrialTransactions: toInteger(settings.maxTrialTransactions),
+    maxTrialUsers: toInteger(settings.maxTrialUsers),
+    maxTrialWarehouses: toInteger(settings.maxTrialWarehouses),
+    nextFailureEscalation: settings.nextFailureEscalation,
+    notifyFinanceOnFailure: settings.notifyFinanceOnFailure,
+    notifyOpsOnPending: settings.notifyOpsOnPending,
+    notifyOwnersBeforeRenewal: settings.notifyOwnersBeforeRenewal,
+    paymentToleranceDays: toInteger(settings.paymentToleranceDays),
+    requireSuperAdminMfa: settings.requireSuperAdminMfa,
+    trialDays: toInteger(settings.trialDays),
+    trialMode: settings.trialMode,
+    webhookRetries: toInteger(settings.webhookRetries),
+  };
+}
+
+function toInteger(value: string) {
+  return Number.parseInt(value, 10);
 }
 
 function ConfigStat({

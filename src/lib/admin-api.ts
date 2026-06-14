@@ -119,7 +119,36 @@ export type AdminPlanPayload = {
   sortOrder?: number;
 };
 
-export type AdminSettings = Record<string, unknown>;
+export type AdminSettings = {
+  auditPlanChanges: boolean;
+  autoSuspendAfterDays: number;
+  billingGraceDays: number;
+  blockCrossTenantSignals: boolean;
+  collectBeforeSuspend: boolean;
+  defaultCurrency: string;
+  defaultTimezone: string;
+  dunningSequence: string;
+  failedLoginWindow: number;
+  invoiceDueDays: number;
+  maintenanceMode: boolean;
+  maxTrialTransactions: number;
+  maxTrialUsers: number;
+  maxTrialWarehouses: number;
+  nextFailureEscalation: boolean;
+  notifyFinanceOnFailure: boolean;
+  notifyOpsOnPending: boolean;
+  notifyOwnersBeforeRenewal: boolean;
+  paymentToleranceDays: number;
+  platformName: string;
+  requireSuperAdminMfa: boolean;
+  supportEmail: string;
+  trialDays: number;
+  trialMode: string;
+  updatedAt: string | null;
+  webhookRetries: number;
+};
+
+export type AdminSettingsPayload = Partial<Omit<AdminSettings, "updatedAt">>;
 
 export type AdminBillingMetrics = Partial<AdminBillingSnapshot> & Record<string, unknown>;
 
@@ -271,7 +300,7 @@ export const adminApi = {
   deletePlan(id: string) {
     return apiFetch<void>(`/admin/plans/${id}`, { method: "DELETE" });
   },
-  updateSettings(payload: Record<string, unknown>) {
+  updateSettings(payload: AdminSettingsPayload) {
     return apiFetch<AdminSettings>("/admin/settings", {
       body: payload,
       method: "PATCH",
