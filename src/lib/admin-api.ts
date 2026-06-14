@@ -119,7 +119,36 @@ export type AdminPlanPayload = {
   sortOrder?: number;
 };
 
-export type AdminSettings = Record<string, unknown>;
+export type AdminSettings = {
+  auditPlanChanges: boolean;
+  autoSuspendAfterDays: number;
+  billingGraceDays: number;
+  blockCrossTenantSignals: boolean;
+  collectBeforeSuspend: boolean;
+  defaultCurrency: string;
+  defaultTimezone: string;
+  dunningSequence: string;
+  failedLoginWindow: number;
+  invoiceDueDays: number;
+  maintenanceMode: boolean;
+  maxTrialTransactions: number;
+  maxTrialUsers: number;
+  maxTrialWarehouses: number;
+  nextFailureEscalation: boolean;
+  notifyFinanceOnFailure: boolean;
+  notifyOpsOnPending: boolean;
+  notifyOwnersBeforeRenewal: boolean;
+  paymentToleranceDays: number;
+  platformName: string;
+  requireSuperAdminMfa: boolean;
+  supportEmail: string;
+  trialDays: number;
+  trialMode: string;
+  updatedAt: string | null;
+  webhookRetries: number;
+};
+
+export type AdminSettingsPayload = Partial<Omit<AdminSettings, "updatedAt">>;
 
 export type AdminBillingMetrics = Partial<AdminBillingSnapshot> & Record<string, unknown>;
 
@@ -169,7 +198,28 @@ export type AdminAuditResponse = {
   totalPages: number;
 };
 
-export type AdminHealth = Record<string, unknown>;
+export type AdminAuditQuery = {
+  action?: string;
+  from?: string;
+  limit?: number;
+  module?: string;
+  page?: number;
+  severity?: string;
+  to?: string;
+  userId?: string;
+};
+
+export type AdminHealth = {
+  status: "ok" | "error";
+  database: "up" | "down";
+  uptimeSeconds: number;
+  memory: {
+    heapUsedBytes: number;
+    heapTotalBytes: number;
+    rssBytes: number;
+  };
+  generatedAt: string;
+};
 export type AdminUserRecord = {
   id?: string;
   email?: string | null;
@@ -209,8 +259,17 @@ export const adminApi = {
       method: "POST",
     });
   },
-  getAudit() {
-    return apiFetch<AdminAuditResponse>("/admin/audit", { method: "GET" });
+  getAudit(params?: AdminAuditQuery) {
+    const qs = new URLSearchParams();
+
+    Object.entries(params ?? {}).forEach(([key, value]) => {
+      if (value !== undefined && value !== null && value !== "") {
+        qs.set(key, String(value));
+      }
+    });
+
+    const suffix = qs.toString() ? `?${qs.toString()}` : "";
+    return apiFetch<AdminAuditResponse>(`/admin/audit${suffix}`, { method: "GET" });
   },
   getBilling() {
     return apiFetch<AdminBillingResponse>("/admin/billing", { method: "GET" });
@@ -241,7 +300,7 @@ export const adminApi = {
   deletePlan(id: string) {
     return apiFetch<void>(`/admin/plans/${id}`, { method: "DELETE" });
   },
-  updateSettings(payload: Record<string, unknown>) {
+  updateSettings(payload: AdminSettingsPayload) {
     return apiFetch<AdminSettings>("/admin/settings", {
       body: payload,
       method: "PATCH",

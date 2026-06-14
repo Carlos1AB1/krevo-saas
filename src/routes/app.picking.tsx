@@ -12,6 +12,7 @@ import { useState } from "react";
 import {
   Sheet, SheetContent, SheetHeader, SheetTitle, SheetDescription, SheetFooter,
 } from "@/components/ui/sheet";
+import { BarcodeScanner } from "@/components/ui/barcode-scanner";
 import {
   getDispatches, confirmPicking, approveDispatch, createDispatch, type DispatchResponse,
 } from "@/features/logistics/logistics.api";
@@ -44,6 +45,26 @@ function PickingPage() {
   const [destination, setDestination] = useState("");
   const [notes, setNotes] = useState("");
   const [lines, setLines] = useState<LineState[]>([makeEmptyLine()]);
+  const [showScanner, setShowScanner] = useState(false);
+  const [manualCode, setManualCode] = useState("");
+
+  const handleValidateCode = (code: string) => {
+    if (!selected) return;
+    const isProductInDispatch = selected.lines.some(
+      (l) =>
+        l.productSku?.trim().toLowerCase() === code.trim().toLowerCase() ||
+        l.productId === code
+    );
+    
+    if (isProductInDispatch) {
+      toast.success(`Código validado: ${code}`);
+      setShowScanner(false);
+      setManualCode("");
+      confirmPickingMutation.mutate(selected.id);
+    } else {
+      toast.error(`El código "${code}" no pertenece a esta orden.`);
+    }
+  };
 
   const { data, isLoading, isError } = useQuery({
     queryKey: ["logistics", "dispatches", { limit: 100 }],
@@ -220,7 +241,12 @@ function PickingPage() {
       </div>
 
       {/* Action Sheet — shared for PENDING (picking) and PICKING (approve) */}
-      <Sheet open={!!selected} onOpenChange={(v) => !v && setSelected(null)}>
+      <Sheet open={!!selected} onOpenChange={(v) => {
+        if (!v) {
+          setSelected(null);
+          setShowScanner(false);
+        }
+      }}>
         <SheetContent className="w-full sm:max-w-md overflow-y-auto">
           {selected && (
             <>
@@ -279,17 +305,70 @@ function PickingPage() {
                 {selected.notes && (
                   <p className="text-xs text-muted-foreground border-l-2 border-border pl-3">{selected.notes}</p>
                 )}
+
+                {showScanner && selected.status === "PENDING" && (
+                  <div className="mt-4 p-4 rounded-xl border border-border bg-background shadow-inner">
+                    <h3 className="text-sm font-semibold mb-3 text-center flex items-center justify-center gap-2">
+                      <Search className="size-4" /> Escanea el código del producto
+                    </h3>
+                    <BarcodeScanner
+                      onScanSuccess={(decodedText) => {
+                        handleValidateCode(decodedText);
+                      }}
+                      onScanError={(err) => {
+                        // Ignoramos errores de lectura continuos para no spamear
+                      }}
+                    />
+                    
+                    <div className="relative flex items-center my-4">
+                      <div className="flex-grow border-t border-border"></div>
+                      <span className="flex-shrink mx-4 text-xs text-muted-foreground uppercase font-semibold">O ingresa el código</span>
+                      <div className="flex-grow border-t border-border"></div>
+                    </div>
+                    
+                    <div className="flex gap-2">
+                      <Input
+                        type="text"
+                        placeholder="Ej: PT-001"
+                        value={manualCode}
+                        onChange={(e) => setManualCode(e.target.value)}
+                        onKeyDown={(e) => {
+                          if (e.key === "Enter" && manualCode.trim()) {
+                            handleValidateCode(manualCode);
+                          }
+                        }}
+                        className="h-9 text-sm"
+                      />
+                      <Button 
+                        size="sm" 
+                        variant="outline" 
+                        onClick={() => {
+                          if (manualCode.trim()) {
+                            handleValidateCode(manualCode);
+                          } else {
+                            toast.error("Ingresa un código antes de validar");
+                          }
+                        }}
+                      >
+                        Validar
+                      </Button>
+                    </div>
+                    
+                    <Button variant="ghost" className="w-full mt-4 text-xs" onClick={() => setShowScanner(false)}>
+                      Cerrar Cámara
+                    </Button>
+                  </div>
+                )}
               </div>
 
               <SheetFooter className="mt-6">
                 <Button variant="outline" onClick={() => setSelected(null)}>Cancelar</Button>
                 {selected.status === "PENDING" && can("manage", "logistics") && (
-                  <Button variant="nuclear" disabled={isWorking}
-                    onClick={() => confirmPickingMutation.mutate(selected.id)}>
-                    {confirmPickingMutation.isPending
-                      ? <><Loader2 className="mr-2 size-4 animate-spin" /> Procesando…</>
-                      : <><Play className="mr-2 size-4" /> Confirmar Picking</>}
-                  </Button>
+                  !showScanner ? (
+                    <Button variant="nuclear" onClick={() => setShowScanner(true)}>
+                      <Box className="mr-2 size-4" /> Iniciar Escáner de Barras
+                    </Button>
+                  ) : null
                 )}
                 {selected.status === "PICKING" && can("manage", "logistics") && (
                   <Button variant="nuclear" disabled={isWorking}

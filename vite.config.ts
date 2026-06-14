@@ -7,10 +7,11 @@ import { nitro } from "nitro/vite";
 
 export default defineConfig(({ mode }) => {
   const env = loadEnv(mode, process.cwd(), "");
-  const apiProxyTarget = env.VITE_DEV_API_PROXY_TARGET || "http://localhost:3100";
+  const apiProxyTarget = env.VITE_DEV_API_PROXY_TARGET || "http://127.0.0.1:3100";
 
   return {
     server: {
+      allowedHosts: true,
       proxy: {
         "/api": {
           target: apiProxyTarget,
@@ -39,6 +40,14 @@ export default defineConfig(({ mode }) => {
           "/uploads/**": {
             target: apiProxyTarget,
             changeOrigin: true,
+          },
+        },
+        routeRules: {
+          "/api/**": {
+            proxy: `${apiProxyTarget}/api/**`,
+          },
+          "/uploads/**": {
+            proxy: `${apiProxyTarget}/uploads/**`,
           },
         },
       }),
