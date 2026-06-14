@@ -180,7 +180,17 @@ export type AdminAuditQuery = {
   userId?: string;
 };
 
-export type AdminHealth = Record<string, unknown>;
+export type AdminHealth = {
+  status: "ok" | "error";
+  database: "up" | "down";
+  uptimeSeconds: number;
+  memory: {
+    heapUsedBytes: number;
+    heapTotalBytes: number;
+    rssBytes: number;
+  };
+  generatedAt: string;
+};
 export type AdminUserRecord = {
   id?: string;
   email?: string | null;
