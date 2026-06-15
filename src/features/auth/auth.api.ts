@@ -1,14 +1,12 @@
 import { apiRequest } from "@/lib/api";
 import { getRefreshToken } from "./auth.storage";
-import type { AuthTokensResponse, AuthUser, LoginInput, MessageResponse } from "./auth.types";
-
-export interface RegisterInput {
-  firstName: string;
-  lastName: string;
-  email: string;
-  password: string;
-  orgName: string;
-}
+import type {
+  AuthTokensResponse,
+  AuthUser,
+  LoginInput,
+  MessageResponse,
+  RegisterInput,
+} from "./auth.types";
 
 export interface TokensOnlyResponse {
   accessToken: string;

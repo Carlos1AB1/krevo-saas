@@ -6,7 +6,7 @@ export interface ContactRequestInput {
   companyName?: string;
   message: string;
   source?: string;
-  turnstileToken?: string;
+  turnstileToken: string;
 }
 
 export interface ContactRequestResponse {
@@ -26,9 +26,7 @@ export interface ContactRequestListResponse {
   total: number;
 }
 
-export function submitContactRequest(
-  input: ContactRequestInput,
-): Promise<ContactRequestResponse> {
+export function submitContactRequest(input: ContactRequestInput): Promise<ContactRequestResponse> {
   return apiRequest<ContactRequestResponse>("/contact-requests", {
     method: "POST",
     body: JSON.stringify(input),
@@ -48,9 +46,7 @@ export function fetchContactRequests(params?: {
   if (params?.limit) query.set("limit", String(params.limit));
 
   const qs = query.toString();
-  return apiFetch<ContactRequestListResponse>(
-    `/contact-requests${qs ? `?${qs}` : ""}`,
-  );
+  return apiFetch<ContactRequestListResponse>(`/contact-requests${qs ? `?${qs}` : ""}`);
 }
 
 export function updateContactRequestStatus(

@@ -181,11 +181,18 @@ export type AdminBillingResponse = {
 };
 
 export type AdminAuditRecord = {
+  actorEmail?: string | null;
+  actorName?: string | null;
   id?: string;
   actor?: string | null;
   action?: string | null;
   company?: string | null;
+  entityLabel?: string | null;
+  module?: string | null;
+  observation?: string | null;
+  organizationId?: string | null;
   severity?: "info" | "warning" | "critical" | string | null;
+  summary?: string | null;
   timestamp?: string | null;
   createdAt?: string | null;
 } & Record<string, unknown>;

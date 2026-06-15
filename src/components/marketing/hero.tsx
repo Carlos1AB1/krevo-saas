@@ -7,7 +7,7 @@ import { LiveBadge } from "@/components/nuclear-ui/live-badge";
 import { AnimatedNumber } from "@/components/nuclear-ui/animated-number";
 
 export function Hero() {
-  const heroRef = useRef<HTMLElement>(null);
+  const heroRef = useRef<HTMLElement | null>(null);
 
   return (
     <section ref={heroRef} className="relative z-0 h-[350vh] bg-black -mt-16 dark">
@@ -15,24 +15,24 @@ export function Hero() {
         {/* Dark overlay for contrast */}
         <div className="absolute inset-0 z-[-15] bg-black/60" />
         {/* Background Scroll Video */}
-      <HeroBackgroundVideo targetRef={heroRef} />
+        <HeroBackgroundVideo targetRef={heroRef} />
 
-      {/* Aurora */}
-      <div
-        aria-hidden
-        className="pointer-events-none absolute inset-x-0 -top-40 -z-10 h-[120vh]"
-        style={{ backgroundImage: "var(--gradient-nuclear)" }}
-      />
-      <div
-        aria-hidden
-        className="bg-grid-nuclear pointer-events-none absolute inset-0 -z-10 opacity-40 [mask-image:radial-gradient(ellipse_at_top,black_30%,transparent_70%)]"
-      />
-      {/* Conic orbit */}
-      <div
-        aria-hidden
-        className="pointer-events-none absolute left-1/2 top-[-20%] -z-10 size-[700px] -translate-x-1/2 rounded-full opacity-25 blur-3xl"
-        style={{ backgroundImage: "var(--gradient-reactor)", animation: "var(--animate-orbit)" }}
-      />
+        {/* Aurora */}
+        <div
+          aria-hidden
+          className="pointer-events-none absolute inset-x-0 -top-40 -z-10 h-[120vh]"
+          style={{ backgroundImage: "var(--gradient-nuclear)" }}
+        />
+        <div
+          aria-hidden
+          className="bg-grid-nuclear pointer-events-none absolute inset-0 -z-10 opacity-40 [mask-image:radial-gradient(ellipse_at_top,black_30%,transparent_70%)]"
+        />
+        {/* Conic orbit */}
+        <div
+          aria-hidden
+          className="pointer-events-none absolute left-1/2 top-[-20%] -z-10 size-[700px] -translate-x-1/2 rounded-full opacity-25 blur-3xl"
+          style={{ backgroundImage: "var(--gradient-reactor)", animation: "var(--animate-orbit)" }}
+        />
 
       <div className="relative z-10 mx-auto max-w-6xl px-6 text-center text-white">
         <motion.div
@@ -90,21 +90,28 @@ export function Hero() {
         >
           Sin tarjeta · 14 días Pro · Cancela cuando quieras
         </motion.p>
-      </div>
+        </div>
       </div>
     </section>
   );
 }
 
-function HeroBackgroundVideo({ targetRef }: { targetRef: React.RefObject<HTMLElement> }) {
+function HeroBackgroundVideo({ targetRef }: { targetRef: React.RefObject<HTMLElement | null> }) {
   const canvasRef = useRef<HTMLCanvasElement>(null);
-  
-  const { scrollYProgress } = useScroll({
-    target: targetRef,
-    offset: ["start start", "end end"], 
-  });
+  const { scrollY } = useScroll();
 
-  const frameIndex = useTransform(scrollYProgress, [0, 1], [1, 200]);
+  const frameIndex = useTransform(scrollY, (latest) => {
+    const target = targetRef.current;
+    if (!target || typeof window === "undefined") return 1;
+
+    const rect = target.getBoundingClientRect();
+    const start = latest + rect.top;
+    const end = start + target.offsetHeight - window.innerHeight;
+    const range = Math.max(1, end - start);
+    const progress = Math.min(1, Math.max(0, (latest - start) / range));
+
+    return 1 + progress * 199;
+  });
 
   useEffect(() => {
     const canvas = canvasRef.current;
@@ -124,7 +131,7 @@ function HeroBackgroundVideo({ targetRef }: { targetRef: React.RefObject<HTMLEle
 
     // Preload all frames immediately
     for (let i = 1; i <= 200; i++) {
-        preloadFrame(i);
+      preloadFrame(i);
     }
 
     // Load first frame immediately to set dimensions
@@ -145,7 +152,7 @@ function HeroBackgroundVideo({ targetRef }: { targetRef: React.RefObject<HTMLEle
     };
 
     const unsubscribe = frameIndex.on("change", render);
-    
+
     // Initial render
     render(frameIndex.get());
 

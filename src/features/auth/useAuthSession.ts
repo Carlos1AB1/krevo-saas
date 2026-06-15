@@ -1,18 +1,21 @@
 import { useEffect, useState } from "react";
 import { ApiError } from "@/lib/api";
+import { clearCurrentUserCache, setCurrentUser as setLibCurrentUser } from "@/lib/auth";
+import { getMe, login, logout, refreshSession, register } from "./auth.api";
 import {
-  clearCurrentUserCache,
-  setCurrentUser as setLibCurrentUser,
-} from "@/lib/auth";
-import { getMe, login, logout, refreshSession, register, type RegisterInput } from "./auth.api";
-import { clearTokens, getAccessToken, getRefreshToken, isAccessTokenExpired, saveTokens } from "./auth.storage";
-import type { AuthUser } from "./auth.types";
+  clearTokens,
+  getAccessToken,
+  getRefreshToken,
+  isAccessTokenExpired,
+  saveTokens,
+} from "./auth.storage";
+import type { AuthUser, RegisterInput } from "./auth.types";
 
 interface AuthSession {
   user: AuthUser | null;
   isLoading: boolean;
   error: string | null;
-  loginUser: (email: string, password: string) => Promise<AuthUser | null>;
+  loginUser: (email: string, password: string, turnstileToken: string) => Promise<AuthUser | null>;
   registerUser: (input: RegisterInput) => Promise<boolean>;
   logoutUser: () => Promise<void>;
   reloadSession: () => Promise<void>;
@@ -67,12 +70,16 @@ export function useAuthSession(): AuthSession {
     }
   }
 
-  async function loginUser(email: string, password: string): Promise<AuthUser | null> {
+  async function loginUser(
+    email: string,
+    password: string,
+    turnstileToken: string,
+  ): Promise<AuthUser | null> {
     setIsLoading(true);
     setError(null);
 
     try {
-      const response = await login({ email, password });
+      const response = await login({ email, password, turnstileToken });
 
       saveTokens(response.accessToken, response.refreshToken);
 
@@ -171,14 +178,21 @@ const BACKEND_ERROR_MAP: Record<string, string> = {
   "User is inactive.": "Tu cuenta está desactivada. Contacta al administrador.",
   "Organization not found.": "La organización no fue encontrada. Contacta al administrador.",
   "User email already exists.": "Ya existe una cuenta con ese email. Intenta iniciar sesión.",
-  "Organization slug already exists.": "Ya existe una organización con ese nombre. Prueba con otro.",
+  "Organization slug already exists.":
+    "Ya existe una organización con ese nombre. Prueba con otro.",
+  "Captcha verification token is required.": "Completa la verificación de seguridad.",
+  "Captcha verification token is invalid.": "La verificación de seguridad no es válida.",
+  "Captcha verification failed. Please try again.":
+    "No pudimos validar la verificación de seguridad. Intenta de nuevo.",
+  "Captcha verification action mismatch. Please try again.":
+    "La verificación de seguridad no coincide con esta acción. Intenta de nuevo.",
+  "Captcha verification service is unavailable.":
+    "La verificación de seguridad no está disponible. Intenta de nuevo en unos minutos.",
 };
 
 function getFriendlyError(error: unknown): string {
   if (error instanceof ApiError) {
-    const raw = Array.isArray(error.details)
-      ? (error.details[0] ?? "")
-      : error.details;
+    const raw = Array.isArray(error.details) ? (error.details[0] ?? "") : error.details;
 
     if (BACKEND_ERROR_MAP[raw]) return BACKEND_ERROR_MAP[raw];
 

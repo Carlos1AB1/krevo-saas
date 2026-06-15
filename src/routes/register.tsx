@@ -1,14 +1,27 @@
-import { useEffect, useState } from "react";
+import { useRef, useState } from "react";
 import { createFileRoute, Link, useNavigate } from "@tanstack/react-router";
 import { AnimatePresence, motion } from "framer-motion";
 import { Controller, useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { z } from "zod";
 import { toast } from "sonner";
-import { AlertCircle, ArrowLeft, ArrowRight, Check, Eye, EyeOff, Loader2, Rocket } from "lucide-react";
+import {
+  AlertCircle,
+  ArrowLeft,
+  ArrowRight,
+  Check,
+  Eye,
+  EyeOff,
+  Loader2,
+  Rocket,
+} from "lucide-react";
 import { AuthShell } from "@/components/auth/auth-shell";
 import { OrSeparator, SsoButtons } from "@/components/auth/sso-buttons";
 import { PasswordStrength, scorePassword } from "@/components/auth/password-strength";
+import {
+  TurnstileWidget,
+  type TurnstileWidgetHandle,
+} from "@/components/security/turnstile-widget";
 import { Button } from "@/components/ui/button";
 import { Checkbox } from "@/components/ui/checkbox";
 import { Input } from "@/components/ui/input";
@@ -77,15 +90,11 @@ export const Route = createFileRoute("/register")({
 
 function RegisterPage() {
   const navigate = useNavigate();
-  const { registerUser, reloadSession, isLoading: authLoading, error: authError, clearError } = useAuth();
+  const { registerUser, isLoading: authLoading, error: authError } = useAuth();
   const [step, setStep] = useState<0 | 1 | 2>(0);
   const [showPw, setShowPw] = useState(false);
-  const [googleError, setGoogleError] = useState<string | null>(null);
-  const [isGoogleSubmitting, setIsGoogleSubmitting] = useState(false);
-
-  const search = Route.useSearch();
-  const isGoogleFlow = !!search.google_token;
-  const googleData = isGoogleFlow ? decodeGoogleTokenPayload(search.google_token!) : null;
+  const [turnstileToken, setTurnstileToken] = useState<string | null>(null);
+  const turnstileRef = useRef<TurnstileWidgetHandle | null>(null);
 
   const form = useForm<RegisterValues>({
     resolver: zodResolver(registerSchema),
@@ -97,7 +106,6 @@ function RegisterPage() {
       confirm: "",
       org: "",
       size: undefined as unknown as RegisterValues["size"],
-      role: undefined as unknown as RegisterValues["role"],
       accept: false,
     },
   });
@@ -153,6 +161,8 @@ function RegisterPage() {
   };
 
   const onSubmit = async (data: RegisterValues) => {
+    if (!turnstileToken) return;
+
     const parts = data.fullName.trim().split(/\s+/);
     const firstName = parts[0];
     const lastName = parts.slice(1).join(" ") || "-";
@@ -163,6 +173,7 @@ function RegisterPage() {
       email: data.email,
       password: data.password,
       orgName: data.org,
+      turnstileToken,
     });
 
     if (success) {
@@ -170,6 +181,8 @@ function RegisterPage() {
         description: `Bienvenido a Krevo, ${firstName}. Tu organización está lista.`,
       });
       navigate({ to: "/app" });
+    } else {
+      turnstileRef.current?.reset();
     }
   };
 
@@ -355,6 +368,12 @@ function RegisterPage() {
                     {errors.accept.message}
                   </p>
                 ) : null}
+
+                <TurnstileWidget
+                  ref={turnstileRef}
+                  action="register"
+                  onTokenChange={setTurnstileToken}
+                />
               </motion.div>
             ) : null}
           </AnimatePresence>
@@ -421,7 +440,7 @@ function RegisterPage() {
                 variant="plasma"
                 size="lg"
                 className="gap-2"
-                disabled={isSubmitting || authLoading}
+                disabled={isSubmitting || authLoading || !turnstileToken}
               >
                 {isSubmitting || authLoading ? (
                   <>
@@ -462,7 +481,7 @@ function Stepper({ step }: { step: number }) {
                 "flex size-7 shrink-0 items-center justify-center rounded-full border text-xs font-semibold transition-colors",
                 done && "border-transparent bg-[var(--nuclear)] text-white",
                 current &&
-                "border-[var(--nuclear)] bg-background text-[var(--nuclear)] shadow-[0_0_0_4px_color-mix(in_oklab,var(--nuclear)_18%,transparent)]",
+                  "border-[var(--nuclear)] bg-background text-[var(--nuclear)] shadow-[0_0_0_4px_color-mix(in_oklab,var(--nuclear)_18%,transparent)]",
                 !done && !current && "border-border bg-card text-muted-foreground",
               )}
             >

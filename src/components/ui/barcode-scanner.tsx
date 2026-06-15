@@ -18,7 +18,7 @@ export function BarcodeScanner({ onScanSuccess, onScanError }: BarcodeScannerPro
         {
           fps: 10,
           qrbox: { width: 250, height: 150 }, // Aspect ratio tipo código de barras
-          supportedFormats: [
+          formatsToSupport: [
             Html5QrcodeSupportedFormats.CODE_128,
             Html5QrcodeSupportedFormats.CODE_39,
             Html5QrcodeSupportedFormats.EAN_13,

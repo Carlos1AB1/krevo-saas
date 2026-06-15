@@ -226,6 +226,14 @@ function translateErrorMessage(rawMessage: string, status: number): string {
     "User email already exists.": "Este correo ya está registrado en la plataforma.",
     "User not found.": "Usuario no encontrado.",
     "Invalid token.": "Tu sesión ha expirado. Inicia sesión de nuevo.",
+    "Captcha verification token is required.": "Completa la verificación de seguridad.",
+    "Captcha verification token is invalid.": "La verificación de seguridad no es válida.",
+    "Captcha verification failed. Please try again.":
+      "No pudimos validar la verificación de seguridad. Intenta de nuevo.",
+    "Captcha verification action mismatch. Please try again.":
+      "La verificación de seguridad no coincide con esta acción. Intenta de nuevo.",
+    "Captcha verification service is unavailable.":
+      "La verificación de seguridad no está disponible. Intenta de nuevo en unos minutos.",
 
     // Inventory
     "Product SKU already exists in this tenant.": "Ya existe un producto con este SKU.",
