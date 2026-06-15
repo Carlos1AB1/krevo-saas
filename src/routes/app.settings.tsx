@@ -1,6 +1,5 @@
 import { createFileRoute } from "@tanstack/react-router";
-import { Loader2, Settings, Building, CreditCard } from "lucide-react";
-import { Link } from "@tanstack/react-router";
+import { Loader2, Settings, Building } from "lucide-react";
 import { RequirePermission } from "@/features/auth/RequirePermission";
 import { useAuth } from "@/features/auth/AuthProvider";
 import { useOrganizationSettings } from "@/features/settings/useOrganizationSettings";
@@ -78,17 +77,10 @@ function SettingsPage() {
       <div className="flex-1 overflow-auto p-4 sm:p-6 bg-muted/20 flex xl:flex-row flex-col gap-6 items-start">
         <div className="w-full xl:max-w-xs space-y-1">
           <nav className="flex flex-col gap-1">
-            <button className="flex items-center gap-2 rounded-lg bg-muted px-3 py-2 text-sm font-medium text-foreground transition-all">
+            <button className="flex cursor-pointer items-center gap-2 rounded-lg bg-muted px-3 py-2 text-sm font-medium text-foreground transition-all">
               <Building className="size-4" />
               <span>Empresa</span>
             </button>
-            <Link
-              to="/app/billing"
-              className="flex items-center gap-2 rounded-lg px-3 py-2 text-sm font-medium text-muted-foreground transition-all hover:bg-muted/50 hover:text-foreground"
-            >
-              <CreditCard className="size-4" />
-              <span>Facturación</span>
-            </Link>
           </nav>
         </div>
 

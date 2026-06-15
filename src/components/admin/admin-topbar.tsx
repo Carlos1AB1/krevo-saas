@@ -1,5 +1,8 @@
-import { Bell, Search } from "lucide-react";
+import { Bell, Search, LogOut } from "lucide-react";
 import type { ReactNode } from "react";
+import { useNavigate } from "@tanstack/react-router";
+import { toast } from "sonner";
+import { useAuth } from "@/features/auth/AuthProvider";
 import { AdminMobileNav } from "@/components/admin/admin-mobile-nav";
 import { Badge } from "@/components/ui/badge";
 import { Input } from "@/components/ui/input";
@@ -23,7 +26,20 @@ export function AdminTopbar({
   searchValue,
   onSearchChange,
 }: AdminTopbarProps) {
+  const navigate = useNavigate();
+  const { logoutUser } = useAuth();
   const hasSearchHandler = typeof onSearchChange === "function";
+
+  const handleLogout = async () => {
+    try {
+      await logoutUser();
+    } finally {
+      toast.success("Sesión cerrada", {
+        description: "Has cerrado tu sesión de forma segura.",
+      });
+      navigate({ to: "/login" });
+    }
+  };
 
   return (
     <header className="sticky top-0 z-40 border-b border-border bg-background/88 backdrop-blur-xl">
@@ -68,6 +84,16 @@ export function AdminTopbar({
         >
           <Bell className="size-4" />
           <span className="absolute right-1.5 top-1.5 size-2 rounded-full bg-destructive ring-2 ring-background" />
+        </button>
+
+        <button
+          type="button"
+          onClick={handleLogout}
+          title="Cerrar sesión"
+          aria-label="Cerrar sesión"
+          className="grid size-9 place-items-center rounded-md border border-border bg-card text-muted-foreground transition-colors hover:bg-destructive hover:text-destructive-foreground"
+        >
+          <LogOut className="size-4" />
         </button>
 
         {action ? <div className="flex shrink-0">{action}</div> : null}

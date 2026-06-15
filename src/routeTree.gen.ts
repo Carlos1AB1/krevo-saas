@@ -24,6 +24,7 @@ import { Route as AppIndexRouteImport } from './routes/app.index'
 import { Route as AdminIndexRouteImport } from './routes/admin.index'
 import { Route as LegalTermsRouteImport } from './routes/legal.terms'
 import { Route as LegalPrivacyRouteImport } from './routes/legal.privacy'
+import { Route as InviteTokenRouteImport } from './routes/invite.$token'
 import { Route as AppWarehousesRouteImport } from './routes/app.warehouses'
 import { Route as AppTeamRouteImport } from './routes/app.team'
 import { Route as AppSuppliersRouteImport } from './routes/app.suppliers'
@@ -32,6 +33,7 @@ import { Route as AppShipmentsRouteImport } from './routes/app.shipments'
 import { Route as AppSettingsRouteImport } from './routes/app.settings'
 import { Route as AppRolesRouteImport } from './routes/app.roles'
 import { Route as AppReceiptsRouteImport } from './routes/app.receipts'
+import { Route as AppProfileRouteImport } from './routes/app.profile'
 import { Route as AppProductsRouteImport } from './routes/app.products'
 import { Route as AppPickingRouteImport } from './routes/app.picking'
 import { Route as AppManufacturingRouteImport } from './routes/app.manufacturing'
@@ -46,6 +48,8 @@ import { Route as AdminFacturacionRouteImport } from './routes/admin.facturacion
 import { Route as AdminEmpresasRouteImport } from './routes/admin.empresas'
 import { Route as AdminConfiguracionRouteImport } from './routes/admin.configuracion'
 import { Route as AdminAuditoriaRouteImport } from './routes/admin.auditoria'
+import { Route as AuthGoogleSuccessRouteImport } from './routes/auth.google.success'
+import { Route as AuthGoogleErrorRouteImport } from './routes/auth.google.error'
 
 const ResetPasswordRoute = ResetPasswordRouteImport.update({
   id: '/reset-password',
@@ -122,6 +126,11 @@ const LegalPrivacyRoute = LegalPrivacyRouteImport.update({
   path: '/legal/privacy',
   getParentRoute: () => rootRouteImport,
 } as any)
+const InviteTokenRoute = InviteTokenRouteImport.update({
+  id: '/invite/$token',
+  path: '/invite/$token',
+  getParentRoute: () => rootRouteImport,
+} as any)
 const AppWarehousesRoute = AppWarehousesRouteImport.update({
   id: '/warehouses',
   path: '/warehouses',
@@ -160,6 +169,11 @@ const AppRolesRoute = AppRolesRouteImport.update({
 const AppReceiptsRoute = AppReceiptsRouteImport.update({
   id: '/receipts',
   path: '/receipts',
+  getParentRoute: () => AppRoute,
+} as any)
+const AppProfileRoute = AppProfileRouteImport.update({
+  id: '/profile',
+  path: '/profile',
   getParentRoute: () => AppRoute,
 } as any)
 const AppProductsRoute = AppProductsRouteImport.update({
@@ -232,6 +246,16 @@ const AdminAuditoriaRoute = AdminAuditoriaRouteImport.update({
   path: '/auditoria',
   getParentRoute: () => AdminRoute,
 } as any)
+const AuthGoogleSuccessRoute = AuthGoogleSuccessRouteImport.update({
+  id: '/auth/google/success',
+  path: '/auth/google/success',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const AuthGoogleErrorRoute = AuthGoogleErrorRouteImport.update({
+  id: '/auth/google/error',
+  path: '/auth/google/error',
+  getParentRoute: () => rootRouteImport,
+} as any)
 
 export interface FileRoutesByFullPath {
   '/': typeof IndexRoute
@@ -259,6 +283,7 @@ export interface FileRoutesByFullPath {
   '/app/manufacturing': typeof AppManufacturingRoute
   '/app/picking': typeof AppPickingRoute
   '/app/products': typeof AppProductsRoute
+  '/app/profile': typeof AppProfileRoute
   '/app/receipts': typeof AppReceiptsRoute
   '/app/roles': typeof AppRolesRoute
   '/app/settings': typeof AppSettingsRoute
@@ -267,10 +292,13 @@ export interface FileRoutesByFullPath {
   '/app/suppliers': typeof AppSuppliersRoute
   '/app/team': typeof AppTeamRoute
   '/app/warehouses': typeof AppWarehousesRoute
+  '/invite/$token': typeof InviteTokenRoute
   '/legal/privacy': typeof LegalPrivacyRoute
   '/legal/terms': typeof LegalTermsRoute
   '/admin/': typeof AdminIndexRoute
   '/app/': typeof AppIndexRoute
+  '/auth/google/error': typeof AuthGoogleErrorRoute
+  '/auth/google/success': typeof AuthGoogleSuccessRoute
 }
 export interface FileRoutesByTo {
   '/': typeof IndexRoute
@@ -296,6 +324,7 @@ export interface FileRoutesByTo {
   '/app/manufacturing': typeof AppManufacturingRoute
   '/app/picking': typeof AppPickingRoute
   '/app/products': typeof AppProductsRoute
+  '/app/profile': typeof AppProfileRoute
   '/app/receipts': typeof AppReceiptsRoute
   '/app/roles': typeof AppRolesRoute
   '/app/settings': typeof AppSettingsRoute
@@ -304,10 +333,13 @@ export interface FileRoutesByTo {
   '/app/suppliers': typeof AppSuppliersRoute
   '/app/team': typeof AppTeamRoute
   '/app/warehouses': typeof AppWarehousesRoute
+  '/invite/$token': typeof InviteTokenRoute
   '/legal/privacy': typeof LegalPrivacyRoute
   '/legal/terms': typeof LegalTermsRoute
   '/admin': typeof AdminIndexRoute
   '/app': typeof AppIndexRoute
+  '/auth/google/error': typeof AuthGoogleErrorRoute
+  '/auth/google/success': typeof AuthGoogleSuccessRoute
 }
 export interface FileRoutesById {
   __root__: typeof rootRouteImport
@@ -336,6 +368,7 @@ export interface FileRoutesById {
   '/app/manufacturing': typeof AppManufacturingRoute
   '/app/picking': typeof AppPickingRoute
   '/app/products': typeof AppProductsRoute
+  '/app/profile': typeof AppProfileRoute
   '/app/receipts': typeof AppReceiptsRoute
   '/app/roles': typeof AppRolesRoute
   '/app/settings': typeof AppSettingsRoute
@@ -344,10 +377,13 @@ export interface FileRoutesById {
   '/app/suppliers': typeof AppSuppliersRoute
   '/app/team': typeof AppTeamRoute
   '/app/warehouses': typeof AppWarehousesRoute
+  '/invite/$token': typeof InviteTokenRoute
   '/legal/privacy': typeof LegalPrivacyRoute
   '/legal/terms': typeof LegalTermsRoute
   '/admin/': typeof AdminIndexRoute
   '/app/': typeof AppIndexRoute
+  '/auth/google/error': typeof AuthGoogleErrorRoute
+  '/auth/google/success': typeof AuthGoogleSuccessRoute
 }
 export interface FileRouteTypes {
   fileRoutesByFullPath: FileRoutesByFullPath
@@ -377,6 +413,7 @@ export interface FileRouteTypes {
     | '/app/manufacturing'
     | '/app/picking'
     | '/app/products'
+    | '/app/profile'
     | '/app/receipts'
     | '/app/roles'
     | '/app/settings'
@@ -385,10 +422,13 @@ export interface FileRouteTypes {
     | '/app/suppliers'
     | '/app/team'
     | '/app/warehouses'
+    | '/invite/$token'
     | '/legal/privacy'
     | '/legal/terms'
     | '/admin/'
     | '/app/'
+    | '/auth/google/error'
+    | '/auth/google/success'
   fileRoutesByTo: FileRoutesByTo
   to:
     | '/'
@@ -414,6 +454,7 @@ export interface FileRouteTypes {
     | '/app/manufacturing'
     | '/app/picking'
     | '/app/products'
+    | '/app/profile'
     | '/app/receipts'
     | '/app/roles'
     | '/app/settings'
@@ -422,10 +463,13 @@ export interface FileRouteTypes {
     | '/app/suppliers'
     | '/app/team'
     | '/app/warehouses'
+    | '/invite/$token'
     | '/legal/privacy'
     | '/legal/terms'
     | '/admin'
     | '/app'
+    | '/auth/google/error'
+    | '/auth/google/success'
   id:
     | '__root__'
     | '/'
@@ -453,6 +497,7 @@ export interface FileRouteTypes {
     | '/app/manufacturing'
     | '/app/picking'
     | '/app/products'
+    | '/app/profile'
     | '/app/receipts'
     | '/app/roles'
     | '/app/settings'
@@ -461,10 +506,13 @@ export interface FileRouteTypes {
     | '/app/suppliers'
     | '/app/team'
     | '/app/warehouses'
+    | '/invite/$token'
     | '/legal/privacy'
     | '/legal/terms'
     | '/admin/'
     | '/app/'
+    | '/auth/google/error'
+    | '/auth/google/success'
   fileRoutesById: FileRoutesById
 }
 export interface RootRouteChildren {
@@ -479,8 +527,11 @@ export interface RootRouteChildren {
   PricingRoute: typeof PricingRoute
   RegisterRoute: typeof RegisterRoute
   ResetPasswordRoute: typeof ResetPasswordRoute
+  InviteTokenRoute: typeof InviteTokenRoute
   LegalPrivacyRoute: typeof LegalPrivacyRoute
   LegalTermsRoute: typeof LegalTermsRoute
+  AuthGoogleErrorRoute: typeof AuthGoogleErrorRoute
+  AuthGoogleSuccessRoute: typeof AuthGoogleSuccessRoute
 }
 
 declare module '@tanstack/react-router' {
@@ -590,6 +641,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof LegalPrivacyRouteImport
       parentRoute: typeof rootRouteImport
     }
+    '/invite/$token': {
+      id: '/invite/$token'
+      path: '/invite/$token'
+      fullPath: '/invite/$token'
+      preLoaderRoute: typeof InviteTokenRouteImport
+      parentRoute: typeof rootRouteImport
+    }
     '/app/warehouses': {
       id: '/app/warehouses'
       path: '/warehouses'
@@ -644,6 +702,13 @@ declare module '@tanstack/react-router' {
       path: '/receipts'
       fullPath: '/app/receipts'
       preLoaderRoute: typeof AppReceiptsRouteImport
+      parentRoute: typeof AppRoute
+    }
+    '/app/profile': {
+      id: '/app/profile'
+      path: '/profile'
+      fullPath: '/app/profile'
+      preLoaderRoute: typeof AppProfileRouteImport
       parentRoute: typeof AppRoute
     }
     '/app/products': {
@@ -744,6 +809,20 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof AdminAuditoriaRouteImport
       parentRoute: typeof AdminRoute
     }
+    '/auth/google/success': {
+      id: '/auth/google/success'
+      path: '/auth/google/success'
+      fullPath: '/auth/google/success'
+      preLoaderRoute: typeof AuthGoogleSuccessRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/auth/google/error': {
+      id: '/auth/google/error'
+      path: '/auth/google/error'
+      fullPath: '/auth/google/error'
+      preLoaderRoute: typeof AuthGoogleErrorRouteImport
+      parentRoute: typeof rootRouteImport
+    }
   }
 }
 
@@ -780,6 +859,7 @@ interface AppRouteChildren {
   AppManufacturingRoute: typeof AppManufacturingRoute
   AppPickingRoute: typeof AppPickingRoute
   AppProductsRoute: typeof AppProductsRoute
+  AppProfileRoute: typeof AppProfileRoute
   AppReceiptsRoute: typeof AppReceiptsRoute
   AppRolesRoute: typeof AppRolesRoute
   AppSettingsRoute: typeof AppSettingsRoute
@@ -798,6 +878,7 @@ const AppRouteChildren: AppRouteChildren = {
   AppManufacturingRoute: AppManufacturingRoute,
   AppPickingRoute: AppPickingRoute,
   AppProductsRoute: AppProductsRoute,
+  AppProfileRoute: AppProfileRoute,
   AppReceiptsRoute: AppReceiptsRoute,
   AppRolesRoute: AppRolesRoute,
   AppSettingsRoute: AppSettingsRoute,
@@ -823,8 +904,11 @@ const rootRouteChildren: RootRouteChildren = {
   PricingRoute: PricingRoute,
   RegisterRoute: RegisterRoute,
   ResetPasswordRoute: ResetPasswordRoute,
+  InviteTokenRoute: InviteTokenRoute,
   LegalPrivacyRoute: LegalPrivacyRoute,
   LegalTermsRoute: LegalTermsRoute,
+  AuthGoogleErrorRoute: AuthGoogleErrorRoute,
+  AuthGoogleSuccessRoute: AuthGoogleSuccessRoute,
 }
 export const routeTree = rootRouteImport
   ._addFileChildren(rootRouteChildren)

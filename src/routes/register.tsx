@@ -35,6 +35,11 @@ import {
 } from "@/components/ui/select";
 import { cn } from "@/lib/utils";
 import { useAuth } from "@/features/auth/AuthProvider";
+import {
+  decodeGoogleTokenPayload,
+  registerWithGoogleToken,
+} from "@/features/auth/auth.api";
+import { saveTokens } from "@/features/auth/auth.storage";
 
 const registerSchema = z
   .object({
@@ -66,6 +71,8 @@ const steps = [
   { key: "confirm", title: "Listo para encender", subtitle: "Revisa y crea tu workspace." },
 ] as const;
 
+const registerSearchSchema = z.object({ google_token: z.string().optional() });
+
 export const Route = createFileRoute("/register")({
   head: () => ({
     meta: [
@@ -77,6 +84,7 @@ export const Route = createFileRoute("/register")({
       },
     ],
   }),
+  validateSearch: registerSearchSchema,
   component: RegisterPage,
 });
 
@@ -111,6 +119,38 @@ function RegisterPage() {
   } = form;
 
   const values = watch();
+
+  useEffect(() => {
+    if (googleData) {
+      setValue("fullName", `${googleData.firstName} ${googleData.lastName}`.trim());
+      setValue("email", googleData.email);
+      setStep(1);
+    }
+  }, []); // eslint-disable-line react-hooks/exhaustive-deps
+
+  async function handleGoogleSubmit() {
+    const ok = await trigger(["org", "size", "accept"]);
+    if (!ok) return;
+    setGoogleError(null);
+    setIsGoogleSubmitting(true);
+    try {
+      const tokens = await registerWithGoogleToken({
+        pendingGoogleToken: search.google_token!,
+        firstName: googleData!.firstName,
+        lastName: googleData!.lastName,
+        email: googleData!.email,
+        orgName: values.org,
+      });
+      saveTokens(tokens.accessToken, tokens.refreshToken);
+      await reloadSession();
+      toast.success("¡Workspace creado!", { description: "Bienvenido a Krevo." });
+      navigate({ to: "/app" });
+    } catch (err) {
+      setGoogleError(err instanceof Error ? err.message : "No fue posible crear el workspace.");
+    } finally {
+      setIsGoogleSubmitting(false);
+    }
+  }
 
   const next = async () => {
     const ok =
@@ -245,6 +285,17 @@ function RegisterPage() {
                 transition={{ duration: 0.35 }}
                 className="space-y-4"
               >
+                {isGoogleFlow && googleData ? (
+                  <div className="rounded-lg border border-border bg-muted/40 px-4 py-3">
+                    <p className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">
+                      Cuenta Google
+                    </p>
+                    <p className="mt-1 font-medium text-foreground">
+                      {googleData.firstName} {googleData.lastName}
+                    </p>
+                    <p className="text-sm text-muted-foreground">{googleData.email}</p>
+                  </div>
+                ) : null}
                 <Field id="org" label="Nombre de la organización" error={errors.org?.message}>
                   <Input id="org" placeholder="Ej. Distribuidora Andes SAS" {...register("org")} />
                 </Field>
@@ -327,7 +378,7 @@ function RegisterPage() {
             ) : null}
           </AnimatePresence>
 
-          {authError && step === 2 ? (
+          {(authError || googleError) && step === 2 ? (
             <motion.div
               role="alert"
               initial={{ opacity: 0, y: -6 }}
@@ -335,7 +386,7 @@ function RegisterPage() {
               className="flex items-start gap-2.5 rounded-lg border border-destructive/40 bg-destructive/10 px-3 py-2.5 text-sm text-destructive"
             >
               <AlertCircle className="mt-0.5 size-4 shrink-0" />
-              <span>{authError}</span>
+              <span>{authError ?? googleError}</span>
             </motion.div>
           ) : null}
 
@@ -363,6 +414,25 @@ function RegisterPage() {
                 disabled={step === 0 && scorePassword(values.password ?? "").score < 3}
               >
                 Siguiente <ArrowRight className="size-4" />
+              </Button>
+            ) : isGoogleFlow ? (
+              <Button
+                type="button"
+                variant="plasma"
+                size="lg"
+                className="gap-2"
+                disabled={isGoogleSubmitting}
+                onClick={handleGoogleSubmit}
+              >
+                {isGoogleSubmitting ? (
+                  <>
+                    <Loader2 className="size-4 animate-spin" /> Creando workspace…
+                  </>
+                ) : (
+                  <>
+                    <Rocket className="size-4" /> Crear mi workspace
+                  </>
+                )}
               </Button>
             ) : (
               <Button

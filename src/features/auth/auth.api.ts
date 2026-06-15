@@ -70,3 +70,37 @@ export function switchOrganization(
     body: JSON.stringify({ organizationId }),
   });
 }
+
+export interface GoogleTokenPayload {
+  email: string;
+  firstName: string;
+  lastName: string;
+  googleId: string;
+  purpose: "google_register";
+  exp: number;
+}
+
+export function decodeGoogleTokenPayload(token: string): GoogleTokenPayload | null {
+  try {
+    const segment = token.split(".")[1];
+    if (!segment) return null;
+    return JSON.parse(atob(segment.replace(/-/g, "+").replace(/_/g, "/"))) as GoogleTokenPayload;
+  } catch {
+    return null;
+  }
+}
+
+export interface GoogleRegisterInput {
+  pendingGoogleToken: string;
+  firstName: string;
+  lastName: string;
+  email: string;
+  orgName: string;
+}
+
+export function registerWithGoogleToken(input: GoogleRegisterInput): Promise<TokensOnlyResponse> {
+  return apiRequest<TokensOnlyResponse>("/auth/register", {
+    method: "POST",
+    body: JSON.stringify(input),
+  });
+}
