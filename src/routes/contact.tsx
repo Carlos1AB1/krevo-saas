@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useRef, useState } from "react";
 import { createFileRoute, Link } from "@tanstack/react-router";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
@@ -7,6 +7,10 @@ import { toast } from "sonner";
 import { SiteHeader } from "@/components/marketing/site-header";
 import { SiteFooter } from "@/components/marketing/site-footer";
 import { SectionHeading } from "@/components/nuclear-ui/section-heading";
+import {
+  TurnstileWidget,
+  type TurnstileWidgetHandle,
+} from "@/components/security/turnstile-widget";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -33,6 +37,8 @@ export const Route = createFileRoute("/contact")({
 
 function ContactPage() {
   const [submitted, setSubmitted] = useState(false);
+  const [turnstileToken, setTurnstileToken] = useState<string | null>(null);
+  const turnstileRef = useRef<TurnstileWidgetHandle | null>(null);
 
   const {
     register,
@@ -52,6 +58,8 @@ function ContactPage() {
   });
 
   const onSubmit = async (data: ContactFormValues) => {
+    if (!turnstileToken) return;
+
     try {
       await submitContactRequest({
         fullName: data.fullName,
@@ -59,14 +67,15 @@ function ContactPage() {
         companyName: data.companyName || undefined,
         message: data.message,
         source: data.source || undefined,
+        turnstileToken,
       });
+      turnstileRef.current?.reset();
       setSubmitted(true);
       reset();
       toast.success("Solicitud enviada correctamente. Te contactaremos pronto.");
     } catch {
-      toast.error(
-        "No pudimos enviar tu solicitud. Verifica tu conexión e intenta de nuevo.",
-      );
+      turnstileRef.current?.reset();
+      toast.error("No pudimos enviar tu solicitud. Verifica tu conexión e intenta de nuevo.");
     }
   };
 
@@ -114,18 +123,12 @@ function ContactPage() {
                 <div className="grid size-16 place-items-center rounded-full bg-success/10">
                   <CheckCircle2 className="size-8 text-success" />
                 </div>
-                <h3 className="mt-6 font-display text-xl font-semibold">
-                  Solicitud enviada
-                </h3>
+                <h3 className="mt-6 font-display text-xl font-semibold">Solicitud enviada</h3>
                 <p className="mt-2 max-w-sm text-sm text-muted-foreground">
                   Recibimos tu mensaje correctamente. Nuestro equipo se pondrá en contacto contigo
                   en menos de 24 horas hábiles.
                 </p>
-                <Button
-                  variant="outline"
-                  className="mt-6"
-                  onClick={() => setSubmitted(false)}
-                >
+                <Button variant="outline" className="mt-6" onClick={() => setSubmitted(false)}>
                   Enviar otra solicitud
                 </Button>
               </div>
@@ -190,11 +193,17 @@ function ContactPage() {
                     )}
                   </div>
 
+                  <TurnstileWidget
+                    ref={turnstileRef}
+                    action="contact"
+                    onTokenChange={setTurnstileToken}
+                  />
+
                   <Button
                     type="submit"
                     variant="nuclear"
                     size="lg"
-                    disabled={isSubmitting}
+                    disabled={isSubmitting || !turnstileToken}
                   >
                     {isSubmitting ? (
                       <>

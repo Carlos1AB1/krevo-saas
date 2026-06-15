@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useRef, useState } from "react";
 import { createFileRoute, Link, useNavigate } from "@tanstack/react-router";
 import { motion } from "framer-motion";
 import { useForm } from "react-hook-form";
@@ -12,6 +12,10 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Checkbox } from "@/components/ui/checkbox";
+import {
+  TurnstileWidget,
+  type TurnstileWidgetHandle,
+} from "@/components/security/turnstile-widget";
 import { useAuth } from "@/features/auth/AuthProvider";
 
 const loginSchema = z.object({
@@ -47,6 +51,8 @@ function LoginPage() {
   const { loginUser, isLoading, error, clearError } = useAuth();
   const [showPw, setShowPw] = useState(false);
   const [authError, setAuthError] = useState<string | null>(null);
+  const [turnstileToken, setTurnstileToken] = useState<string | null>(null);
+  const turnstileRef = useRef<TurnstileWidgetHandle | null>(null);
   const search = Route.useSearch();
   const {
     register,
@@ -65,7 +71,9 @@ function LoginPage() {
   const onSubmit = async (values: LoginValues) => {
     setAuthError(null);
 
-    const user = await loginUser(values.email, values.password);
+    if (!turnstileToken) return;
+
+    const user = await loginUser(values.email, values.password, turnstileToken);
 
     if (user) {
       toast.success("Sesión iniciada", {
@@ -74,6 +82,8 @@ function LoginPage() {
       navigate({
         to: resolvePostLoginPath(user.isPlatformAdmin === true, search.redirect),
       });
+    } else {
+      turnstileRef.current?.reset();
     }
   };
 
@@ -181,12 +191,14 @@ function LoginPage() {
               <span>Mantener mi sesión iniciada en este equipo</span>
             </label>
 
+            <TurnstileWidget ref={turnstileRef} action="login" onTokenChange={setTurnstileToken} />
+
             <Button
               type="submit"
               variant="nuclear"
               size="lg"
               className="w-full"
-              disabled={isAuthenticating}
+              disabled={isAuthenticating || !turnstileToken}
             >
               {isAuthenticating ? (
                 <>
@@ -212,7 +224,10 @@ function LoginPage() {
   );
 }
 
-function resolvePostLoginPath(isPlatformAdmin: boolean, redirect?: string): "/admin" | "/app" | string {
+function resolvePostLoginPath(
+  isPlatformAdmin: boolean,
+  redirect?: string,
+): "/admin" | "/app" | string {
   const safeRedirect =
     redirect && redirect.startsWith("/") && !redirect.startsWith("//") ? redirect : null;
 

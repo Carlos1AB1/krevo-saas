@@ -19,6 +19,16 @@ export interface AuthUser {
 export interface LoginInput {
   email: string;
   password: string;
+  turnstileToken: string;
+}
+
+export interface RegisterInput {
+  firstName: string;
+  lastName: string;
+  email: string;
+  password: string;
+  orgName: string;
+  turnstileToken: string;
 }
 
 export interface AuthTokensResponse {

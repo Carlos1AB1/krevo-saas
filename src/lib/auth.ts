@@ -11,6 +11,7 @@ import {
 type LoginPayload = {
   email: string;
   password: string;
+  turnstileToken: string;
 };
 
 type LoginResponse = {

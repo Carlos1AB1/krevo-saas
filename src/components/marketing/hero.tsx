@@ -98,13 +98,20 @@ export function Hero() {
 
 function HeroBackgroundVideo({ targetRef }: { targetRef: React.RefObject<HTMLElement> }) {
   const canvasRef = useRef<HTMLCanvasElement>(null);
-  
-  const { scrollYProgress } = useScroll({
-    target: targetRef,
-    offset: ["start start", "end end"], 
-  });
+  const { scrollY } = useScroll();
 
-  const frameIndex = useTransform(scrollYProgress, [0, 1], [1, 200]);
+  const frameIndex = useTransform(scrollY, (latest) => {
+    const target = targetRef.current;
+    if (!target || typeof window === "undefined") return 1;
+
+    const rect = target.getBoundingClientRect();
+    const start = latest + rect.top;
+    const end = start + target.offsetHeight - window.innerHeight;
+    const range = Math.max(1, end - start);
+    const progress = Math.min(1, Math.max(0, (latest - start) / range));
+
+    return 1 + progress * 199;
+  });
 
   useEffect(() => {
     const canvas = canvasRef.current;
