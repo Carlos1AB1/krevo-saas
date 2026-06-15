@@ -1,5 +1,4 @@
 import { createFileRoute } from "@tanstack/react-router";
-import { AppTopbar } from "@/components/app/app-topbar";
 import { DashboardContent } from "@/components/app/dashboard-content";
 import { useAuth } from "@/features/auth/AuthProvider";
 import { differenceInHours, parseISO } from "date-fns";
@@ -22,7 +21,6 @@ function DashboardPage() {
 
   return (
     <>
-      <AppTopbar breadcrumb={[{ label: "Dashboard" }]} />
       <main className="flex-1 flex flex-col">
         {user?.subscriptionStatus === "TRIALING" && trialDaysLeft !== null && trialDaysLeft <= 14 && trialDaysLeft >= 0 && (
           <div className="bg-warning/10 border-b border-warning/20 px-4 py-2 flex items-center justify-center text-xs font-medium text-warning-foreground">

@@ -197,7 +197,7 @@ export function AppSidebar({ mobileOpen, onMobileClose }: AppSidebarProps) {
           type="button"
           aria-label={collapsed ? "Expandir" : "Colapsar"}
           onClick={() => setCollapsed((v) => !v)}
-          className="absolute right-0 top-5 z-20 grid size-6 translate-x-1/2 place-items-center rounded-full border border-sidebar-border bg-sidebar text-muted-foreground shadow-sm transition-colors hover:bg-sidebar-accent hover:text-sidebar-accent-foreground"
+          className="absolute right-0 top-5 z-20 grid size-6 cursor-pointer translate-x-1/2 place-items-center rounded-full border border-sidebar-border bg-sidebar text-muted-foreground shadow-sm transition-colors hover:bg-sidebar-accent hover:text-sidebar-accent-foreground"
         >
           <ChevronLeft className={cn("size-3.5 transition-transform", collapsed && "rotate-180")} />
         </button>

@@ -11,6 +11,7 @@ import {
   User,
   Settings,
   HelpCircle,
+  Menu,
   Command as CmdIcon,
   Check,
   Loader2,
@@ -49,9 +50,10 @@ const notifications = [
 
 interface AppTopbarProps {
   breadcrumb?: { label: string; to?: string }[];
+  onMobileMenuClick?: () => void;
 }
 
-export function AppTopbar({ breadcrumb = [] }: AppTopbarProps) {
+export function AppTopbar({ breadcrumb = [], onMobileMenuClick }: AppTopbarProps) {
   const navigate = useNavigate();
   const qc = useQueryClient();
   const { user, logoutUser, reloadSession } = useAuth();
@@ -114,10 +116,22 @@ export function AppTopbar({ breadcrumb = [] }: AppTopbarProps) {
   return (
     <>
       <header className="sticky top-0 z-40 flex h-16 items-center gap-3 border-b border-border bg-background/80 px-4 backdrop-blur-xl lg:px-6">
+        {/* Hamburger — only on mobile */}
+        {onMobileMenuClick && (
+          <button
+            type="button"
+            aria-label="Abrir menú"
+            onClick={onMobileMenuClick}
+            className="grid size-9 cursor-pointer place-items-center rounded-md border border-border bg-card text-foreground transition-colors hover:bg-accent lg:hidden"
+          >
+            <Menu className="size-5" />
+          </button>
+        )}
+
         {/* Tenant switcher — solo visible para super admins de Krevo */}
         {isPlatformAdmin ? (
           <DropdownMenu>
-            <DropdownMenuTrigger className="group flex items-center gap-2 rounded-md border border-border bg-card px-2.5 py-1.5 text-sm font-medium text-foreground transition-colors hover:bg-accent">
+            <DropdownMenuTrigger className="group flex cursor-pointer items-center gap-2 rounded-md border border-border bg-card px-2.5 py-1.5 text-sm font-medium text-foreground transition-colors hover:bg-accent">
               <span className="grid size-6 place-items-center rounded bg-nuclear/10 text-nuclear">
                 {switching ? (
                   <Loader2 className="size-3.5 animate-spin" />
@@ -196,7 +210,7 @@ export function AppTopbar({ breadcrumb = [] }: AppTopbarProps) {
         <button
           type="button"
           onClick={() => setCmdOpen(true)}
-          className="hidden items-center gap-2 rounded-md border border-border bg-card px-3 py-1.5 text-sm text-muted-foreground transition-colors hover:bg-accent md:flex md:w-72"
+          className="hidden cursor-pointer items-center gap-2 rounded-md border border-border bg-card px-3 py-1.5 text-sm text-muted-foreground transition-colors hover:bg-accent md:flex md:w-72"
         >
           <Search className="size-3.5" />
           <span className="flex-1 text-left">Buscar SKU, lote, cliente…</span>
@@ -209,7 +223,7 @@ export function AppTopbar({ breadcrumb = [] }: AppTopbarProps) {
           type="button"
           onClick={() => setCmdOpen(true)}
           aria-label="Buscar"
-          className="grid size-9 place-items-center rounded-md border border-border bg-card text-muted-foreground transition-colors hover:bg-accent md:hidden"
+          className="grid size-9 cursor-pointer place-items-center rounded-md border border-border bg-card text-muted-foreground transition-colors hover:bg-accent md:hidden"
         >
           <Search className="size-4" />
         </button>
@@ -218,14 +232,14 @@ export function AppTopbar({ breadcrumb = [] }: AppTopbarProps) {
 
         {/* Notifications */}
         <Popover>
-          <PopoverTrigger className="relative grid size-9 place-items-center rounded-md border border-border bg-card text-muted-foreground transition-colors hover:bg-accent">
+          <PopoverTrigger className="relative grid size-9 cursor-pointer place-items-center rounded-md border border-border bg-card text-muted-foreground transition-colors hover:bg-accent">
             <Bell className="size-4" />
             <span className="absolute right-1.5 top-1.5 size-2 rounded-full bg-destructive ring-2 ring-background" />
           </PopoverTrigger>
           <PopoverContent align="end" className="w-80 p-0">
             <div className="flex items-center justify-between border-b border-border px-3 py-2">
               <p className="text-sm font-semibold">Notificaciones</p>
-              <button className="text-xs text-nuclear hover:underline">Marcar leídas</button>
+              <button className="cursor-pointer text-xs text-nuclear hover:underline">Marcar leídas</button>
             </div>
             <ul className="max-h-80 divide-y divide-border overflow-y-auto">
               {notifications.map((n) => (
@@ -252,7 +266,7 @@ export function AppTopbar({ breadcrumb = [] }: AppTopbarProps) {
 
         {/* User menu */}
         <DropdownMenu>
-          <DropdownMenuTrigger className="flex items-center gap-2 rounded-md border border-border bg-card pl-1 pr-2 py-1 transition-colors hover:bg-accent">
+          <DropdownMenuTrigger className="flex cursor-pointer items-center gap-2 rounded-md border border-border bg-card pl-1 pr-2 py-1 transition-colors hover:bg-accent">
             <Avatar className="size-7">
               <AvatarFallback className="bg-nuclear/15 text-xs font-semibold text-nuclear">
                 {getUserInitials(user)}
@@ -271,11 +285,11 @@ export function AppTopbar({ breadcrumb = [] }: AppTopbarProps) {
               </p>
             </div>
             <DropdownMenuSeparator />
-            <DropdownMenuItem>
+            <DropdownMenuItem onClick={() => navigate({ to: "/app/profile" })}>
               <User className="mr-2 size-4" />
               Mi perfil
             </DropdownMenuItem>
-            <DropdownMenuItem>
+            <DropdownMenuItem onClick={() => navigate({ to: "/app/settings" })}>
               <Settings className="mr-2 size-4" />
               Ajustes
             </DropdownMenuItem>

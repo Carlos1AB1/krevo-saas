@@ -1,5 +1,4 @@
 import { createFileRoute } from "@tanstack/react-router";
-import { AppTopbar } from "@/components/app/app-topbar";
 import { StockLotsView } from "@/components/app/stock-lots";
 import { StockKardexView } from "@/components/app/stock-kardex";
 import { StockPoliciesView } from "@/components/app/stock-policies";
@@ -13,7 +12,6 @@ export const Route = createFileRoute("/app/stock")({
 function StockPage() {
   return (
     <>
-      <AppTopbar breadcrumb={[{ label: "WMS", to: "/app" }, { label: "Gestión de Inventarios" }]} />
       <main className="flex-1">
         <div className="mx-auto w-full max-w-[1480px] p-4 lg:p-6">
           <Tabs defaultValue="lots" className="w-full">

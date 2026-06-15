@@ -161,7 +161,7 @@ export function StockLotsView() {
         <div className="flex flex-wrap gap-1">
           {buckets.map((b) => (
             <button key={b.key} type="button" onClick={() => setBucket(b.key)}
-              className={cn("rounded-full border px-2.5 py-1 text-xs font-medium transition-colors",
+              className={cn("cursor-pointer rounded-full border px-2.5 py-1 text-xs font-medium transition-colors",
                 bucket === b.key ? "border-nuclear bg-nuclear/10 text-nuclear" : "border-border bg-background text-muted-foreground hover:bg-accent")}>
               {b.label}
             </button>
@@ -343,7 +343,7 @@ function BucketCard({ icon: Icon, label, count, tone, active, onClick }: {
 
   return (
     <button type="button" onClick={onClick}
-      className={cn("group relative overflow-hidden rounded-xl border bg-card p-4 text-left transition-all duration-300 hover:-translate-y-0.5",
+      className={cn("group relative cursor-pointer overflow-hidden rounded-xl border bg-card p-4 text-left transition-all duration-300 hover:-translate-y-0.5",
         active ? "border-nuclear shadow-[var(--shadow-nuclear)]" : "border-border")}>
       <div className="flex items-center justify-between">
         <span className={cn("grid size-8 place-items-center rounded-md", toneBg, toneText)}><Icon className="size-4" /></span>

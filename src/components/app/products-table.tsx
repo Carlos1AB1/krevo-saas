@@ -180,12 +180,12 @@ export function ProductsTable() {
           <span className="text-xs text-muted-foreground">Categoría:</span>
           <div className="flex flex-wrap gap-1">
             <button type="button" onClick={() => setCatFilter("")}
-              className={cn("rounded-full border px-2.5 py-1 text-xs font-medium transition-colors", !catFilter ? "border-nuclear bg-nuclear/10 text-nuclear" : "border-border bg-background text-muted-foreground hover:bg-accent")}>
+              className={cn("cursor-pointer rounded-full border px-2.5 py-1 text-xs font-medium transition-colors", !catFilter ? "border-nuclear bg-nuclear/10 text-nuclear" : "border-border bg-background text-muted-foreground hover:bg-accent")}>
               Todas
             </button>
             {categories.map((c) => (
               <button key={c.id} type="button" onClick={() => setCatFilter(c.id)}
-                className={cn("rounded-full border px-2.5 py-1 text-xs font-medium transition-colors", catFilter === c.id ? "border-nuclear bg-nuclear/10 text-nuclear" : "border-border bg-background text-muted-foreground hover:bg-accent")}>
+                className={cn("cursor-pointer rounded-full border px-2.5 py-1 text-xs font-medium transition-colors", catFilter === c.id ? "border-nuclear bg-nuclear/10 text-nuclear" : "border-border bg-background text-muted-foreground hover:bg-accent")}>
                 {c.name}
               </button>
             ))}
@@ -303,7 +303,7 @@ export function ProductsTable() {
                 {(["details", "lots", "movements"] as DetailTab[]).map((tab) => (
                   <button key={tab} type="button"
                     onClick={() => setDetailTab(tab)}
-                    className={cn("rounded-md px-3 py-1.5 text-xs font-medium transition-colors",
+                    className={cn("cursor-pointer rounded-md px-3 py-1.5 text-xs font-medium transition-colors",
                       detailTab === tab ? "bg-nuclear/10 text-nuclear" : "text-muted-foreground hover:text-foreground")}>
                     {tab === "details" ? "Detalles" : tab === "lots" ? "Lotes" : "Movimientos"}
                   </button>
@@ -539,7 +539,7 @@ function Th({ children, onClick, active }: { children: React.ReactNode; onClick?
     <th className={cn("px-3 py-2.5 select-none", active && "text-foreground")}>
       {onClick ? (
         <button type="button" onClick={onClick}
-          className={cn("inline-flex items-center gap-1 font-semibold uppercase tracking-wider hover:text-foreground transition-colors",
+          className={cn("inline-flex cursor-pointer items-center gap-1 font-semibold uppercase tracking-wider hover:text-foreground transition-colors",
             active ? "text-foreground" : "text-muted-foreground")}>
           {children}<ArrowUpDown className="size-3 opacity-50" />
         </button>
