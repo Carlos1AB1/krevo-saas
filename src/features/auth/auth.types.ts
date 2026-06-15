@@ -13,7 +13,6 @@ export interface AuthUser {
   logoUrl?: string | null;
   primaryColor?: string | null;
   theme?: string | null;
-  isPlatformAdmin?: boolean;
 }
 
 export interface LoginInput {

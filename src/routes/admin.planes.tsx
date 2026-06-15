@@ -875,7 +875,7 @@ function buildPlanPayload(draft: PlanFormState): AdminPlanPayload {
     maxProducts: parseLimitValue(draft.maxProducts),
     maxUsers: parseLimitValue(draft.maxUsers),
     name: draft.name.trim() || "Nuevo plan",
-    priceCents: parsePriceCents(draft.price),
+    priceCents: parsePriceCents(draft.price) ?? 0,
     sortOrder: parseIntegerValue(draft.sortOrder) ?? 0,
   };
 }

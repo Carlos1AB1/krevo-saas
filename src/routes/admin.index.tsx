@@ -461,12 +461,27 @@ function buildPlanDistribution(plans: AdminPlan[], companies: AdminCompany[]) {
 
     return {
       id: plan.id,
-      name: plan.name,
-      period: plan.period,
-      price: plan.price,
-      tenantCount: plan.tenantCount ?? matchingCompanies.length,
+      name: plan.name ?? plan.code ?? "Sin nombre",
+      period: getBillingIntervalLabel(plan.billingInterval),
+      price: centsToUnit(plan.priceCents),
+      tenantCount: matchingCompanies.length,
     };
   });
+}
+
+function getBillingIntervalLabel(value?: string | null) {
+  switch (value?.toUpperCase()) {
+    case "YEARLY":
+      return "año";
+    case "MONTHLY":
+      return "mes";
+    default:
+      return value?.toLowerCase() ?? "mes";
+  }
+}
+
+function centsToUnit(value?: number | null) {
+  return typeof value === "number" ? value / 100 : 0;
 }
 
 function buildTopUsage(companies: AdminCompany[]) {

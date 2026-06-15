@@ -38,6 +38,7 @@ import { adminApi, type AdminUserPayload, type AdminUserRecord } from "@/lib/adm
 import { cn } from "@/lib/utils";
 
 type UserFilter = "all" | "active" | "invited" | "blocked";
+type UserStatus = Exclude<UserFilter, "all">;
 type AdminUserForm = AdminUserPayload;
 
 const EMPTY_USER_FORM: AdminUserForm = {
@@ -663,7 +664,7 @@ function getUserRole(user: AdminUserRecord) {
   return user.role || user.roles?.[0] || "Owner SaaS";
 }
 
-function getUserStatus(user: AdminUserRecord): UserFilter {
+function getUserStatus(user: AdminUserRecord): UserStatus {
   if (user.status === "invited" || user.status === "blocked") {
     return user.status;
   }
