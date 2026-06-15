@@ -14,7 +14,7 @@ import {
 } from "@/components/ui/sheet";
 import { toast } from "sonner";
 import { cn } from "@/lib/utils";
-import { getUsers, createUser, updateUserStatus, updateUserRoles, type UserResponse } from "@/features/users/users.api";
+import { getUsers, inviteMember, updateUserStatus, updateUserRoles, type UserResponse } from "@/features/users/users.api";
 import { getRoles } from "@/features/roles/roles.api";
 import { format, parseISO } from "date-fns";
 import { es } from "date-fns/locale";
@@ -34,11 +34,8 @@ function TeamPage() {
   const [createOpen, setCreateOpen] = useState(false);
   const [editUser, setEditUser] = useState<UserResponse | null>(null);
 
-  // Create form state
+  // Invite form state
   const [newEmail, setNewEmail] = useState("");
-  const [newFirstName, setNewFirstName] = useState("");
-  const [newLastName, setNewLastName] = useState("");
-  const [newPassword, setNewPassword] = useState("");
   const [newRoleIds, setNewRoleIds] = useState<string[]>([]);
 
   // Edit roles state
@@ -67,9 +64,9 @@ function TeamPage() {
   });
 
   const createMutation = useMutation({
-    mutationFn: createUser,
+    mutationFn: inviteMember,
     onSuccess: () => {
-      toast.success("Usuario creado correctamente");
+      toast.success("Invitación enviada", { description: "El usuario recibirá un correo para crear su cuenta." });
       setCreateOpen(false);
       resetCreateForm();
       qc.invalidateQueries({ queryKey: ["users"] });
@@ -100,9 +97,6 @@ function TeamPage() {
 
   function resetCreateForm() {
     setNewEmail("");
-    setNewFirstName("");
-    setNewLastName("");
-    setNewPassword("");
     setNewRoleIds([]);
   }
 
@@ -286,27 +280,14 @@ function TeamPage() {
         <SheetContent className="w-full sm:max-w-md overflow-y-auto">
           <SheetHeader>
             <SheetTitle>Invitar Miembro</SheetTitle>
-            <SheetDescription>Crea un usuario y asígnale roles dentro de tu organización.</SheetDescription>
+            <SheetDescription>
+              Se enviará un correo con un enlace para que el usuario cree su cuenta y contraseña.
+            </SheetDescription>
           </SheetHeader>
           <div className="mt-6 space-y-4">
-            <div className="grid grid-cols-2 gap-4">
-              <div className="space-y-1.5">
-                <Label>Nombre</Label>
-                <Input value={newFirstName} onChange={(e) => setNewFirstName(e.target.value)} placeholder="Ej: Juan" />
-              </div>
-              <div className="space-y-1.5">
-                <Label>Apellido</Label>
-                <Input value={newLastName} onChange={(e) => setNewLastName(e.target.value)} placeholder="Ej: Pérez" />
-              </div>
-              <div className="col-span-2 space-y-1.5">
-                <Label>Email</Label>
-                <Input type="email" value={newEmail} onChange={(e) => setNewEmail(e.target.value)} placeholder="juan@empresa.com" />
-              </div>
-              <div className="col-span-2 space-y-1.5">
-                <Label>Contraseña temporal</Label>
-                <Input type="password" value={newPassword} onChange={(e) => setNewPassword(e.target.value)} placeholder="Mín. 8 chars, mayús., número y símbolo" />
-                <p className="text-[11px] text-muted-foreground">Debe incluir mayúscula, número y símbolo especial.</p>
-              </div>
+            <div className="space-y-1.5">
+              <Label>Email</Label>
+              <Input type="email" value={newEmail} onChange={(e) => setNewEmail(e.target.value)} placeholder="juan@empresa.com" />
             </div>
             {roles.length > 0 && (
               <div className="space-y-2">
@@ -334,19 +315,16 @@ function TeamPage() {
             <Button variant="outline" onClick={() => { setCreateOpen(false); resetCreateForm(); }}>Cancelar</Button>
             <Button variant="nuclear" disabled={createMutation.isPending}
               onClick={() => {
-                if (!newEmail.trim() || !newFirstName.trim() || !newLastName.trim() || !newPassword) {
-                  toast.error("Completa todos los campos requeridos");
+                if (!newEmail.trim()) {
+                  toast.error("Ingresa el correo del invitado");
                   return;
                 }
                 createMutation.mutate({
                   email: newEmail.trim(),
-                  firstName: newFirstName.trim(),
-                  lastName: newLastName.trim(),
-                  password: newPassword,
                   roleIds: newRoleIds.length > 0 ? newRoleIds : undefined,
                 });
               }}>
-              {createMutation.isPending ? <><Loader2 className="mr-2 size-4 animate-spin" /> Creando…</> : "Crear Usuario"}
+              {createMutation.isPending ? <><Loader2 className="mr-2 size-4 animate-spin" /> Enviando…</> : "Enviar Invitación"}
             </Button>
           </SheetFooter>
         </SheetContent>

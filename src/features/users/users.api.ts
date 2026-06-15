@@ -1,4 +1,5 @@
 import { authRequest } from "@/features/auth/authRequest";
+import { apiRequest } from "@/lib/api";
 
 export interface UserRoleRef {
   id: string;
@@ -61,4 +62,48 @@ export function updateUserRoles(id: string, roleIds: string[]): Promise<UserResp
     method: "PATCH",
     body: JSON.stringify({ roleIds }),
   });
+}
+
+export interface InvitationResponse {
+  id: string;
+  email: string;
+  organizationId: string;
+  invitedById: string;
+  status: string;
+  expiresAt: string;
+  acceptedAt: string | null;
+  createdAt: string;
+  roleIds: string[];
+}
+
+export function inviteMember(body: { email: string; roleIds?: string[] }): Promise<InvitationResponse> {
+  return authRequest("/users/invite", { method: "POST", body: JSON.stringify(body) });
+}
+
+export function getInvitationByToken(token: string): Promise<InvitationResponse> {
+  return apiRequest<InvitationResponse>(`/users/invitations/${token}`);
+}
+
+export function acceptInvitation(
+  token: string,
+  body: { firstName: string; lastName: string; password: string },
+): Promise<void> {
+  return apiRequest<void>(`/users/invitations/${token}/accept`, {
+    method: "POST",
+    body: JSON.stringify(body),
+  });
+}
+
+export function updateUserProfile(
+  id: string,
+  body: { firstName?: string; lastName?: string },
+): Promise<UserResponse> {
+  return authRequest(`/users/${id}`, { method: "PATCH", body: JSON.stringify(body) });
+}
+
+export function changePassword(
+  id: string,
+  body: { currentPassword: string; newPassword: string },
+): Promise<void> {
+  return authRequest(`/users/${id}/password`, { method: "PATCH", body: JSON.stringify(body) });
 }
