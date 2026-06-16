@@ -15,11 +15,8 @@ function resolveApiBaseUrl(): string {
     return normalizeApiBaseUrl(configuredUrl);
   }
 
-  if (import.meta.env.DEV) {
-    return "/api/v1";
-  }
-
-  throw new Error("Missing VITE_API_URL environment variable.");
+  // Default for dev proxy and Cloudflare worker /api proxy in production.
+  return "/api/v1";
 }
 
 export const API_BASE_URL = resolveApiBaseUrl();
