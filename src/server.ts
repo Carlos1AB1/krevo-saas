@@ -3,9 +3,36 @@ import "./lib/error-capture";
 import { consumeLastCapturedError } from "./lib/error-capture";
 import { renderErrorPage } from "./lib/error-page";
 
+type WorkerEnv = {
+  BACKEND_URL?: string;
+};
+
 type ServerEntry = {
   fetch: (request: Request, env: unknown, ctx: unknown) => Promise<Response> | Response;
 };
+
+function resolveBackendUrl(env: WorkerEnv): string {
+  return (
+    env.BACKEND_URL?.trim() ||
+    import.meta.env.VITE_DEV_API_PROXY_TARGET?.trim() ||
+    "https://krevo-api.azurewebsites.net"
+  ).replace(/\/+$/, "");
+}
+
+async function proxyToBackend(request: Request, backendUrl: string): Promise<Response> {
+  const url = new URL(request.url);
+  const target = new URL(`${url.pathname}${url.search}`, `${backendUrl}/`);
+
+  const headers = new Headers(request.headers);
+  headers.delete("host");
+
+  return fetch(target, {
+    method: request.method,
+    headers,
+    body: request.body,
+    redirect: "manual",
+  });
+}
 
 let serverEntryPromise: Promise<ServerEntry> | undefined;
 
@@ -67,7 +94,12 @@ async function normalizeCatastrophicSsrResponse(response: Response): Promise<Res
 }
 
 export default {
-  async fetch(request: Request, env: unknown, ctx: unknown) {
+  async fetch(request: Request, env: WorkerEnv, ctx: unknown) {
+    const pathname = new URL(request.url).pathname;
+    if (pathname.startsWith("/api/") || pathname.startsWith("/uploads/")) {
+      return proxyToBackend(request, resolveBackendUrl(env));
+    }
+
     try {
       const handler = await getServerEntry();
       const response = await handler.fetch(request, env, ctx);
