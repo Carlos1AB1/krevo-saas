@@ -1,4 +1,4 @@
-import { useRef, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { createFileRoute, Link, useNavigate } from "@tanstack/react-router";
 import { AnimatePresence, motion } from "framer-motion";
 import { Controller, useForm } from "react-hook-form";
@@ -90,11 +90,19 @@ export const Route = createFileRoute("/register")({
 
 function RegisterPage() {
   const navigate = useNavigate();
-  const { registerUser, isLoading: authLoading, error: authError } = useAuth();
+  const search = Route.useSearch();
+  const { registerUser, isLoading: authLoading, error: authError, reloadSession } = useAuth();
   const [step, setStep] = useState<0 | 1 | 2>(0);
   const [showPw, setShowPw] = useState(false);
   const [turnstileToken, setTurnstileToken] = useState<string | null>(null);
+  const [googleError, setGoogleError] = useState<string | null>(null);
+  const [isGoogleSubmitting, setIsGoogleSubmitting] = useState(false);
   const turnstileRef = useRef<TurnstileWidgetHandle | null>(null);
+
+  const isGoogleFlow = Boolean(search.google_token);
+  const googleData = search.google_token
+    ? decodeGoogleTokenPayload(search.google_token)
+    : null;
 
   const form = useForm<RegisterValues>({
     resolver: zodResolver(registerSchema),
